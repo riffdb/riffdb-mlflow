@@ -1,0 +1,17 @@
+query GetRun(
+    $experiment_id: Run.experiment_id,
+    $run_id: Run.run_id,
+) {
+    one run from Run
+        where experiment_id == $experiment_id
+          && run_id == $run_id
+        else Missing
+
+    return Found {
+        run: run {
+            experiment_id run_id user_id status start_time end_time
+            lifecycle_stage artifact_uri run_name packed_tags revision
+        }
+    }
+    outcomes Found | Missing
+}

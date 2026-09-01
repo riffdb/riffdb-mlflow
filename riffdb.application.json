@@ -1,0 +1,76 @@
+{
+  "schema": "riffdb.application-source/v7",
+  "application": "riffdb-mlflow",
+  "contract": {
+    "source": "riffdb/contract.riff",
+    "lineage": "RiffDBMLflow",
+    "version": 1
+  },
+  "generation": {
+    "python": "src/riffdb_mlflow/generated/client.py"
+  },
+  "migrations": [],
+  "query_modules": [
+    {
+      "name": "riffdb_mlflow",
+      "version": 1,
+      "queries": [
+        { "name": "GetExperiment", "source": "riffdb/queries/get_experiment.riffq" },
+        { "name": "GetExperimentByName", "source": "riffdb/queries/get_experiment_by_name.riffq" },
+        { "name": "GetRun", "source": "riffdb/queries/get_run.riffq" },
+        { "name": "SearchExperiments", "source": "riffdb/queries/search_experiments.riffq" },
+        { "name": "SearchExperimentsByName", "source": "riffdb/queries/search_experiments_by_name.riffq" },
+        { "name": "SearchExperimentsByNameILike", "source": "riffdb/queries/search_experiments_by_name_ilike.riffq" },
+        { "name": "SearchExperimentsByNameLike", "source": "riffdb/queries/search_experiments_by_name_like.riffq" },
+        { "name": "SearchExperimentsByTag", "source": "riffdb/queries/search_experiments_by_tag.riffq" },
+        { "name": "SearchExperimentsByTagILike", "source": "riffdb/queries/search_experiments_by_tag_ilike.riffq" },
+        { "name": "SearchExperimentsByTagLike", "source": "riffdb/queries/search_experiments_by_tag_like.riffq" },
+        { "name": "SearchExperimentsByTwoTags", "source": "riffdb/queries/search_experiments_by_two_tags.riffq" },
+        { "name": "SearchRuns", "source": "riffdb/queries/search_runs.riffq" },
+        { "name": "SearchRunsByLifecycle", "source": "riffdb/queries/search_runs_by_lifecycle.riffq" }
+      ]
+    }
+  ],
+  "reactive_modules": [],
+  "roles": [
+    {
+      "name": "MLflowTrackingServer",
+      "environment": "development",
+      "tenant_scope": "global",
+      "queries": [
+        "GetExperiment",
+        "GetExperimentByName",
+        "GetRun",
+        "SearchExperiments",
+        "SearchExperimentsByName",
+        "SearchExperimentsByNameILike",
+        "SearchExperimentsByNameLike",
+        "SearchExperimentsByTag",
+        "SearchExperimentsByTagILike",
+        "SearchExperimentsByTagLike",
+        "SearchExperimentsByTwoTags",
+        "SearchRuns",
+        "SearchRunsByLifecycle"
+      ],
+      "commands": [
+        "CreateExperiment",
+        "CreateExperimentWithTags",
+        "CreateRun",
+        "CreateRunWithTags",
+        "DeleteExperimentTag",
+        "DeleteExperiment",
+        "DeleteRun",
+        "RenameExperiment",
+        "RestoreExperiment",
+        "RestoreRun",
+        "SetExperimentTag",
+        "UpdateRunInfo"
+      ],
+      "event_streams": [],
+      "watch_queries": [],
+      "agent_subscriptions": [],
+      "row_policies": []
+    }
+  ],
+  "seed_inputs": []
+}

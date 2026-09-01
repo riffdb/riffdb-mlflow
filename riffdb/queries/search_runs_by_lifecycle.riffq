@@ -1,0 +1,21 @@
+query SearchRunsByLifecycle(
+    $experiment_ids: Set<Run.experiment_id, 1000>,
+    $lifecycle_stage: Run.lifecycle_stage,
+    $limit: Limit<4> = 4,
+    $after: Cursor?,
+) {
+    many runs from Run
+        where experiment_id in $experiment_ids
+          && lifecycle_stage == $lifecycle_stage
+        order by start_time desc, run_id asc
+        take $limit after $after
+        else IntegrityFailure
+
+    return Found {
+        runs: runs {
+            experiment_id run_id user_id status start_time end_time
+            lifecycle_stage artifact_uri run_name packed_tags revision
+        }
+    }
+    outcomes Found | IntegrityFailure
+}

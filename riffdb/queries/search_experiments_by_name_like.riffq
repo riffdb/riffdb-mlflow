@@ -1,0 +1,45 @@
+query SearchExperimentsByNameLike(
+    $scope: Experiment.scope,
+    $pattern: Experiment.name,
+    $lifecycle_stages: Set<Experiment.lifecycle_stage>,
+    $order: ExperimentOrder,
+    $limit: Limit<4> = 4,
+    $after: Cursor?,
+) {
+    candidates matching_experiments: Experiment.experiment_id
+        from Experiment.experiment_id using by_name_binary_pattern
+            where scope == $scope && name like $pattern
+        within 65535
+        else IntegrityFailure
+
+    many experiments from Experiment
+        where scope == $scope
+          && experiment_id in matching_experiments
+          && lifecycle_stage in $lifecycle_stages
+        order by $order {
+            NameAscIdAsc: name asc, experiment_id asc;
+            NameAscIdDesc: name asc, experiment_id desc;
+            NameDescIdAsc: name desc, experiment_id asc;
+            NameDescIdDesc: name desc, experiment_id desc;
+            CreationAscIdAsc: creation_time asc, experiment_id asc;
+            CreationAscIdDesc: creation_time asc, experiment_id desc;
+            CreationDescIdAsc: creation_time desc, experiment_id asc;
+            CreationDescIdDesc: creation_time desc, experiment_id desc;
+            UpdateAscIdAsc: last_update_time asc, experiment_id asc;
+            UpdateAscIdDesc: last_update_time asc, experiment_id desc;
+            UpdateDescIdAsc: last_update_time desc, experiment_id asc;
+            UpdateDescIdDesc: last_update_time desc, experiment_id desc;
+            IdAsc: experiment_id asc;
+            IdDesc: experiment_id desc;
+        }
+        take $limit after $after
+        else IntegrityFailure
+
+    return Found {
+        experiments: experiments {
+            experiment_id name artifact_location lifecycle_stage creation_time
+            last_update_time packed_tags revision
+        }
+    }
+    outcomes Found | IntegrityFailure
+}

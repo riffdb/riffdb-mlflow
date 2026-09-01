@@ -1,0 +1,24 @@
+query GetExperiment(
+    $scope: Experiment.scope,
+    $experiment_id: Experiment.experiment_id,
+) {
+    one experiment from Experiment
+        where scope == $scope
+          && experiment_id == $experiment_id
+        else Missing
+
+    return Found {
+        experiment: experiment {
+            experiment_id
+            name
+            artifact_location
+            lifecycle_stage
+            creation_time
+            last_update_time
+            packed_tags
+            revision
+        }
+    }
+
+    outcomes Found | Missing
+}

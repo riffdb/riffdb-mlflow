@@ -1,0 +1,25 @@
+query GetExperimentByName(
+    $scope: Experiment.scope,
+    $name: Experiment.name,
+) {
+    many experiments from Experiment
+        where scope == $scope
+          && name == $name
+        order by experiment_id asc
+        take 1
+
+    return Found {
+        experiments: experiments {
+            experiment_id
+            name
+            artifact_location
+            lifecycle_stage
+            creation_time
+            last_update_time
+            packed_tags
+            revision
+        }
+    }
+
+    outcomes Found
+}

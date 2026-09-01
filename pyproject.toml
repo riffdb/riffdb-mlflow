@@ -1,0 +1,47 @@
+[build-system]
+requires = ["hatchling>=1.27,<2"]
+build-backend = "hatchling.build"
+
+[project]
+name = "riffdb-mlflow"
+version = "0.1.0.dev1"
+description = "Compiled RiffDB tracking-store adapter for MLflow"
+readme = "README.md"
+requires-python = ">=3.13"
+license = { text = "MIT OR Apache-2.0" }
+authors = [{ name = "RiffDB contributors" }]
+dependencies = [
+  "mlflow==3.15.1",
+  "riffdb==0.1.0.dev18",
+]
+
+[project.entry-points."mlflow.tracking_store"]
+riffdb = "riffdb_mlflow.store:RiffDBTrackingStore"
+
+[dependency-groups]
+dev = [
+  "mypy>=1.17,<2",
+  "pytest>=8.4,<9",
+  "ruff>=0.12,<0.13",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/riffdb_mlflow"]
+
+[tool.pytest.ini_options]
+addopts = "-ra"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+extend-exclude = ["src/riffdb_mlflow/generated/client.py"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "RUF"]
+
+[tool.mypy]
+python_version = "3.13"
+strict = true
+packages = ["riffdb_mlflow"]
+exclude = ["src/riffdb_mlflow/generated/client.py"]

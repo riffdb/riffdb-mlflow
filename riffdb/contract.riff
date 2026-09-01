@@ -1,0 +1,416 @@
+contract RiffDBMLflow version 1 {
+  enum LifecycleStage { Active, Deleted }
+  enum RunStatus { Running, Scheduled, Finished, Failed, Killed }
+  enum ExperimentOrder {
+    NameAscIdAsc,
+    NameAscIdDesc,
+    NameDescIdAsc,
+    NameDescIdDesc,
+    CreationAscIdAsc,
+    CreationAscIdDesc,
+    CreationDescIdAsc,
+    CreationDescIdDesc,
+    UpdateAscIdAsc,
+    UpdateAscIdDesc,
+    UpdateDescIdAsc,
+    UpdateDescIdDesc,
+    IdAsc,
+    IdDesc
+  }
+
+  entity Experiment {
+    key (scope: string<32>, experiment_id: u64)
+    field name: string<500>
+    field name_digest: bytes<32>
+    field artifact_location: optional<string<8000>>
+    field lifecycle_stage: LifecycleStage
+    field creation_time: timestamp
+    field last_update_time: timestamp
+    field packed_tags: bytes<900000>
+    field revision: u64
+    unique by_name (scope, name)
+    index by_id (scope, experiment_id)
+    index by_name_lookup (scope, name, experiment_id)
+    index by_name_digest (scope, name_digest, experiment_id)
+    index by_lifecycle_update (scope, lifecycle_stage, last_update_time, experiment_id)
+    index by_update (scope, last_update_time, experiment_id)
+    index by_creation (scope, creation_time, experiment_id)
+    pattern_index by_name_binary_pattern(
+      name,
+      profile binary_utf8_v1,
+      operators (equals, starts_with, ends_with, contains, like, not_like),
+      max_source_bytes 500,
+      max_matched_bytes 500,
+      max_rows 65535,
+      max_total_matched_bytes 268435456,
+      max_grams_per_row 500,
+      max_distinct_grams 65535,
+      max_postings 1048576,
+      max_postings_bytes 67108864,
+      max_pattern_bytes 500,
+      max_pattern_atoms 500,
+      max_candidates 65535,
+      max_verification_bytes 268435456,
+      max_results 65534,
+      staleness_slo 60,
+      replay_age_seconds 86400,
+      replay_bytes 1073741824,
+      replay_backlog 100000,
+      retained_generations 8
+    )
+    pattern_index by_name_folded_pattern(
+      name,
+      profile unicode_fold_v1,
+      operators (equals, starts_with, ends_with, contains, like, ilike, not_like, not_ilike),
+      max_source_bytes 500,
+      max_matched_bytes 9000,
+      max_rows 65535,
+      max_total_matched_bytes 268435456,
+      max_grams_per_row 500,
+      max_distinct_grams 65535,
+      max_postings 1048576,
+      max_postings_bytes 67108864,
+      max_pattern_bytes 500,
+      max_pattern_atoms 500,
+      max_candidates 65535,
+      max_verification_bytes 268435456,
+      max_results 65534,
+      staleness_slo 60,
+      replay_age_seconds 86400,
+      replay_bytes 1073741824,
+      replay_backlog 100000,
+      retained_generations 8
+    )
+  }
+
+  entity ExperimentTag {
+    key (scope: string<32>, experiment_id: u64, tag_key: string<250>)
+    field value: string<5000>
+    field value_digest: bytes<32>
+    index by_tag_key (scope, tag_key, experiment_id)
+    index by_tag_digest (scope, tag_key, value_digest, experiment_id)
+    pattern_index by_value_binary_pattern(
+      value,
+      profile binary_utf8_v1,
+      operators (equals, starts_with, ends_with, contains, like, not_like),
+      max_source_bytes 5000,
+      max_matched_bytes 5000,
+      max_rows 65535,
+      max_total_matched_bytes 268435456,
+      max_grams_per_row 5000,
+      max_distinct_grams 65535,
+      max_postings 1048576,
+      max_postings_bytes 67108864,
+      max_pattern_bytes 5000,
+      max_pattern_atoms 5000,
+      max_candidates 65535,
+      max_verification_bytes 268435456,
+      max_results 65534,
+      staleness_slo 60,
+      replay_age_seconds 86400,
+      replay_bytes 1073741824,
+      replay_backlog 100000,
+      retained_generations 8
+    )
+    pattern_index by_value_folded_pattern(
+      value,
+      profile unicode_fold_v1,
+      operators (equals, starts_with, ends_with, contains, like, ilike, not_like, not_ilike),
+      max_source_bytes 5000,
+      max_matched_bytes 90000,
+      max_rows 65535,
+      max_total_matched_bytes 268435456,
+      max_grams_per_row 5000,
+      max_distinct_grams 65535,
+      max_postings 1048576,
+      max_postings_bytes 67108864,
+      max_pattern_bytes 5000,
+      max_pattern_atoms 5000,
+      max_candidates 65535,
+      max_verification_bytes 268435456,
+      max_results 65534,
+      staleness_slo 60,
+      replay_age_seconds 86400,
+      replay_bytes 1073741824,
+      replay_backlog 100000,
+      retained_generations 8
+    )
+    reference experiment (scope, experiment_id) -> Experiment(scope, experiment_id)
+    delete_policy no_inbound
+  }
+
+  entity Run {
+    key (experiment_id: u64, run_id: string<32>)
+    field user_id: string<256>
+    field status: RunStatus
+    field start_time: i64
+    field end_time: optional<i64>
+    field lifecycle_stage: LifecycleStage
+    field artifact_uri: string<8000>
+    field run_name: string<250>
+    field packed_tags: bytes<900000>
+    field revision: u64
+    index by_start (experiment_id, start_time, run_id)
+    index by_lifecycle_start (experiment_id, lifecycle_stage, start_time, run_id)
+    index by_name (experiment_id, run_name, run_id)
+    index by_status (experiment_id, status, run_id)
+  }
+
+  entity RunTag {
+    key (experiment_id: u64, run_id: string<32>, tag_key: string<250>)
+    field value: string<8000>
+    field value_digest: bytes<32>
+    index by_key (experiment_id, tag_key, run_id)
+    index by_digest (experiment_id, tag_key, value_digest, run_id)
+    reference run (experiment_id, run_id) -> Run(experiment_id, run_id)
+    delete_policy no_inbound
+  }
+
+  aggregate Experiments {
+    root Experiment
+    child ExperimentTag
+    partition_by scope
+    conflict_key (scope, experiment_id)
+  }
+
+  aggregate Runs {
+    root Run
+    child RunTag
+    partition_by experiment_id
+    conflict_key (experiment_id, run_id)
+  }
+
+  command CreateExperiment {
+    input request_id: string<128>
+    input experiment_id: u64
+    input name: string<500>
+    input name_digest: bytes<32>
+    input artifact_location: optional<string<8000>>
+    input packed_tags: bytes<900000>
+    service now: transaction_time
+    idempotency_key request_id
+    create Experiment("global", experiment_id) as experiment else ExperimentExists {}
+    set experiment.name = name
+    set experiment.name_digest = name_digest
+    set experiment.artifact_location = artifact_location
+    set experiment.lifecycle_stage = LifecycleStage.Active
+    set experiment.creation_time = now
+    set experiment.last_update_time = now
+    set experiment.packed_tags = packed_tags
+    set experiment.revision = 0
+    return ExperimentCreated { experiment: experiment }
+  }
+
+  bulk command CreateExperimentWithTags {
+    input request_id: string<128>
+    input experiment_id: u64
+    input name: string<500>
+    input name_digest: bytes<32>
+    input artifact_location: optional<string<8000>>
+    input packed_tags: bytes<900000>
+    input tags: list<ExperimentTag, 1..128> aggregate_bytes <= 900000
+    service now: transaction_time
+    idempotency_key request_id
+    create Experiment("global", experiment_id) as experiment else ExperimentExists {}
+    for candidate in tags {
+      create ExperimentTag("global", experiment_id, candidate.tag_key) as tag
+        else ExperimentTagExists {}
+      set tag.value = candidate.value
+      set tag.value_digest = candidate.value_digest
+    }
+    set experiment.name = name
+    set experiment.name_digest = name_digest
+    set experiment.artifact_location = artifact_location
+    set experiment.lifecycle_stage = LifecycleStage.Active
+    set experiment.creation_time = now
+    set experiment.last_update_time = now
+    set experiment.packed_tags = packed_tags
+    set experiment.revision = 0
+    return ExperimentCreated { experiment: experiment }
+  }
+
+  command RenameExperiment {
+    input request_id: string<128>
+    input experiment_id: u64
+    input name: string<500>
+    input name_digest: bytes<32>
+    service now: transaction_time
+    idempotency_key request_id
+    mutate Experiment("global", experiment_id) as experiment else ExperimentMissing {}
+    set experiment.name = name
+    set experiment.name_digest = name_digest
+    set experiment.last_update_time = now
+    set experiment.revision = experiment.revision + 1
+    return ExperimentRenamed { experiment: experiment }
+  }
+
+  command DeleteExperiment {
+    input request_id: string<128>
+    input experiment_id: u64
+    service now: transaction_time
+    idempotency_key request_id
+    mutate Experiment("global", experiment_id) as experiment else ExperimentMissing {}
+    set experiment.lifecycle_stage = LifecycleStage.Deleted
+    set experiment.last_update_time = now
+    set experiment.revision = experiment.revision + 1
+    return ExperimentDeleted { experiment: experiment }
+  }
+
+  command RestoreExperiment {
+    input request_id: string<128>
+    input experiment_id: u64
+    service now: transaction_time
+    idempotency_key request_id
+    mutate Experiment("global", experiment_id) as experiment else ExperimentMissing {}
+    set experiment.lifecycle_stage = LifecycleStage.Active
+    set experiment.last_update_time = now
+    set experiment.revision = experiment.revision + 1
+    return ExperimentRestored { experiment: experiment }
+  }
+
+  command SetExperimentTag {
+    input request_id: string<128>
+    input experiment_id: u64
+    input tag_key: string<250>
+    input value: string<5000>
+    input value_digest: bytes<32>
+    input packed_tags: bytes<900000>
+    input expected_revision: u64
+    service now: transaction_time
+    idempotency_key request_id
+    mutate Experiment("global", experiment_id) as experiment else ExperimentMissing {}
+    init_or_mutate ExperimentTag("global", experiment_id, tag_key) as tag initialize {
+      value: value,
+      value_digest: value_digest,
+    }
+    require current_revision: experiment.revision == expected_revision else ExperimentStale {}
+    require active: experiment.lifecycle_stage == LifecycleStage.Active else ExperimentInactive {}
+    set tag.value = value
+    set tag.value_digest = value_digest
+    set experiment.packed_tags = packed_tags
+    set experiment.last_update_time = now
+    set experiment.revision = experiment.revision + 1
+    return ExperimentTagSet { experiment: experiment }
+  }
+
+  command DeleteExperimentTag {
+    input request_id: string<128>
+    input experiment_id: u64
+    input tag_key: string<250>
+    input packed_tags: bytes<900000>
+    input expected_revision: u64
+    service now: transaction_time
+    idempotency_key request_id
+    mutate Experiment("global", experiment_id) as experiment else ExperimentMissing {}
+    delete ExperimentTag("global", experiment_id, tag_key) as tag else ExperimentTagMissing {}
+    require current_revision: experiment.revision == expected_revision else ExperimentStale {}
+    require active: experiment.lifecycle_stage == LifecycleStage.Active else ExperimentInactive {}
+    set experiment.packed_tags = packed_tags
+    set experiment.last_update_time = now
+    set experiment.revision = experiment.revision + 1
+    return ExperimentTagDeleted { experiment: experiment }
+  }
+
+  command CreateRun {
+    input request_id: string<128>
+    input experiment_id: u64
+    input run_id: string<32>
+    input user_id: string<256>
+    input start_time: i64
+    input artifact_uri: string<8000>
+    input run_name: string<250>
+    input packed_tags: bytes<900000>
+    idempotency_key request_id
+    create Run(experiment_id, run_id) as run else RunExists {}
+    set run.user_id = user_id
+    set run.status = RunStatus.Running
+    set run.start_time = start_time
+    set run.end_time = null
+    set run.lifecycle_stage = LifecycleStage.Active
+    set run.artifact_uri = artifact_uri
+    set run.run_name = run_name
+    set run.packed_tags = packed_tags
+    set run.revision = 0
+    return RunCreated { run: run }
+  }
+
+  bulk command CreateRunWithTags {
+    input request_id: string<128>
+    input experiment_id: u64
+    input run_id: string<32>
+    input user_id: string<256>
+    input start_time: i64
+    input artifact_uri: string<8000>
+    input run_name: string<250>
+    input packed_tags: bytes<900000>
+    input tags: list<RunTag, 1..100> aggregate_bytes <= 900000
+    idempotency_key request_id
+    create Run(experiment_id, run_id) as run else RunExists {}
+    for candidate in tags {
+      create RunTag(experiment_id, run_id, candidate.tag_key) as tag else RunTagExists {}
+      set tag.value = candidate.value
+      set tag.value_digest = candidate.value_digest
+    }
+    set run.user_id = user_id
+    set run.status = RunStatus.Running
+    set run.start_time = start_time
+    set run.end_time = null
+    set run.lifecycle_stage = LifecycleStage.Active
+    set run.artifact_uri = artifact_uri
+    set run.run_name = run_name
+    set run.packed_tags = packed_tags
+    set run.revision = 0
+    return RunCreated { run: run }
+  }
+
+  command UpdateRunInfo {
+    input request_id: string<128>
+    input experiment_id: u64
+    input run_id: string<32>
+    input status: RunStatus
+    input end_time: optional<i64>
+    input run_name: string<250>
+    input run_name_tag_value: string<8000>
+    input run_name_digest: bytes<32>
+    input packed_tags: bytes<900000>
+    input expected_revision: u64
+    idempotency_key request_id
+    mutate Run(experiment_id, run_id) as run else RunMissing {}
+    init_or_mutate RunTag(experiment_id, run_id, "mlflow.runName") as run_name_tag initialize {
+      value: run_name_tag_value,
+      value_digest: run_name_digest,
+    }
+    require current_revision: run.revision == expected_revision else RunStale {}
+    require active: run.lifecycle_stage == LifecycleStage.Active else RunInactive {}
+    set run_name_tag.value = run_name_tag_value
+    set run_name_tag.value_digest = run_name_digest
+    set run.status = status
+    set run.end_time = end_time
+    set run.run_name = run_name
+    set run.packed_tags = packed_tags
+    set run.revision = run.revision + 1
+    return RunUpdated { run: run }
+  }
+
+  command DeleteRun {
+    input request_id: string<128>
+    input experiment_id: u64
+    input run_id: string<32>
+    idempotency_key request_id
+    mutate Run(experiment_id, run_id) as run else RunMissing {}
+    set run.lifecycle_stage = LifecycleStage.Deleted
+    set run.revision = run.revision + 1
+    return RunDeleted { run: run }
+  }
+
+  command RestoreRun {
+    input request_id: string<128>
+    input experiment_id: u64
+    input run_id: string<32>
+    idempotency_key request_id
+    mutate Run(experiment_id, run_id) as run else RunMissing {}
+    set run.lifecycle_stage = LifecycleStage.Active
+    set run.revision = run.revision + 1
+    return RunRestored { run: run }
+  }
+}
