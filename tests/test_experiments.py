@@ -262,8 +262,7 @@ def test_search_coalesces_compiled_pages_without_skipping_rows() -> None:
     assert second.token == "101"
     assert [(call[1].limit, call[1].after) for call in client.calls] == [
         (1, None),
-        (50, "1"),
-        (50, "51"),
+        *((4, str(offset)) for offset in range(1, 101, 4)),
     ]
 
 

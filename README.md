@@ -7,6 +7,19 @@ RiffDB repository.
 The project currently targets MLflow 3.15.1 and is under active development.
 It is not yet usable as a backend store.
 
+The current validated development slice includes atomic experiment creation
+with tags, experiment lifecycle and tag updates, experiment exact/LIKE/ILIKE
+search, atomic run creation with tags, run get/update/delete/restore, and
+lifecycle-aware globally ordered run search across a bounded experiment set.
+Exact generation, static checks, unit tests, and disposable real-RiffDB
+loopback cover that slice.
+
+Run predicates beyond lifecycle and orders beyond `start_time DESC, run_id ASC`
+remain unimplemented, as do metrics, parameters, batch logging, inputs, and the
+upstream tracking-store conformance suite. Unsupported search shapes fail
+before contacting RiffDB; the adapter does not repair them with client-side
+filtering or sorting.
+
 The intended server configuration is:
 
 ```bash
@@ -28,4 +41,3 @@ make check
 
 Public publishing is intentionally out of scope until real RiffDB loopback and
 upstream MLflow semantics are green.
-

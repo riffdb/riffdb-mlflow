@@ -25,7 +25,9 @@ Exit: source/lock checks are exact and all core data paths are generated.
 
 ## WP-003 — Experiments and runs
 
-Status: pending.
+Status: in progress. The base experiment and run lifecycle slice passes focused
+unit tests and disposable real-RiffDB loopback; upstream SQL-store parity and
+the remaining run-data operations are not yet complete.
 
 - Implement create/get/rename/delete/restore for experiments.
 - Implement create/get/update/delete/restore for runs.
@@ -45,7 +47,9 @@ Status: pending.
 
 ## WP-005 — Search and pagination
 
-Status: pending.
+Status: in progress. Experiment search and lifecycle-aware run search use
+compiled queries and bounded cursor coalescing. Remaining run predicates and
+order families are still pending.
 
 - Inventory the MLflow experiment/run search grammar and order matrix.
 - Map accepted normalized shapes to finite bounded named queries.

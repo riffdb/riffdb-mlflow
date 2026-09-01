@@ -10,8 +10,18 @@ from typing import Any, NoReturn
 from uuid import uuid4
 
 from mlflow.entities import Experiment as MLflowExperiment
-from mlflow.entities import ExperimentTag, ViewType
+from mlflow.entities import (
+    ExperimentTag,
+    RunData,
+    RunInfo,
+    RunInputs,
+    RunOutputs,
+    RunTag,
+    ViewType,
+)
 from mlflow.entities import LifecycleStage as MLflowLifecycleStage
+from mlflow.entities import Run as MLflowRun
+from mlflow.entities import RunStatus as MLflowRunStatus
 from mlflow.exceptions import MlflowException, MlflowNotImplementedException
 from mlflow.protos.databricks_pb2 import (
     ABORTED,
@@ -23,7 +33,9 @@ from mlflow.protos.databricks_pb2 import (
 from mlflow.store.entities.paged_list import PagedList
 from mlflow.store.tracking import SEARCH_MAX_RESULTS_DEFAULT, SEARCH_MAX_RESULTS_THRESHOLD
 from mlflow.store.tracking.abstract_store import AbstractStore
-from mlflow.utils.search_utils import SearchExperimentsUtils
+from mlflow.utils.mlflow_tags import MLFLOW_RUN_NAME
+from mlflow.utils.name_utils import _generate_random_name
+from mlflow.utils.search_utils import SearchExperimentsUtils, SearchUtils
 from mlflow.utils.uri import append_to_uri_path
 from mlflow.utils.validation import (
     _validate_experiment_artifact_location_length,
@@ -31,6 +43,8 @@ from mlflow.utils.validation import (
     _validate_experiment_id_type,
     _validate_experiment_name,
     _validate_experiment_tag,
+    _validate_run_id,
+    _validate_tag,
 )
 from riffdb_application import (
     AttemptBudget,
@@ -49,6 +63,10 @@ from riffdb_mlflow.generated.client import (
     CreateExperimentWithTagsExperimentCreated,
     CreateExperimentWithTagsExperimentExists,
     CreateExperimentWithTagsInput,
+    CreateRunWithTagsInput,
+    CreateRunWithTagsRunCreated,
+    CreateRunWithTagsRunExists,
+    CreateRunWithTagsRunTagExists,
     DeleteExperimentExperimentDeleted,
     DeleteExperimentExperimentMissing,
     DeleteExperimentInput,
@@ -58,12 +76,18 @@ from riffdb_mlflow.generated.client import (
     DeleteExperimentTagExperimentTagDeleted,
     DeleteExperimentTagExperimentTagMissing,
     DeleteExperimentTagInput,
+    DeleteRunInput,
+    DeleteRunRunDeleted,
+    DeleteRunRunMissing,
     ExperimentOrder,
     GetExperimentByNameFound,
     GetExperimentByNameParams,
     GetExperimentFound,
     GetExperimentMissing,
     GetExperimentParams,
+    GetRunFound,
+    GetRunMissing,
+    GetRunParams,
     LifecycleStage,
     RenameExperimentExperimentMissing,
     RenameExperimentExperimentRenamed,
@@ -71,6 +95,9 @@ from riffdb_mlflow.generated.client import (
     RestoreExperimentExperimentMissing,
     RestoreExperimentExperimentRestored,
     RestoreExperimentInput,
+    RestoreRunInput,
+    RestoreRunRunMissing,
+    RestoreRunRunRestored,
     RiffDBMLflowClient,
     SearchExperimentsByNameILikeParams,
     SearchExperimentsByNameLikeParams,
@@ -80,21 +107,35 @@ from riffdb_mlflow.generated.client import (
     SearchExperimentsByTagParams,
     SearchExperimentsByTwoTagsParams,
     SearchExperimentsParams,
+    SearchRunsByLifecycleParams,
+    SearchRunsParams,
     SetExperimentTagExperimentInactive,
     SetExperimentTagExperimentMissing,
     SetExperimentTagExperimentStale,
     SetExperimentTagExperimentTagSet,
     SetExperimentTagInput,
+    UpdateRunInfoInput,
+    UpdateRunInfoRunInactive,
+    UpdateRunInfoRunMissing,
+    UpdateRunInfoRunStale,
+    UpdateRunInfoRunUpdated,
 )
 from riffdb_mlflow.generated.client import (
     ExperimentTag as RiffDBExperimentTag,
 )
+from riffdb_mlflow.generated.client import RunStatus as RiffDBRunStatus
+from riffdb_mlflow.generated.client import RunTag as RiffDBRunTag
 
 _SCOPE = "global"
 _DEFAULT_EXPERIMENT_ID = 0
 _DEFAULT_EXPERIMENT_NAME = "Default"
 _PACKED_TAGS_MAX_BYTES = 900_000
-_COMPILED_SEARCH_PAGE_SIZE = 50
+_COMPILED_SEARCH_PAGE_SIZE = 4
+_COMPILED_RUN_SEARCH_PAGE_SIZE = 4
+_MAX_RUN_SEARCH_EXPERIMENTS = 1_000
+_MAX_RUN_TAGS = 100
+_MAX_RUN_NAME_LENGTH = 250
+_MAX_USER_ID_LENGTH = 256
 _MIN_RANDOM_EXPERIMENT_ID = 100_000_000_000_000_000
 _RANDOM_EXPERIMENT_ID_SPAN = 900_000_000_000_000_000
 
@@ -253,6 +294,109 @@ class RiffDBTrackingStore(AbstractStore):
         ):
             raise MlflowException("Stored experiment tags have an invalid shape")
         return value
+
+    @staticmethod
+    def _encode_run_tags(tags: Any) -> bytes:
+        packed: dict[str, str] = {}
+        for index, tag in enumerate(tags or ()):
+            normalized = _validate_tag(  # type: ignore[no-untyped-call]
+                tag.key, tag.value, path=f"tags[{index}]"
+            )
+            if normalized.key in packed:
+                raise MlflowException(
+                    f"Duplicate run tag key: {normalized.key!r}",
+                    error_code=INVALID_PARAMETER_VALUE,
+                )
+            packed[normalized.key] = normalized.value
+        if len(packed) > _MAX_RUN_TAGS:
+            raise MlflowException.invalid_parameter_value(
+                f"A run may contain at most {_MAX_RUN_TAGS} tags"
+            )
+        encoded = json.dumps(
+            packed, ensure_ascii=False, separators=(",", ":"), sort_keys=True
+        ).encode("utf-8")
+        if len(encoded) > _PACKED_TAGS_MAX_BYTES:
+            raise MlflowException.invalid_parameter_value(
+                "Run tags exceed the RiffDB profile's encoded byte limit"
+            )
+        return encoded
+
+    @classmethod
+    def _run_tag_rows(cls, experiment_id: int, run_id: str, tags: Any) -> tuple[RiffDBRunTag, ...]:
+        packed = cls._decode_tags(cls._encode_run_tags(tags))
+        return tuple(
+            RiffDBRunTag(
+                experiment_id=experiment_id,
+                run_id=run_id,
+                tag_key=key,
+                value=value,
+                value_digest=cls._digest(value),
+            )
+            for key, value in packed.items()
+        )
+
+    @staticmethod
+    def _new_run_id(experiment_id: int) -> str:
+        return f"{experiment_id:016x}{secrets.token_hex(8)}"
+
+    @staticmethod
+    def _run_experiment_id(run_id: Any) -> tuple[str, int]:
+        _validate_run_id(run_id)  # type: ignore[no-untyped-call]
+        value = str(run_id)
+        if len(value) != 32 or any(character not in "0123456789abcdef" for character in value):
+            raise MlflowException.invalid_parameter_value(f"Invalid run ID: {run_id!r}")
+        return value, int(value[:16], 16)
+
+    @staticmethod
+    def _missing_run(run_id: Any) -> NoReturn:
+        raise MlflowException(
+            f"Run with id={run_id} not found",
+            error_code=RESOURCE_DOES_NOT_EXIST,
+        )
+
+    @staticmethod
+    def _validate_run_name(run_name: Any) -> str:
+        if not isinstance(run_name, str) or not run_name or len(run_name) > _MAX_RUN_NAME_LENGTH:
+            raise MlflowException.invalid_parameter_value(
+                f"Run name must be a non-empty string of at most {_MAX_RUN_NAME_LENGTH} characters"
+            )
+        return run_name
+
+    @staticmethod
+    def _to_riffdb_run_status(status: Any) -> RiffDBRunStatus:
+        try:
+            name = MLflowRunStatus.to_string(status)  # type: ignore[no-untyped-call]
+            return RiffDBRunStatus[name]
+        except (KeyError, TypeError, ValueError) as error:
+            raise MlflowException.invalid_parameter_value(
+                f"Invalid run status: {status!r}"
+            ) from error
+
+    @staticmethod
+    def _to_mlflow_run(row: Any) -> MLflowRun:
+        lifecycle = (
+            MLflowLifecycleStage.ACTIVE
+            if row.lifecycle_stage == LifecycleStage.ACTIVE
+            else MLflowLifecycleStage.DELETED
+        )
+        info = RunInfo(  # type: ignore[no-untyped-call]
+            row.run_id,
+            str(row.experiment_id),
+            row.user_id,
+            row.status.name,
+            row.start_time,
+            row.end_time,
+            lifecycle,
+            row.artifact_uri,
+            row.run_name,
+        )
+        data = RunData(  # type: ignore[no-untyped-call]
+            tags=[
+                RunTag(key, value)  # type: ignore[no-untyped-call]
+                for key, value in RiffDBTrackingStore._decode_tags(row.packed_tags).items()
+            ]
+        )
+        return MLflowRun(info, data, RunInputs(dataset_inputs=[]), RunOutputs(model_outputs=[]))
 
     @staticmethod
     def _numeric_experiment_id(experiment_id: Any) -> int:
@@ -724,13 +868,69 @@ class RiffDBTrackingStore(AbstractStore):
             "Experiment tag deletion conflicted with another write", error_code=ABORTED
         )
 
-    def get_run(self, run_id: Any) -> NoReturn:
-        self._pending("get_run")
+    def get_run(self, run_id: Any) -> MLflowRun:
+        normalized_id, experiment_id = self._run_experiment_id(run_id)
+        result = self._application().get_run(
+            GetRunParams(experiment_id=experiment_id, run_id=normalized_id)
+        )
+        if isinstance(result.value, GetRunMissing):
+            self._missing_run(run_id)
+        if not isinstance(result.value, GetRunFound):
+            raise MlflowException("Invalid GetRun response from RiffDB")
+        return self._to_mlflow_run(result.value.run)
 
     def update_run_info(
         self, run_id: Any, run_status: Any, end_time: Any, run_name: Any
-    ) -> NoReturn:
-        self._pending("update_run_info")
+    ) -> RunInfo:
+        normalized_id, experiment_id = self._run_experiment_id(run_id)
+        client = self._application()
+        for _ in range(3):
+            current = client.get_run(
+                GetRunParams(experiment_id=experiment_id, run_id=normalized_id)
+            )
+            if isinstance(current.value, GetRunMissing):
+                self._missing_run(run_id)
+            if not isinstance(current.value, GetRunFound):
+                raise MlflowException("Invalid GetRun response from RiffDB")
+            row = current.value.run
+            next_status = (
+                row.status if run_status is None else self._to_riffdb_run_status(run_status)
+            )
+            next_end_time = row.end_time if end_time is None else end_time
+            next_name = row.run_name if not run_name else self._validate_run_name(run_name)
+            tags = self._decode_tags(row.packed_tags)
+            tags[MLFLOW_RUN_NAME] = next_name
+            packed_tags = self._encode_run_tags(
+                RunTag(key, value)  # type: ignore[no-untyped-call]
+                for key, value in tags.items()
+            )
+            result = client.update_run_info(
+                UpdateRunInfoInput(
+                    request_id=str(uuid4()),
+                    experiment_id=experiment_id,
+                    run_id=normalized_id,
+                    status=next_status,
+                    end_time=next_end_time,
+                    run_name=next_name,
+                    run_name_tag_value=next_name,
+                    run_name_digest=self._digest(next_name),
+                    packed_tags=packed_tags,
+                    expected_revision=row.revision,
+                )
+            )
+            if isinstance(result.outcome, UpdateRunInfoRunUpdated):
+                return self._to_mlflow_run(result.outcome.run).info
+            if isinstance(result.outcome, UpdateRunInfoRunStale):
+                continue
+            if isinstance(result.outcome, UpdateRunInfoRunMissing):
+                self._missing_run(run_id)
+            if isinstance(result.outcome, UpdateRunInfoRunInactive):
+                raise MlflowException(
+                    f"The run {run_id} must be in the active state.",
+                    error_code=INVALID_STATE,
+                )
+            raise MlflowException("Invalid UpdateRunInfo response from RiffDB")
+        raise MlflowException("Run update conflicted with another write", error_code=ABORTED)
 
     def create_run(
         self,
@@ -739,14 +939,105 @@ class RiffDBTrackingStore(AbstractStore):
         start_time: Any,
         tags: Any,
         run_name: Any,
-    ) -> NoReturn:
-        self._pending("create_run")
+    ) -> MLflowRun:
+        numeric_experiment_id = self._numeric_experiment_id(experiment_id)
+        experiment = self.get_experiment(str(numeric_experiment_id))
+        if experiment.lifecycle_stage != MLflowLifecycleStage.ACTIVE:
+            raise MlflowException(
+                f"The experiment {experiment_id} must be in the active state.",
+                error_code=INVALID_STATE,
+            )
+        if not isinstance(user_id, str) or len(user_id) > _MAX_USER_ID_LENGTH:
+            raise MlflowException.invalid_parameter_value(
+                f"user_id must be a string of at most {_MAX_USER_ID_LENGTH} characters"
+            )
+        if isinstance(start_time, bool) or not isinstance(start_time, int):
+            raise MlflowException.invalid_parameter_value("start_time must be an integer")
 
-    def delete_run(self, run_id: Any) -> NoReturn:
-        self._pending("delete_run")
+        normalized_tags = [
+            _validate_tag(  # type: ignore[no-untyped-call]
+                tag.key, tag.value, path=f"tags[{index}]"
+            )
+            for index, tag in enumerate(list(tags or ()))
+        ]
+        run_name_tag = next(
+            (tag.value for tag in normalized_tags if tag.key == MLFLOW_RUN_NAME), None
+        )
+        if run_name and run_name_tag and run_name != run_name_tag:
+            raise MlflowException(
+                "Both 'run_name' argument and 'mlflow.runName' tag are specified, but with "
+                f"different values (run_name='{run_name}', mlflow.runName='{run_name_tag}').",
+                error_code=INVALID_PARAMETER_VALUE,
+            )
+        resolved_name = self._validate_run_name(
+            run_name or run_name_tag or _generate_random_name()  # type: ignore[no-untyped-call]
+        )
+        if run_name_tag is None:
+            normalized_tags.append(
+                RunTag(MLFLOW_RUN_NAME, resolved_name)  # type: ignore[no-untyped-call]
+            )
+        packed_tags = self._encode_run_tags(normalized_tags)
 
-    def restore_run(self, run_id: Any) -> NoReturn:
-        self._pending("restore_run")
+        client = self._application()
+        for _ in range(3):
+            normalized_id = self._new_run_id(numeric_experiment_id)
+            artifact_uri = str(
+                append_to_uri_path(  # type: ignore[no-untyped-call]
+                    experiment.artifact_location,
+                    normalized_id,
+                    "artifacts",
+                )
+            )
+            tag_rows = self._run_tag_rows(numeric_experiment_id, normalized_id, normalized_tags)
+            result = client.create_run_with_tags(
+                CreateRunWithTagsInput(
+                    request_id=str(uuid4()),
+                    experiment_id=numeric_experiment_id,
+                    run_id=normalized_id,
+                    user_id=user_id,
+                    start_time=start_time,
+                    artifact_uri=artifact_uri,
+                    run_name=resolved_name,
+                    packed_tags=packed_tags,
+                    tags=tag_rows,
+                )
+            )
+            if isinstance(result.outcome, CreateRunWithTagsRunCreated):
+                return self._to_mlflow_run(result.outcome.run)
+            if isinstance(result.outcome, CreateRunWithTagsRunExists):
+                continue
+            if isinstance(result.outcome, CreateRunWithTagsRunTagExists):
+                raise MlflowException("Duplicate run tag key", error_code=INVALID_PARAMETER_VALUE)
+            raise MlflowException("Invalid CreateRun response from RiffDB")
+        raise MlflowException("Unable to allocate a unique run ID", error_code=ABORTED)
+
+    def delete_run(self, run_id: Any) -> None:
+        normalized_id, experiment_id = self._run_experiment_id(run_id)
+        result = self._application().delete_run(
+            DeleteRunInput(
+                request_id=str(uuid4()),
+                experiment_id=experiment_id,
+                run_id=normalized_id,
+            )
+        )
+        if isinstance(result.outcome, DeleteRunRunMissing):
+            self._missing_run(run_id)
+        if not isinstance(result.outcome, DeleteRunRunDeleted):
+            raise MlflowException("Invalid DeleteRun response from RiffDB")
+
+    def restore_run(self, run_id: Any) -> None:
+        normalized_id, experiment_id = self._run_experiment_id(run_id)
+        result = self._application().restore_run(
+            RestoreRunInput(
+                request_id=str(uuid4()),
+                experiment_id=experiment_id,
+                run_id=normalized_id,
+            )
+        )
+        if isinstance(result.outcome, RestoreRunRunMissing):
+            self._missing_run(run_id)
+        if not isinstance(result.outcome, RestoreRunRunRestored):
+            raise MlflowException("Invalid RestoreRun response from RiffDB")
 
     def get_metric_history(
         self,
@@ -765,8 +1056,84 @@ class RiffDBTrackingStore(AbstractStore):
         max_results: Any,
         order_by: Any,
         page_token: Any,
-    ) -> NoReturn:
-        self._pending("_search_runs")
+    ) -> tuple[list[MLflowRun], str | None]:
+        if isinstance(max_results, bool) or (
+            max_results is not None and (not isinstance(max_results, int) or max_results < 1)
+        ):
+            raise MlflowException.invalid_parameter_value(
+                "max_results must be a positive integer or None"
+            )
+        if max_results is not None and max_results > SEARCH_MAX_RESULTS_THRESHOLD:
+            raise MlflowException.invalid_parameter_value(
+                f"max_results must be at most {SEARCH_MAX_RESULTS_THRESHOLD}"
+            )
+        requested = SEARCH_MAX_RESULTS_DEFAULT if max_results is None else max_results
+        if len(experiment_ids) > _MAX_RUN_SEARCH_EXPERIMENTS:
+            raise MlflowException.invalid_parameter_value(
+                f"Run search accepts at most {_MAX_RUN_SEARCH_EXPERIMENTS} experiment IDs"
+            )
+        numeric_ids = tuple(self._numeric_experiment_id(value) for value in experiment_ids)
+        filters = SearchUtils.parse_search_filter(  # type: ignore[no-untyped-call]
+            filter_string
+        )
+        if filters:
+            raise MlflowException.invalid_parameter_value(
+                "RiffDB run search filters are not implemented yet"
+            )
+        parsed_order = [
+            SearchUtils.parse_order_by_for_search_runs(  # type: ignore[no-untyped-call]
+                item
+            )
+            for item in (order_by or ())
+        ]
+        natural_order = [
+            ("attribute", "start_time", False),
+            ("attribute", "run_id", True),
+        ]
+        if parsed_order not in ([], natural_order[:1], natural_order):
+            raise MlflowException.invalid_parameter_value(
+                "RiffDB run search currently supports start_time DESC, run_id ASC"
+            )
+        if run_view_type not in (ViewType.ACTIVE_ONLY, ViewType.DELETED_ONLY, ViewType.ALL):
+            raise MlflowException.invalid_parameter_value(f"Invalid run view type: {run_view_type}")
+
+        client = self._application()
+        cursor = page_token
+        runs: list[MLflowRun] = []
+        while len(runs) < requested:
+            limit = min(_COMPILED_RUN_SEARCH_PAGE_SIZE, requested - len(runs))
+            if run_view_type == ViewType.ALL:
+                result = client.search_runs(
+                    SearchRunsParams(
+                        experiment_ids=numeric_ids,
+                        limit=limit,
+                        after=cursor,
+                    )
+                )
+            else:
+                lifecycle = (
+                    LifecycleStage.ACTIVE
+                    if run_view_type == ViewType.ACTIVE_ONLY
+                    else LifecycleStage.DELETED
+                )
+                result = client.search_runs_by_lifecycle(
+                    SearchRunsByLifecycleParams(
+                        experiment_ids=numeric_ids,
+                        lifecycle_stage=lifecycle,
+                        limit=limit,
+                        after=cursor,
+                    )
+                )
+            rows = getattr(result.value, "runs", None)
+            if rows is None:
+                raise MlflowException("RiffDB run search integrity failure")
+            runs.extend(self._to_mlflow_run(row) for row in rows)
+            cursor = result.next_cursor
+            if cursor is None:
+                break
+            if not rows:
+                raise MlflowException("RiffDB returned a non-advancing run cursor")
+        return runs, cursor
 
     def log_batch(self, run_id: Any, metrics: Any, params: Any, tags: Any) -> NoReturn:
         self._pending("log_batch")
