@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 import json
+import math
+import os
+import struct
 import sys
 from hashlib import sha256
 from typing import cast
@@ -12,6 +15,7 @@ from riffdb_application import (
     BearerCredential,
     CallMetadata,
     DatabaseAlias,
+    OutcomeUnknown,
     QueryOptions,
     SyncApplicationTransport,
     TypedCommandResult,
@@ -28,14 +32,19 @@ from riffdb_mlflow.generated.client import (
     DeleteRunRunDeleted,
     ExperimentOrder,
     ExperimentTag,
+    GetMetricHistoryFound,
+    GetMetricHistoryParams,
     GetRunFound,
     GetRunParams,
     LifecycleStage,
+    LogBatchBatchLogged,
+    LogBatchInput,
     RestoreRunInput,
     RestoreRunRunRestored,
     RiffDBMLflowClient,
+    RunDataKind,
+    RunDatum,
     RunStatus,
-    RunTag,
     SearchExperimentsByNameILikeFound,
     SearchExperimentsByNameILikeParams,
     SearchExperimentsByTagFound,
@@ -59,6 +68,128 @@ _SCOPE = "global"
 
 def _digest(value: str) -> bytes:
     return sha256(value.encode("utf-8")).digest()
+
+
+def _metric_encoding(value: float) -> tuple[int, int, int, bool]:
+    bits = struct.unpack(">Q", struct.pack(">d", value))[0]
+    is_nan = math.isnan(value)
+    if is_nan:
+        sanitized = 0.0
+    elif math.isinf(value):
+        sanitized = sys.float_info.max if value > 0 else -sys.float_info.max
+    else:
+        sanitized = value
+    if sanitized == 0.0:
+        sanitized = 0.0
+    identity = struct.unpack(">Q", struct.pack(">d", sanitized))[0]
+    order = (~identity) & ((1 << 64) - 1) if identity & (1 << 63) else identity ^ (1 << 63)
+    return bits, identity, order, is_nan
+
+
+def _signed_sort(value: int) -> str:
+    return f"{(value + (1 << 63)) & ((1 << 64) - 1):016x}"
+
+
+def _metric_identity(timestamp: int, step: int, identity: int, is_nan: bool) -> str:
+    return (
+        _signed_sort(timestamp) + _signed_sort(step) + f"{identity:016x}" + ("1" if is_nan else "0")
+    )
+
+
+def _metric_sort(timestamp: int, step: int, order: int, is_nan: bool) -> str:
+    return _signed_sort(timestamp) + _signed_sort(step) + f"{order:016x}" + ("1" if is_nan else "0")
+
+
+def _metric_item_key(run_id: str, key: str) -> str:
+    return f"{run_id}:{key}"
+
+
+def _encode_latest_metrics(values: dict[str, tuple[int, int, int]]) -> bytes:
+    return json.dumps(
+        {key: [f"{bits:016x}", timestamp, step] for key, (bits, timestamp, step) in values.items()},
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode()
+
+
+def _run_tag(experiment_id: int, run_id: str, key: str, value: str) -> RunDatum:
+    return RunDatum(
+        experiment_id=experiment_id,
+        run_id=run_id,
+        kind=RunDataKind.TAG,
+        item_key=key,
+        entry_id="",
+        logical_key=key,
+        latest_item_key=key,
+        sort_key="",
+        latest_sort_key="",
+        text_value=value,
+        value_digest=_digest(value),
+        value_bits=0,
+        value_identity=0,
+        value_order=0,
+        metric_timestamp=0,
+        metric_step=0,
+        is_nan=False,
+        promote_latest=False,
+    )
+
+
+def _run_param(experiment_id: int, run_id: str, key: str, value: str) -> RunDatum:
+    row = _run_tag(experiment_id, run_id, key, value)
+    return RunDatum(
+        experiment_id=row.experiment_id,
+        run_id=row.run_id,
+        kind=RunDataKind.PARAM,
+        item_key=row.item_key,
+        entry_id=row.entry_id,
+        logical_key=row.logical_key,
+        latest_item_key=row.latest_item_key,
+        sort_key=row.sort_key,
+        latest_sort_key=row.latest_sort_key,
+        text_value=row.text_value,
+        value_digest=row.value_digest,
+        value_bits=0,
+        value_identity=0,
+        value_order=0,
+        metric_timestamp=0,
+        metric_step=0,
+        is_nan=False,
+        promote_latest=False,
+    )
+
+
+def _run_metric(
+    experiment_id: int,
+    run_id: str,
+    key: str,
+    value: float,
+    timestamp: int,
+    step: int,
+    *,
+    promote_latest: bool,
+) -> RunDatum:
+    bits, identity, order, is_nan = _metric_encoding(value)
+    return RunDatum(
+        experiment_id=experiment_id,
+        run_id=run_id,
+        kind=RunDataKind.METRIC,
+        item_key=_metric_item_key(run_id, key),
+        entry_id=_metric_identity(timestamp, step, identity, is_nan),
+        logical_key=key,
+        latest_item_key=key,
+        sort_key=_metric_sort(timestamp, step, order, is_nan),
+        latest_sort_key=f"{order:016x}",
+        text_value="",
+        value_digest=bytes(32),
+        value_bits=bits,
+        value_identity=identity,
+        value_order=order,
+        metric_timestamp=timestamp,
+        metric_step=step,
+        is_nan=is_nan,
+        promote_latest=promote_latest,
+    )
 
 
 def _metadata(credential_file: str, database: str) -> CallMetadata:
@@ -128,7 +259,7 @@ def run(endpoint: str, credential_file: str, database: str) -> dict[str, object]
                 scope=_SCOPE,
                 lifecycle_stages=(LifecycleStage.ACTIVE,),
                 order=ExperimentOrder.ID_ASC,
-                limit=4,
+                limit=2,
                 after=page_one.next_cursor,
             ),
             options,
@@ -246,14 +377,10 @@ def run(endpoint: str, credential_file: str, database: str) -> dict[str, object]
                     artifact_uri=f"s3://artifacts/{experiment_id}/{run_id}/artifacts",
                     run_name=run_name,
                     packed_tags=packed,
+                    packed_params=b"{}",
+                    packed_latest_metrics=b"{}",
                     tags=tuple(
-                        RunTag(
-                            experiment_id=experiment_id,
-                            run_id=run_id,
-                            tag_key=key,
-                            value=value,
-                            value_digest=_digest(value),
-                        )
+                        _run_tag(experiment_id, run_id, key, value)
                         for key, value in (
                             ("mlflow.runName", run_name),
                             ("team", "research"),
@@ -291,7 +418,7 @@ def run(endpoint: str, credential_file: str, database: str) -> dict[str, object]
                     first_row.experiment_id,
                 ),
                 lifecycle_stage=LifecycleStage.ACTIVE,
-                limit=4,
+                limit=2,
                 after=run_page_one.next_cursor,
             ),
             run_options,
@@ -331,6 +458,110 @@ def run(endpoint: str, credential_file: str, database: str) -> dict[str, object]
         if fetched_run.value.run.run_name != "renamed-loopback":
             raise RuntimeError("updated run name was not durable")
 
+        first_metric = _run_metric(
+            first_run.experiment_id,
+            first_run.run_id,
+            "loss",
+            1.5,
+            500,
+            1,
+            promote_latest=False,
+        )
+        latest_metric = _run_metric(
+            first_run.experiment_id,
+            first_run.run_id,
+            "loss",
+            2.5,
+            501,
+            2,
+            promote_latest=True,
+        )
+        batch_items: tuple[RunDatum, ...] = (
+            first_metric,
+            latest_metric,
+            _run_param(first_run.experiment_id, first_run.run_id, "optimizer", "adam"),
+            _run_tag(first_run.experiment_id, first_run.run_id, "stage", "fit"),
+        )
+        packed_params = b'{"optimizer":"adam"}'
+        packed_latest_metrics = _encode_latest_metrics({"loss": (latest_metric.value_bits, 501, 2)})
+        repro = os.environ.get("RIFFDB_MLFLOW_REPRO")
+        if repro == "tag":
+            batch_items = (_run_tag(first_run.experiment_id, first_run.run_id, "stage", "fit"),)
+            packed_params = b"{}"
+            packed_latest_metrics = b"{}"
+        elif repro == "metric":
+            batch_items = (first_metric,)
+            packed_params = b"{}"
+            packed_latest_metrics = b"{}"
+        elif repro == "promote":
+            batch_items = (latest_metric,)
+            packed_params = b"{}"
+        elif repro == "pair":
+            batch_items = (first_metric, latest_metric)
+            packed_params = b"{}"
+        elif repro == "different":
+            other_metric = _run_metric(
+                first_run.experiment_id,
+                first_run.run_id,
+                "accuracy",
+                0.9,
+                501,
+                2,
+                promote_latest=True,
+            )
+            batch_items = (first_metric, other_metric)
+            packed_params = b"{}"
+            packed_latest_metrics = _encode_latest_metrics(
+                {"accuracy": (other_metric.value_bits, 501, 2)}
+            )
+        batch_tags = {"mlflow.runName": "renamed-loopback", "stage": "fit", "team": "research"}
+        batch_input = LogBatchInput(
+            request_id="mlflow-loopback-log-batch",
+            experiment_id=first_run.experiment_id,
+            run_id=first_run.run_id,
+            expected_revision=updated_run.outcome.run.revision,
+            packed_tags=json.dumps(batch_tags, sort_keys=True, separators=(",", ":")).encode(),
+            packed_params=packed_params,
+            packed_latest_metrics=packed_latest_metrics,
+            items=batch_items,
+        )
+        try:
+            logged = client.log_batch(batch_input)
+        except OutcomeUnknown:
+            logged = client.log_batch(batch_input)
+        if not isinstance(logged.outcome, LogBatchBatchLogged):
+            raise RuntimeError(f"unexpected log-batch outcome: {logged.outcome.outcome}")
+
+        history_page_one = client.get_metric_history(
+            GetMetricHistoryParams(
+                experiment_id=first_run.experiment_id,
+                item_key=_metric_item_key(first_run.run_id, "loss"),
+                kind=RunDataKind.METRIC,
+                value_digest=bytes(32),
+                limit=1,
+            ),
+            QueryOptions(read_after_commit=logged.commit_sequence),
+        )
+        if not isinstance(history_page_one.value, GetMetricHistoryFound):
+            raise RuntimeError("first metric-history page returned an integrity outcome")
+        if len(history_page_one.value.metrics) != 1 or history_page_one.next_cursor is None:
+            raise RuntimeError("first metric-history page did not expose a cursor")
+        history_page_two = client.get_metric_history(
+            GetMetricHistoryParams(
+                experiment_id=first_run.experiment_id,
+                item_key=_metric_item_key(first_run.run_id, "loss"),
+                kind=RunDataKind.METRIC,
+                value_digest=bytes(32),
+                limit=100,
+                after=history_page_one.next_cursor,
+            ),
+            QueryOptions(read_after_commit=logged.commit_sequence),
+        )
+        if not isinstance(history_page_two.value, GetMetricHistoryFound):
+            raise RuntimeError("continued metric-history page returned an integrity outcome")
+        if len(history_page_two.value.metrics) != 1 or history_page_two.next_cursor is not None:
+            raise RuntimeError("continued metric-history page skipped or duplicated rows")
+
         deleted_run = client.delete_run(
             DeleteRunInput(
                 request_id="mlflow-loopback-delete-run",
@@ -344,7 +575,7 @@ def run(endpoint: str, credential_file: str, database: str) -> dict[str, object]
             SearchRunsByLifecycleParams(
                 experiment_ids=(first_run.experiment_id,),
                 lifecycle_stage=LifecycleStage.DELETED,
-                limit=4,
+                limit=2,
             ),
             QueryOptions(read_after_commit=deleted_run.commit_sequence),
         )
@@ -362,26 +593,45 @@ def run(endpoint: str, credential_file: str, database: str) -> dict[str, object]
         )
         if not isinstance(restored_run.outcome, RestoreRunRunRestored):
             raise RuntimeError(f"unexpected run-restore outcome: {restored_run.outcome.outcome}")
-        all_runs = client.search_runs(
+        all_runs_page_one = client.search_runs(
             SearchRunsParams(
                 experiment_ids=(first_run.experiment_id, second.outcome.experiment.experiment_id),
-                limit=4,
+                limit=2,
             ),
             QueryOptions(read_after_commit=restored_run.commit_sequence),
         )
-        if not isinstance(all_runs.value, SearchRunsFound) or len(all_runs.value.runs) != 3:
-            raise RuntimeError("all-lifecycle run search did not return all restored rows")
+        if (
+            not isinstance(all_runs_page_one.value, SearchRunsFound)
+            or len(all_runs_page_one.value.runs) != 2
+            or all_runs_page_one.next_cursor is None
+        ):
+            raise RuntimeError("first all-lifecycle run page was incomplete")
+        all_runs_page_two = client.search_runs(
+            SearchRunsParams(
+                experiment_ids=(first_run.experiment_id, second.outcome.experiment.experiment_id),
+                limit=2,
+                after=all_runs_page_one.next_cursor,
+            ),
+            QueryOptions(read_after_commit=restored_run.commit_sequence),
+        )
+        if not isinstance(all_runs_page_two.value, SearchRunsFound):
+            raise RuntimeError("continued all-lifecycle run page returned an integrity outcome")
+        run_total = len(all_runs_page_one.value.runs) + len(all_runs_page_two.value.runs)
+        if run_total != 3:
+            raise RuntimeError("all-lifecycle run pages did not return all restored rows")
 
         return {
             "folded_matches": len(folded.value.experiments),
             "intersection_matches": len(intersection.value.experiments),
+            "metric_history": len(history_page_one.value.metrics)
+            + len(history_page_two.value.metrics),
             "owner_matches": len(owner_search.value.experiments),
             "page_one": len(page_one.value.experiments),
             "page_two": len(page_two.value.experiments),
             "run_deleted_matches": len(deleted_search.value.runs),
             "run_page_one": len(run_page_one.value.runs),
             "run_page_two": len(run_page_two.value.runs),
-            "run_total": len(all_runs.value.runs),
+            "run_total": run_total,
             "tag_revision": tag_delete.outcome.experiment.revision,
             "schema": "riffdb-mlflow-loopback/v1",
         }

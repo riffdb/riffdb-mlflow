@@ -15,8 +15,11 @@ Exact generation, static checks, unit tests, and disposable real-RiffDB
 loopback cover that slice.
 
 Run predicates beyond lifecycle and orders beyond `start_time DESC, run_id ASC`
-remain unimplemented, as do metrics, parameters, batch logging, inputs, and the
-upstream tracking-store conformance suite. Unsupported search shapes fail
+remain unimplemented, as do inputs and the upstream tracking-store conformance
+suite. The development tree now also implements bounded atomic batch logging
+of metrics, parameters, and tags, plus metric history and latest-metric reads;
+this addition passes static checks, 21 unit tests, and application compilation,
+but is not yet qualified by the upstream tracking-store suite. Unsupported search shapes fail
 before contacting RiffDB; the adapter does not repair them with client-side
 filtering or sorting.
 
@@ -39,5 +42,5 @@ uv sync --index riffdb=http://127.0.0.1:4874/python/simple/
 make check
 ```
 
-Public publishing is intentionally out of scope until real RiffDB loopback and
-upstream MLflow semantics are green.
+Source is public on GitHub. Package releases remain out of scope until real
+RiffDB loopback and upstream MLflow semantics are green.

@@ -10,7 +10,8 @@ query GetRun(
     return Found {
         run: run {
             experiment_id run_id user_id status start_time end_time
-            lifecycle_stage artifact_uri run_name packed_tags revision
+            lifecycle_stage artifact_uri run_name packed_tags packed_params
+            packed_latest_metrics revision initialized
         }
     }
     outcomes Found | Missing

@@ -1,7 +1,8 @@
 query SearchRunsByLifecycle(
     $experiment_ids: Set<Run.experiment_id, 1000>,
     $lifecycle_stage: Run.lifecycle_stage,
-    $limit: Limit<4> = 4,
+    // Internal transport page; the adapter coalesces these pages to MLflow's request.
+    $limit: Limit<2> = 2,
     $after: Cursor?,
 ) {
     many runs from Run
@@ -14,7 +15,8 @@ query SearchRunsByLifecycle(
     return Found {
         runs: runs {
             experiment_id run_id user_id status start_time end_time
-            lifecycle_stage artifact_uri run_name packed_tags revision
+            lifecycle_stage artifact_uri run_name packed_tags packed_params
+            packed_latest_metrics revision initialized
         }
     }
     outcomes Found | IntegrityFailure

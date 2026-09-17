@@ -17,6 +17,7 @@
       "queries": [
         { "name": "GetExperiment", "source": "riffdb/queries/get_experiment.riffq" },
         { "name": "GetExperimentByName", "source": "riffdb/queries/get_experiment_by_name.riffq" },
+        { "name": "GetMetricHistory", "source": "riffdb/queries/get_metric_history.riffq" },
         { "name": "GetRun", "source": "riffdb/queries/get_run.riffq" },
         { "name": "SearchExperiments", "source": "riffdb/queries/search_experiments.riffq" },
         { "name": "SearchExperimentsByName", "source": "riffdb/queries/search_experiments_by_name.riffq" },
@@ -40,6 +41,7 @@
       "queries": [
         "GetExperiment",
         "GetExperimentByName",
+        "GetMetricHistory",
         "GetRun",
         "SearchExperiments",
         "SearchExperimentsByName",
@@ -60,11 +62,13 @@
         "DeleteExperimentTag",
         "DeleteExperiment",
         "DeleteRun",
+        "LogBatch",
         "RenameExperiment",
         "RestoreExperiment",
         "RestoreRun",
         "SetExperimentTag",
-        "UpdateRunInfo"
+        "UpdateRunInfo",
+        "ValidateRunActive"
       ],
       "event_streams": [],
       "watch_queries": [],

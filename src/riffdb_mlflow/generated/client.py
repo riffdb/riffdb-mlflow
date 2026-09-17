@@ -22,8 +22,20 @@ def _compact_tag(value: object, tag: str, keys: frozenset[str]) -> dict[str, obj
 
 CONTRACT_LINEAGE: Final[str] = "RiffDBMLflow"
 CONTRACT_VERSION: Final[int] = 1
-CONTRACT_BUNDLE_HASH: Final[str] = "7a49c3b900ce22b486fc901acd3bbfaa5221d74a80479cc239a7a87e5b005c85"
-QUERY_MODULE_HASH: Final[str] = "c44d62e27edb2dc1ff2ff4d797e242fafb07dc36de7d17463009d11b6d60f4a7"
+CONTRACT_BUNDLE_HASH: Final[str] = "ace8994193d98b54229e08791e60aa2e30509af7207524446de5cfcf35b24e91"
+QUERY_MODULE_HASH: Final[str] = "2963202682b546e7a1ca069761fd8e81b2b1b22cdd725dfb659353c9ea823392"
+
+COLLECTION_COUNT: Final[str] = "collection_count"
+INDIVIDUAL_VALUE_BYTES: Final[str] = "individual_value_bytes"
+AGGREGATE_CANONICAL_ELEMENT_BYTES: Final[str] = "aggregate_canonical_element_bytes"
+
+class InputBudgetError(ValueError):
+    def __init__(self, cause: str, collection: str, index: int | None = None, leaf: str | None = None) -> None:
+        self.cause = cause
+        self.collection = collection
+        self.index = index
+        self.leaf = leaf
+        super().__init__("generated command input exceeds its compiled budget")
 
 class RunStatus(StrEnum):
     FAILED = "Failed"
@@ -31,6 +43,12 @@ class RunStatus(StrEnum):
     RUNNING = "Running"
     FINISHED = "Finished"
     SCHEDULED = "Scheduled"
+
+class RunDataKind(StrEnum):
+    TAG = "Tag"
+    PARAM = "Param"
+    METRIC = "Metric"
+    LATEST_METRIC = "LatestMetric"
 
 class LifecycleStage(StrEnum):
     ACTIVE = "Active"
@@ -61,18 +79,34 @@ class Run:
     revision: Annotated[int, "u64"]
     run_name: str
     start_time: Annotated[int, "i64"]
+    initialized: bool
     packed_tags: bytes
     artifact_uri: str
     experiment_id: Annotated[int, "u64"]
+    packed_params: bytes
     lifecycle_stage: LifecycleStage
+    packed_latest_metrics: bytes
 
 @dataclass(frozen=True, slots=True, kw_only=True)
-class RunTag:
-    value: str
+class RunDatum:
+    kind: RunDataKind
+    is_nan: bool
     run_id: str
-    tag_key: str
+    entry_id: str
+    item_key: str
+    sort_key: str
+    text_value: str
+    value_bits: Annotated[int, "u64"]
+    logical_key: str
+    metric_step: Annotated[int, "i64"]
+    value_order: Annotated[int, "u64"]
     value_digest: bytes
     experiment_id: Annotated[int, "u64"]
+    promote_latest: bool
+    value_identity: Annotated[int, "u64"]
+    latest_item_key: str
+    latest_sort_key: str
+    metric_timestamp: Annotated[int, "i64"]
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class Experiment:
@@ -95,7 +129,7 @@ class ExperimentTag:
     value_digest: bytes
     experiment_id: Annotated[int, "u64"]
 
-GET_EXPERIMENT_QUERY_PLAN_HASH: Final[str] = "19711dc0155c15420a421d0c3db02c5b0080d3121e8537b6bea179c075684ff1"
+GET_EXPERIMENT_QUERY_PLAN_HASH: Final[str] = "3fe650a30d5b144d26d4a440b4c540f679dc409d3f8f60f30f8f2c09ac3b3fed"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class GetExperimentParams:
@@ -124,7 +158,7 @@ class GetExperimentMissing:
 
 GetExperimentResult: TypeAlias = GetExperimentFound | GetExperimentMissing
 
-GET_EXPERIMENT_BY_NAME_QUERY_PLAN_HASH: Final[str] = "e02fc5c9a67beb696de15127a8a40854280fe4e6865cad8abc69d4422e12839b"
+GET_EXPERIMENT_BY_NAME_QUERY_PLAN_HASH: Final[str] = "e2a7027a7db74b87e1e0bec5c53b3cf784e30d654b0d383f3a9493b029601c59"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class GetExperimentByNameParams:
@@ -149,7 +183,37 @@ class GetExperimentByNameFound:
 
 GetExperimentByNameResult: TypeAlias = GetExperimentByNameFound
 
-GET_RUN_QUERY_PLAN_HASH: Final[str] = "b169babe8b406565fe5ad2322df52113b68f51aa40a6927239a0499226655965"
+GET_METRIC_HISTORY_QUERY_PLAN_HASH: Final[str] = "87a3cf65f2beeccef7400b184b6184c4b522e33e32afdfe3c017fcc9b34253c6"
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class GetMetricHistoryParams:
+    experiment_id: Annotated[int, "u64"]
+    item_key: str
+    kind: RunDataKind
+    value_digest: bytes
+    limit: Annotated[int, "u64"] | None = None
+    after: str | None = None
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class GetMetricHistoryFoundMetrics:
+    logical_key: str
+    value_bits: Annotated[int, "u64"]
+    metric_timestamp: Annotated[int, "i64"]
+    metric_step: Annotated[int, "i64"]
+    is_nan: bool
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class GetMetricHistoryFound:
+    metrics: tuple[GetMetricHistoryFoundMetrics, ...]
+    outcome: Literal["Found"] = field(default="Found", init=False)
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class GetMetricHistoryIntegrityFailure:
+    outcome: Literal["IntegrityFailure"] = field(default="IntegrityFailure", init=False)
+
+GetMetricHistoryResult: TypeAlias = GetMetricHistoryFound | GetMetricHistoryIntegrityFailure
+
+GET_RUN_QUERY_PLAN_HASH: Final[str] = "f3bbfa72170c71a4a77c9e46ba3010dc03a4c8a10570e462097b765f6e175868"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class GetRunParams:
@@ -168,7 +232,10 @@ class GetRunFoundRun:
     artifact_uri: str
     run_name: str
     packed_tags: bytes
+    packed_params: bytes
+    packed_latest_metrics: bytes
     revision: Annotated[int, "u64"]
+    initialized: bool
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class GetRunFound:
@@ -181,7 +248,7 @@ class GetRunMissing:
 
 GetRunResult: TypeAlias = GetRunFound | GetRunMissing
 
-SEARCH_EXPERIMENTS_QUERY_PLAN_HASH: Final[str] = "e19d90f011feded1e6fd8d7213056ff9b7a6c2839a8144e0a1916d03d575903e"
+SEARCH_EXPERIMENTS_QUERY_PLAN_HASH: Final[str] = "42612a7118d7c0453c5d06aef690de2e70e70feb881827628c0c5d633845e753"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsParams:
@@ -213,7 +280,7 @@ class SearchExperimentsIntegrityFailure:
 
 SearchExperimentsResult: TypeAlias = SearchExperimentsFound | SearchExperimentsIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_NAME_QUERY_PLAN_HASH: Final[str] = "cc6f6598643f551ece16636df008ac83d5fc46751c8b44f26072dd447e58d46c"
+SEARCH_EXPERIMENTS_BY_NAME_QUERY_PLAN_HASH: Final[str] = "a9505f25937be06343fbf81745929af82ef0d79a07494e9f06dcbfcc67ee6794"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByNameParams:
@@ -246,7 +313,7 @@ class SearchExperimentsByNameIntegrityFailure:
 
 SearchExperimentsByNameResult: TypeAlias = SearchExperimentsByNameFound | SearchExperimentsByNameIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_NAME_ILIKE_QUERY_PLAN_HASH: Final[str] = "2dc9bd060cc017aa5609d84df52296992163a654cd621565a3f6adc450018afa"
+SEARCH_EXPERIMENTS_BY_NAME_ILIKE_QUERY_PLAN_HASH: Final[str] = "bc917a7fdd111bd559d605fdeb2549cb8b023f59dd8cb7aed27bf6a89107dfe2"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByNameILikeParams:
@@ -279,7 +346,7 @@ class SearchExperimentsByNameILikeIntegrityFailure:
 
 SearchExperimentsByNameILikeResult: TypeAlias = SearchExperimentsByNameILikeFound | SearchExperimentsByNameILikeIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_NAME_LIKE_QUERY_PLAN_HASH: Final[str] = "bf6cb4d633ed6f1347c753ea2b2eae8370324aa44264bdd3d9dcfb75176454bb"
+SEARCH_EXPERIMENTS_BY_NAME_LIKE_QUERY_PLAN_HASH: Final[str] = "c139d9b01b1b59a98554cf3e55c0641333de9eaf5c633548d85658e86fd5c210"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByNameLikeParams:
@@ -312,7 +379,7 @@ class SearchExperimentsByNameLikeIntegrityFailure:
 
 SearchExperimentsByNameLikeResult: TypeAlias = SearchExperimentsByNameLikeFound | SearchExperimentsByNameLikeIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_TAG_QUERY_PLAN_HASH: Final[str] = "cd6a1e4414769adeffbf822bb0f4b678aea4b82d70acd2aafd259f622670514f"
+SEARCH_EXPERIMENTS_BY_TAG_QUERY_PLAN_HASH: Final[str] = "47e59d36e3ff831c858db84da6e0217b0d50c2429f36724940f26b9260e62d99"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByTagParams:
@@ -346,7 +413,7 @@ class SearchExperimentsByTagIntegrityFailure:
 
 SearchExperimentsByTagResult: TypeAlias = SearchExperimentsByTagFound | SearchExperimentsByTagIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_TAG_ILIKE_QUERY_PLAN_HASH: Final[str] = "e986215e4da177e26f8327730e423d0d883001724af6ea25b4dba26f086893e2"
+SEARCH_EXPERIMENTS_BY_TAG_ILIKE_QUERY_PLAN_HASH: Final[str] = "a109ed0a23679dfbf8764ed825fead0a302f07a561ad7edc62e2199b2ec99a8d"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByTagILikeParams:
@@ -380,7 +447,7 @@ class SearchExperimentsByTagILikeIntegrityFailure:
 
 SearchExperimentsByTagILikeResult: TypeAlias = SearchExperimentsByTagILikeFound | SearchExperimentsByTagILikeIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_TAG_LIKE_QUERY_PLAN_HASH: Final[str] = "f24940e41b2f8c0f7401d24ae60beb0062508f13cc9ac29e7bcf1942ce2c99be"
+SEARCH_EXPERIMENTS_BY_TAG_LIKE_QUERY_PLAN_HASH: Final[str] = "4fa379df48ed1f9dc589da64348754599a198ba4f081fbabb3d122a3ffaf2a0e"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByTagLikeParams:
@@ -414,7 +481,7 @@ class SearchExperimentsByTagLikeIntegrityFailure:
 
 SearchExperimentsByTagLikeResult: TypeAlias = SearchExperimentsByTagLikeFound | SearchExperimentsByTagLikeIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_TWO_TAGS_QUERY_PLAN_HASH: Final[str] = "3c844c50686d9b7128e7b468ef835772b2b0e89f79a9f58872549b933131b977"
+SEARCH_EXPERIMENTS_BY_TWO_TAGS_QUERY_PLAN_HASH: Final[str] = "e912992e97e528f7cbe45ca3f0ed4b6c779c0b95b0a4879f6d34fe7b87e1894d"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByTwoTagsParams:
@@ -450,7 +517,7 @@ class SearchExperimentsByTwoTagsIntegrityFailure:
 
 SearchExperimentsByTwoTagsResult: TypeAlias = SearchExperimentsByTwoTagsFound | SearchExperimentsByTwoTagsIntegrityFailure
 
-SEARCH_RUNS_QUERY_PLAN_HASH: Final[str] = "f6782257b7e5faa1c57f56b69c7e00e2049c1e95b477c0c348b166f23c9391cb"
+SEARCH_RUNS_QUERY_PLAN_HASH: Final[str] = "0004f9495fcd2ce39692c159edd32f29874ae09ac8d2d9d60faed5dcaba3b68c"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchRunsParams:
@@ -470,7 +537,10 @@ class SearchRunsFoundRuns:
     artifact_uri: str
     run_name: str
     packed_tags: bytes
+    packed_params: bytes
+    packed_latest_metrics: bytes
     revision: Annotated[int, "u64"]
+    initialized: bool
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchRunsFound:
@@ -483,7 +553,7 @@ class SearchRunsIntegrityFailure:
 
 SearchRunsResult: TypeAlias = SearchRunsFound | SearchRunsIntegrityFailure
 
-SEARCH_RUNS_BY_LIFECYCLE_QUERY_PLAN_HASH: Final[str] = "9c21f1b46578ec2a5d2607f4b528170980a5c80fd0dfd803352c7f66dd65cebc"
+SEARCH_RUNS_BY_LIFECYCLE_QUERY_PLAN_HASH: Final[str] = "692dbfc43a37bc5032ad7638acb2153a05861f17774e5385719190bf0d30cc81"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchRunsByLifecycleParams:
@@ -504,7 +574,10 @@ class SearchRunsByLifecycleFoundRuns:
     artifact_uri: str
     run_name: str
     packed_tags: bytes
+    packed_params: bytes
+    packed_latest_metrics: bytes
     revision: Annotated[int, "u64"]
+    initialized: bool
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchRunsByLifecycleFound:
@@ -526,7 +599,7 @@ class CreateExperimentInput:
     experiment_id: Annotated[int, "u64"]
     artifact_location: str | None
 
-CREATE_EXPERIMENT_PLAN_HASH: Final[str] = "fc38b3b68fbf4c4bf725369c5934e4af4ab77d98114a7a19e04bd9063b7164f4"
+CREATE_EXPERIMENT_PLAN_HASH: Final[str] = "edf2f8ce209162004846f8c7202e22e9c76e4d0596d89afbd55e727dbece2b16"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class CreateExperimentExperimentExists:
     outcome: Literal["ExperimentExists"] = field(default="ExperimentExists", init=False)
@@ -548,7 +621,7 @@ class CreateExperimentWithTagsInput:
     experiment_id: Annotated[int, "u64"]
     artifact_location: str | None
 
-CREATE_EXPERIMENT_WITH_TAGS_PLAN_HASH: Final[str] = "efeaf794d2e1d19ef600c69265398ddc426eb76786f5e0788fb6773895445885"
+CREATE_EXPERIMENT_WITH_TAGS_PLAN_HASH: Final[str] = "a6738a906b352abf65519e472dd50249326c17a80bad1fd8ee8f5766e7cf5864"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class CreateExperimentWithTagsExperimentExists:
     outcome: Literal["ExperimentExists"] = field(default="ExperimentExists", init=False)
@@ -574,8 +647,10 @@ class CreateRunInput:
     packed_tags: bytes
     artifact_uri: str
     experiment_id: Annotated[int, "u64"]
+    packed_params: bytes
+    packed_latest_metrics: bytes
 
-CREATE_RUN_PLAN_HASH: Final[str] = "3662ed36a1f82e44c29d808e2a65882cc02a27cdbc29fe24b302f1383bf0f605"
+CREATE_RUN_PLAN_HASH: Final[str] = "f83c7ddf74eea750b97af9ac5760172dae4b3453d6c6fc5d2b9e1c8dc3283a0e"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class CreateRunRunExists:
     outcome: Literal["RunExists"] = field(default="RunExists", init=False)
@@ -589,7 +664,7 @@ CreateRunOutcome: TypeAlias = CreateRunRunExists | CreateRunRunCreated
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class CreateRunWithTagsInput:
-    tags: tuple[RunTag, ...]
+    tags: tuple[RunDatum, ...]
     run_id: str
     user_id: str
     run_name: str
@@ -598,8 +673,10 @@ class CreateRunWithTagsInput:
     packed_tags: bytes
     artifact_uri: str
     experiment_id: Annotated[int, "u64"]
+    packed_params: bytes
+    packed_latest_metrics: bytes
 
-CREATE_RUN_WITH_TAGS_PLAN_HASH: Final[str] = "cb8da895445b60a53a1477b16a0183bfdb2da1b3e8b00b9af8953478fa340422"
+CREATE_RUN_WITH_TAGS_PLAN_HASH: Final[str] = "749c234f4c3dece67944a53159ed370abc8244a31b8e5721145037af2999bd51"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class CreateRunWithTagsRunExists:
     outcome: Literal["RunExists"] = field(default="RunExists", init=False)
@@ -620,7 +697,7 @@ class DeleteExperimentInput:
     request_id: str
     experiment_id: Annotated[int, "u64"]
 
-DELETE_EXPERIMENT_PLAN_HASH: Final[str] = "4b6c8b5c27935753f74d2a6a1d3e89860ded4ac94897690eea870331404df437"
+DELETE_EXPERIMENT_PLAN_HASH: Final[str] = "544e96c1c5d4844ccbf936bdfa32d77e0e02cb94c14ed746ff1312a687ace94f"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class DeleteExperimentExperimentDeleted:
     experiment: Experiment
@@ -640,7 +717,7 @@ class DeleteExperimentTagInput:
     experiment_id: Annotated[int, "u64"]
     expected_revision: Annotated[int, "u64"]
 
-DELETE_EXPERIMENT_TAG_PLAN_HASH: Final[str] = "dab6a260a4b468e2938665d42c4bb217f2cb0f9e1415722061b698d3d282cee7"
+DELETE_EXPERIMENT_TAG_PLAN_HASH: Final[str] = "fef359652e213e5f9d231d4b9758cf32b1f405f58947cb577112f2e3c1c74355"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class DeleteExperimentTagExperimentStale:
     outcome: Literal["ExperimentStale"] = field(default="ExperimentStale", init=False)
@@ -670,7 +747,7 @@ class DeleteRunInput:
     request_id: str
     experiment_id: Annotated[int, "u64"]
 
-DELETE_RUN_PLAN_HASH: Final[str] = "60e3efc68143f42ee5a73b8d8a655a79792e9f3d1dd3bc097af9173a3c0b2439"
+DELETE_RUN_PLAN_HASH: Final[str] = "137297c673fec969cb88960ae278e85271371efb21b856e570c5f27d70c0a58c"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class DeleteRunRunDeleted:
     run: Run
@@ -683,13 +760,49 @@ class DeleteRunRunMissing:
 DeleteRunOutcome: TypeAlias = DeleteRunRunDeleted | DeleteRunRunMissing
 
 @dataclass(frozen=True, slots=True, kw_only=True)
+class LogBatchInput:
+    items: tuple[RunDatum, ...]
+    run_id: str
+    request_id: str
+    packed_tags: bytes
+    experiment_id: Annotated[int, "u64"]
+    packed_params: bytes
+    expected_revision: Annotated[int, "u64"]
+    packed_latest_metrics: bytes
+
+LOG_BATCH_PLAN_HASH: Final[str] = "2b267f75a1bc315ca261a6c5606c224b09344c4a5ca0a83fc037eba63ffe1fba"
+@dataclass(frozen=True, slots=True, kw_only=True)
+class LogBatchRunStale:
+    outcome: Literal["RunStale"] = field(default="RunStale", init=False)
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class LogBatchRunMissing:
+    outcome: Literal["RunMissing"] = field(default="RunMissing", init=False)
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class LogBatchBatchLogged:
+    run: Run
+    outcome: Literal["BatchLogged"] = field(default="BatchLogged", init=False)
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class LogBatchRunInactive:
+    outcome: Literal["RunInactive"] = field(default="RunInactive", init=False)
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class LogBatchParamConflict:
+    param_key: str
+    outcome: Literal["ParamConflict"] = field(default="ParamConflict", init=False)
+
+LogBatchOutcome: TypeAlias = LogBatchRunStale | LogBatchRunMissing | LogBatchBatchLogged | LogBatchRunInactive | LogBatchParamConflict
+
+@dataclass(frozen=True, slots=True, kw_only=True)
 class RenameExperimentInput:
     name: str
     request_id: str
     name_digest: bytes
     experiment_id: Annotated[int, "u64"]
 
-RENAME_EXPERIMENT_PLAN_HASH: Final[str] = "b194f5de98da84b23250930d0f2bbc3009f84cb2db7d2e2edb91e9794da2e9ab"
+RENAME_EXPERIMENT_PLAN_HASH: Final[str] = "c2d3a34650891af81c766c795d8c6e62d778d6ef4893746cc672ebeb591a7141"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class RenameExperimentExperimentMissing:
     outcome: Literal["ExperimentMissing"] = field(default="ExperimentMissing", init=False)
@@ -706,7 +819,7 @@ class RestoreExperimentInput:
     request_id: str
     experiment_id: Annotated[int, "u64"]
 
-RESTORE_EXPERIMENT_PLAN_HASH: Final[str] = "8d8f491cec30e8c69f46930eb9a1558d4834f67b7ac8eab3ae6c3aeeed6c17e7"
+RESTORE_EXPERIMENT_PLAN_HASH: Final[str] = "134ecd8eab3981e634aad0ac67b6004379624208a910f2e58fb27a5669ce1575"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class RestoreExperimentExperimentMissing:
     outcome: Literal["ExperimentMissing"] = field(default="ExperimentMissing", init=False)
@@ -724,7 +837,7 @@ class RestoreRunInput:
     request_id: str
     experiment_id: Annotated[int, "u64"]
 
-RESTORE_RUN_PLAN_HASH: Final[str] = "c77f29e48cef495664f5b69e882101e7b1df4e493366681a827154717e53de18"
+RESTORE_RUN_PLAN_HASH: Final[str] = "01a55264ef29896facb78533359e95dafc54d8f050b6a517234a4880f04a83d4"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class RestoreRunRunMissing:
     outcome: Literal["RunMissing"] = field(default="RunMissing", init=False)
@@ -746,7 +859,7 @@ class SetExperimentTagInput:
     experiment_id: Annotated[int, "u64"]
     expected_revision: Annotated[int, "u64"]
 
-SET_EXPERIMENT_TAG_PLAN_HASH: Final[str] = "d2024b7bf404098c9815baecba363ea29db74065eef5890bee55f1102f58cc9b"
+SET_EXPERIMENT_TAG_PLAN_HASH: Final[str] = "dbe87aeac3f19a1e8706ad3396531d87f1babfaaa9ccc429f38bc826401175bb"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SetExperimentTagExperimentStale:
     outcome: Literal["ExperimentStale"] = field(default="ExperimentStale", init=False)
@@ -779,7 +892,7 @@ class UpdateRunInfoInput:
     expected_revision: Annotated[int, "u64"]
     run_name_tag_value: str
 
-UPDATE_RUN_INFO_PLAN_HASH: Final[str] = "bfffb154059d72d757e6487b3b7a051daae592e6165d13a8d250c482a5f7cf97"
+UPDATE_RUN_INFO_PLAN_HASH: Final[str] = "3768fd9f83e8a50a4486903f10c4233ca6e4a6608b18f873ac6fdd120668c002"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class UpdateRunInfoRunStale:
     outcome: Literal["RunStale"] = field(default="RunStale", init=False)
@@ -798,6 +911,27 @@ class UpdateRunInfoRunInactive:
     outcome: Literal["RunInactive"] = field(default="RunInactive", init=False)
 
 UpdateRunInfoOutcome: TypeAlias = UpdateRunInfoRunStale | UpdateRunInfoRunMissing | UpdateRunInfoRunUpdated | UpdateRunInfoRunInactive
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class ValidateRunActiveInput:
+    run_id: str
+    request_id: str
+    experiment_id: Annotated[int, "u64"]
+
+VALIDATE_RUN_ACTIVE_PLAN_HASH: Final[str] = "750505d7e9b31dd76486b7772f5e48f5e08f80e77bca724d48a31f42fb489233"
+@dataclass(frozen=True, slots=True, kw_only=True)
+class ValidateRunActiveRunActive:
+    outcome: Literal["RunActive"] = field(default="RunActive", init=False)
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class ValidateRunActiveRunMissing:
+    outcome: Literal["RunMissing"] = field(default="RunMissing", init=False)
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class ValidateRunActiveRunInactive:
+    outcome: Literal["RunInactive"] = field(default="RunInactive", init=False)
+
+ValidateRunActiveOutcome: TypeAlias = ValidateRunActiveRunActive | ValidateRunActiveRunMissing | ValidateRunActiveRunInactive
 
 class RiffDBMLflowClient:
     def __init__(self, transport: SyncApplicationTransport, command_attempts: AttemptBudget) -> None:
@@ -826,6 +960,28 @@ class RiffDBMLflowClient:
         )
         outcomes = {
             "Found": GetExperimentByNameFound,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    def get_metric_history(self, parameters: GetMetricHistoryParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetMetricHistoryResult]:
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 499):
+            raise ValueError("limit must be an integer from 1 through 499")
+        encoded_parameters = encode_record(parameters)
+        generated_cursor = parameters.after
+        if generated_cursor is not None:
+            if options.cursor is not None:
+                raise ValueError("generated cursor conflicts with query options")
+            options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
+        encoded_parameters.pop("after", None)
+        raw = self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="GetMetricHistory", plan_hash=GET_METRIC_HISTORY_QUERY_PLAN_HASH,
+            parameters=encoded_parameters, options=options,
+        )
+        outcomes = {
+            "Found": GetMetricHistoryFound,
+            "IntegrityFailure": GetMetricHistoryIntegrityFailure,
         }
         return raw._map_value(lambda value: decode_variant(outcomes, value))
 
@@ -1019,8 +1175,8 @@ class RiffDBMLflowClient:
         return raw._map_value(lambda value: decode_variant(outcomes, value))
 
     def search_runs(self, parameters: SearchRunsParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchRunsResult]:
-        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
-            raise ValueError("limit must be an integer from 1 through 4")
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 2):
+            raise ValueError("limit must be an integer from 1 through 2")
         encoded_parameters = encode_record(parameters)
         generated_cursor = parameters.after
         if generated_cursor is not None:
@@ -1041,8 +1197,8 @@ class RiffDBMLflowClient:
         return raw._map_value(lambda value: decode_variant(outcomes, value))
 
     def search_runs_by_lifecycle(self, parameters: SearchRunsByLifecycleParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchRunsByLifecycleResult]:
-        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
-            raise ValueError("limit must be an integer from 1 through 4")
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 2):
+            raise ValueError("limit must be an integer from 1 through 2")
         encoded_parameters = encode_record(parameters)
         generated_cursor = parameters.after
         if generated_cursor is not None:
@@ -1082,10 +1238,19 @@ class RiffDBMLflowClient:
 
     def create_experiment_with_tags(self, input: CreateExperimentWithTagsInput) -> TypedCommandResult[CreateExperimentWithTagsOutcome]:
         if not 1 <= len(input.tags) <= 128:
-            raise ValueError("invalid bounded collection length for CreateExperimentWithTags.tags")
+            raise InputBudgetError(COLLECTION_COUNT, "tags")
+        for index, item in enumerate(input.tags):
+            if len(item.scope.encode("utf-8")) > 32:
+                raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "tags", index, "scope")
+            if len(item.value.encode("utf-8")) > 5000:
+                raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "tags", index, "value")
+            if len(item.tag_key.encode("utf-8")) > 250:
+                raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "tags", index, "tag_key")
+            if len(item.value_digest) > 32:
+                raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "tags", index, "value_digest")
         aggregate_element_bytes = sum(canonical_value_encoded_length(encode_value(item, ExperimentTag)) for item in input.tags)
         if aggregate_element_bytes > 900000:
-            raise ValueError("invalid aggregate collection bytes for CreateExperimentWithTags.tags")
+            raise InputBudgetError(AGGREGATE_CANONICAL_ELEMENT_BYTES, "tags")
         raw = self._transport._execute_command(
             contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
             command_name="CreateExperimentWithTags", plan_hash=CREATE_EXPERIMENT_WITH_TAGS_PLAN_HASH,
@@ -1103,11 +1268,21 @@ class RiffDBMLflowClient:
         progress: Callable[[CommandBatchProgress], None] | None = None,
     ) -> CommandBatchResult[CreateExperimentWithTagsOutcome]:
         for input in inputs:
+
             if not 1 <= len(input.tags) <= 128:
-                raise ValueError("invalid bounded collection length for CreateExperimentWithTags.tags")
+                raise InputBudgetError(COLLECTION_COUNT, "tags")
+            for index, item in enumerate(input.tags):
+                if len(item.scope.encode("utf-8")) > 32:
+                    raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "tags", index, "scope")
+                if len(item.value.encode("utf-8")) > 5000:
+                    raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "tags", index, "value")
+                if len(item.tag_key.encode("utf-8")) > 250:
+                    raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "tags", index, "tag_key")
+                if len(item.value_digest) > 32:
+                    raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "tags", index, "value_digest")
             aggregate_element_bytes = sum(canonical_value_encoded_length(encode_value(item, ExperimentTag)) for item in input.tags)
             if aggregate_element_bytes > 900000:
-                raise ValueError("invalid aggregate collection bytes for CreateExperimentWithTags.tags")
+                raise InputBudgetError(AGGREGATE_CANONICAL_ELEMENT_BYTES, "tags")
         return self._transport._command_batch(inputs, options, self.create_experiment_with_tags, progress)
 
     def create_run(self, input: CreateRunInput) -> TypedCommandResult[CreateRunOutcome]:
@@ -1130,10 +1305,29 @@ class RiffDBMLflowClient:
 
     def create_run_with_tags(self, input: CreateRunWithTagsInput) -> TypedCommandResult[CreateRunWithTagsOutcome]:
         if not 1 <= len(input.tags) <= 100:
-            raise ValueError("invalid bounded collection length for CreateRunWithTags.tags")
-        aggregate_element_bytes = sum(canonical_value_encoded_length(encode_value(item, RunTag)) for item in input.tags)
+            raise InputBudgetError(COLLECTION_COUNT, "tags")
+        for index, item in enumerate(input.tags):
+            if len(item.run_id.encode("utf-8")) > 32:
+                raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "tags", index, "run_id")
+            if len(item.entry_id.encode("utf-8")) > 64:
+                raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "tags", index, "entry_id")
+            if len(item.item_key.encode("utf-8")) > 283:
+                raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "tags", index, "item_key")
+            if len(item.sort_key.encode("utf-8")) > 64:
+                raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "tags", index, "sort_key")
+            if len(item.text_value.encode("utf-8")) > 8000:
+                raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "tags", index, "text_value")
+            if len(item.logical_key.encode("utf-8")) > 250:
+                raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "tags", index, "logical_key")
+            if len(item.value_digest) > 32:
+                raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "tags", index, "value_digest")
+            if len(item.latest_item_key.encode("utf-8")) > 283:
+                raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "tags", index, "latest_item_key")
+            if len(item.latest_sort_key.encode("utf-8")) > 64:
+                raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "tags", index, "latest_sort_key")
+        aggregate_element_bytes = sum(canonical_value_encoded_length(encode_value(item, RunDatum)) for item in input.tags)
         if aggregate_element_bytes > 900000:
-            raise ValueError("invalid aggregate collection bytes for CreateRunWithTags.tags")
+            raise InputBudgetError(AGGREGATE_CANONICAL_ELEMENT_BYTES, "tags")
         raw = self._transport._execute_command(
             contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
             command_name="CreateRunWithTags", plan_hash=CREATE_RUN_WITH_TAGS_PLAN_HASH,
@@ -1151,11 +1345,31 @@ class RiffDBMLflowClient:
         progress: Callable[[CommandBatchProgress], None] | None = None,
     ) -> CommandBatchResult[CreateRunWithTagsOutcome]:
         for input in inputs:
+
             if not 1 <= len(input.tags) <= 100:
-                raise ValueError("invalid bounded collection length for CreateRunWithTags.tags")
-            aggregate_element_bytes = sum(canonical_value_encoded_length(encode_value(item, RunTag)) for item in input.tags)
+                raise InputBudgetError(COLLECTION_COUNT, "tags")
+            for index, item in enumerate(input.tags):
+                if len(item.run_id.encode("utf-8")) > 32:
+                    raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "tags", index, "run_id")
+                if len(item.entry_id.encode("utf-8")) > 64:
+                    raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "tags", index, "entry_id")
+                if len(item.item_key.encode("utf-8")) > 283:
+                    raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "tags", index, "item_key")
+                if len(item.sort_key.encode("utf-8")) > 64:
+                    raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "tags", index, "sort_key")
+                if len(item.text_value.encode("utf-8")) > 8000:
+                    raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "tags", index, "text_value")
+                if len(item.logical_key.encode("utf-8")) > 250:
+                    raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "tags", index, "logical_key")
+                if len(item.value_digest) > 32:
+                    raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "tags", index, "value_digest")
+                if len(item.latest_item_key.encode("utf-8")) > 283:
+                    raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "tags", index, "latest_item_key")
+                if len(item.latest_sort_key.encode("utf-8")) > 64:
+                    raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "tags", index, "latest_sort_key")
+            aggregate_element_bytes = sum(canonical_value_encoded_length(encode_value(item, RunDatum)) for item in input.tags)
             if aggregate_element_bytes > 900000:
-                raise ValueError("invalid aggregate collection bytes for CreateRunWithTags.tags")
+                raise InputBudgetError(AGGREGATE_CANONICAL_ELEMENT_BYTES, "tags")
         return self._transport._command_batch(inputs, options, self.create_run_with_tags, progress)
 
     def delete_experiment(self, input: DeleteExperimentInput) -> TypedCommandResult[DeleteExperimentOutcome]:
@@ -1214,6 +1428,77 @@ class RiffDBMLflowClient:
         progress: Callable[[CommandBatchProgress], None] | None = None,
     ) -> CommandBatchResult[DeleteRunOutcome]:
         return self._transport._command_batch(inputs, options, self.delete_run, progress)
+
+    def log_batch(self, input: LogBatchInput) -> TypedCommandResult[LogBatchOutcome]:
+        if not 1 <= len(input.items) <= 1000:
+            raise InputBudgetError(COLLECTION_COUNT, "items")
+        for index, item in enumerate(input.items):
+            if len(item.run_id.encode("utf-8")) > 32:
+                raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "items", index, "run_id")
+            if len(item.entry_id.encode("utf-8")) > 64:
+                raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "items", index, "entry_id")
+            if len(item.item_key.encode("utf-8")) > 283:
+                raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "items", index, "item_key")
+            if len(item.sort_key.encode("utf-8")) > 64:
+                raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "items", index, "sort_key")
+            if len(item.text_value.encode("utf-8")) > 8000:
+                raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "items", index, "text_value")
+            if len(item.logical_key.encode("utf-8")) > 250:
+                raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "items", index, "logical_key")
+            if len(item.value_digest) > 32:
+                raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "items", index, "value_digest")
+            if len(item.latest_item_key.encode("utf-8")) > 283:
+                raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "items", index, "latest_item_key")
+            if len(item.latest_sort_key.encode("utf-8")) > 64:
+                raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "items", index, "latest_sort_key")
+        aggregate_element_bytes = sum(canonical_value_encoded_length(encode_value(item, RunDatum)) for item in input.items)
+        if aggregate_element_bytes > 1000000:
+            raise InputBudgetError(AGGREGATE_CANONICAL_ELEMENT_BYTES, "items")
+        raw = self._transport._execute_command(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            command_name="LogBatch", plan_hash=LOG_BATCH_PLAN_HASH,
+            input=encode_record(input), attempts=self._command_attempts,
+        )
+        outcomes = {
+            "RunStale": LogBatchRunStale,
+            "RunMissing": LogBatchRunMissing,
+            "BatchLogged": LogBatchBatchLogged,
+            "RunInactive": LogBatchRunInactive,
+            "ParamConflict": LogBatchParamConflict,
+        }
+        return raw._map_outcome(lambda value: decode_variant(outcomes, value))
+
+    def log_batch_batch(
+        self, inputs: Sequence[LogBatchInput], options: CommandBatchOptions,
+        progress: Callable[[CommandBatchProgress], None] | None = None,
+    ) -> CommandBatchResult[LogBatchOutcome]:
+        for input in inputs:
+
+            if not 1 <= len(input.items) <= 1000:
+                raise InputBudgetError(COLLECTION_COUNT, "items")
+            for index, item in enumerate(input.items):
+                if len(item.run_id.encode("utf-8")) > 32:
+                    raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "items", index, "run_id")
+                if len(item.entry_id.encode("utf-8")) > 64:
+                    raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "items", index, "entry_id")
+                if len(item.item_key.encode("utf-8")) > 283:
+                    raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "items", index, "item_key")
+                if len(item.sort_key.encode("utf-8")) > 64:
+                    raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "items", index, "sort_key")
+                if len(item.text_value.encode("utf-8")) > 8000:
+                    raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "items", index, "text_value")
+                if len(item.logical_key.encode("utf-8")) > 250:
+                    raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "items", index, "logical_key")
+                if len(item.value_digest) > 32:
+                    raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "items", index, "value_digest")
+                if len(item.latest_item_key.encode("utf-8")) > 283:
+                    raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "items", index, "latest_item_key")
+                if len(item.latest_sort_key.encode("utf-8")) > 64:
+                    raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "items", index, "latest_sort_key")
+            aggregate_element_bytes = sum(canonical_value_encoded_length(encode_value(item, RunDatum)) for item in input.items)
+            if aggregate_element_bytes > 1000000:
+                raise InputBudgetError(AGGREGATE_CANONICAL_ELEMENT_BYTES, "items")
+        return self._transport._command_batch(inputs, options, self.log_batch, progress)
 
     def rename_experiment(self, input: RenameExperimentInput) -> TypedCommandResult[RenameExperimentOutcome]:
         raw = self._transport._execute_command(
@@ -1309,6 +1594,25 @@ class RiffDBMLflowClient:
     ) -> CommandBatchResult[UpdateRunInfoOutcome]:
         return self._transport._command_batch(inputs, options, self.update_run_info, progress)
 
+    def validate_run_active(self, input: ValidateRunActiveInput) -> TypedCommandResult[ValidateRunActiveOutcome]:
+        raw = self._transport._execute_command(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            command_name="ValidateRunActive", plan_hash=VALIDATE_RUN_ACTIVE_PLAN_HASH,
+            input=encode_record(input), attempts=self._command_attempts,
+        )
+        outcomes = {
+            "RunActive": ValidateRunActiveRunActive,
+            "RunMissing": ValidateRunActiveRunMissing,
+            "RunInactive": ValidateRunActiveRunInactive,
+        }
+        return raw._map_outcome(lambda value: decode_variant(outcomes, value))
+
+    def validate_run_active_batch(
+        self, inputs: Sequence[ValidateRunActiveInput], options: CommandBatchOptions,
+        progress: Callable[[CommandBatchProgress], None] | None = None,
+    ) -> CommandBatchResult[ValidateRunActiveOutcome]:
+        return self._transport._command_batch(inputs, options, self.validate_run_active, progress)
+
 class AsyncRiffDBMLflowClient:
     def __init__(self, transport: AsyncApplicationTransport, command_attempts: AttemptBudget) -> None:
         self._transport = transport
@@ -1336,6 +1640,28 @@ class AsyncRiffDBMLflowClient:
         )
         outcomes = {
             "Found": GetExperimentByNameFound,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    async def get_metric_history(self, parameters: GetMetricHistoryParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetMetricHistoryResult]:
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 499):
+            raise ValueError("limit must be an integer from 1 through 499")
+        encoded_parameters = encode_record(parameters)
+        generated_cursor = parameters.after
+        if generated_cursor is not None:
+            if options.cursor is not None:
+                raise ValueError("generated cursor conflicts with query options")
+            options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
+        encoded_parameters.pop("after", None)
+        raw = await self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="GetMetricHistory", plan_hash=GET_METRIC_HISTORY_QUERY_PLAN_HASH,
+            parameters=encoded_parameters, options=options,
+        )
+        outcomes = {
+            "Found": GetMetricHistoryFound,
+            "IntegrityFailure": GetMetricHistoryIntegrityFailure,
         }
         return raw._map_value(lambda value: decode_variant(outcomes, value))
 
@@ -1529,8 +1855,8 @@ class AsyncRiffDBMLflowClient:
         return raw._map_value(lambda value: decode_variant(outcomes, value))
 
     async def search_runs(self, parameters: SearchRunsParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchRunsResult]:
-        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
-            raise ValueError("limit must be an integer from 1 through 4")
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 2):
+            raise ValueError("limit must be an integer from 1 through 2")
         encoded_parameters = encode_record(parameters)
         generated_cursor = parameters.after
         if generated_cursor is not None:
@@ -1551,8 +1877,8 @@ class AsyncRiffDBMLflowClient:
         return raw._map_value(lambda value: decode_variant(outcomes, value))
 
     async def search_runs_by_lifecycle(self, parameters: SearchRunsByLifecycleParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchRunsByLifecycleResult]:
-        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
-            raise ValueError("limit must be an integer from 1 through 4")
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 2):
+            raise ValueError("limit must be an integer from 1 through 2")
         encoded_parameters = encode_record(parameters)
         generated_cursor = parameters.after
         if generated_cursor is not None:
@@ -1592,10 +1918,19 @@ class AsyncRiffDBMLflowClient:
 
     async def create_experiment_with_tags(self, input: CreateExperimentWithTagsInput) -> TypedCommandResult[CreateExperimentWithTagsOutcome]:
         if not 1 <= len(input.tags) <= 128:
-            raise ValueError("invalid bounded collection length for CreateExperimentWithTags.tags")
+            raise InputBudgetError(COLLECTION_COUNT, "tags")
+        for index, item in enumerate(input.tags):
+            if len(item.scope.encode("utf-8")) > 32:
+                raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "tags", index, "scope")
+            if len(item.value.encode("utf-8")) > 5000:
+                raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "tags", index, "value")
+            if len(item.tag_key.encode("utf-8")) > 250:
+                raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "tags", index, "tag_key")
+            if len(item.value_digest) > 32:
+                raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "tags", index, "value_digest")
         aggregate_element_bytes = sum(canonical_value_encoded_length(encode_value(item, ExperimentTag)) for item in input.tags)
         if aggregate_element_bytes > 900000:
-            raise ValueError("invalid aggregate collection bytes for CreateExperimentWithTags.tags")
+            raise InputBudgetError(AGGREGATE_CANONICAL_ELEMENT_BYTES, "tags")
         raw = await self._transport._execute_command(
             contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
             command_name="CreateExperimentWithTags", plan_hash=CREATE_EXPERIMENT_WITH_TAGS_PLAN_HASH,
@@ -1613,11 +1948,21 @@ class AsyncRiffDBMLflowClient:
         progress: Callable[[CommandBatchProgress], None] | None = None,
     ) -> CommandBatchResult[CreateExperimentWithTagsOutcome]:
         for input in inputs:
+
             if not 1 <= len(input.tags) <= 128:
-                raise ValueError("invalid bounded collection length for CreateExperimentWithTags.tags")
+                raise InputBudgetError(COLLECTION_COUNT, "tags")
+            for index, item in enumerate(input.tags):
+                if len(item.scope.encode("utf-8")) > 32:
+                    raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "tags", index, "scope")
+                if len(item.value.encode("utf-8")) > 5000:
+                    raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "tags", index, "value")
+                if len(item.tag_key.encode("utf-8")) > 250:
+                    raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "tags", index, "tag_key")
+                if len(item.value_digest) > 32:
+                    raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "tags", index, "value_digest")
             aggregate_element_bytes = sum(canonical_value_encoded_length(encode_value(item, ExperimentTag)) for item in input.tags)
             if aggregate_element_bytes > 900000:
-                raise ValueError("invalid aggregate collection bytes for CreateExperimentWithTags.tags")
+                raise InputBudgetError(AGGREGATE_CANONICAL_ELEMENT_BYTES, "tags")
         return await self._transport._command_batch(inputs, options, self.create_experiment_with_tags, progress)
 
     async def create_run(self, input: CreateRunInput) -> TypedCommandResult[CreateRunOutcome]:
@@ -1640,10 +1985,29 @@ class AsyncRiffDBMLflowClient:
 
     async def create_run_with_tags(self, input: CreateRunWithTagsInput) -> TypedCommandResult[CreateRunWithTagsOutcome]:
         if not 1 <= len(input.tags) <= 100:
-            raise ValueError("invalid bounded collection length for CreateRunWithTags.tags")
-        aggregate_element_bytes = sum(canonical_value_encoded_length(encode_value(item, RunTag)) for item in input.tags)
+            raise InputBudgetError(COLLECTION_COUNT, "tags")
+        for index, item in enumerate(input.tags):
+            if len(item.run_id.encode("utf-8")) > 32:
+                raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "tags", index, "run_id")
+            if len(item.entry_id.encode("utf-8")) > 64:
+                raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "tags", index, "entry_id")
+            if len(item.item_key.encode("utf-8")) > 283:
+                raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "tags", index, "item_key")
+            if len(item.sort_key.encode("utf-8")) > 64:
+                raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "tags", index, "sort_key")
+            if len(item.text_value.encode("utf-8")) > 8000:
+                raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "tags", index, "text_value")
+            if len(item.logical_key.encode("utf-8")) > 250:
+                raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "tags", index, "logical_key")
+            if len(item.value_digest) > 32:
+                raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "tags", index, "value_digest")
+            if len(item.latest_item_key.encode("utf-8")) > 283:
+                raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "tags", index, "latest_item_key")
+            if len(item.latest_sort_key.encode("utf-8")) > 64:
+                raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "tags", index, "latest_sort_key")
+        aggregate_element_bytes = sum(canonical_value_encoded_length(encode_value(item, RunDatum)) for item in input.tags)
         if aggregate_element_bytes > 900000:
-            raise ValueError("invalid aggregate collection bytes for CreateRunWithTags.tags")
+            raise InputBudgetError(AGGREGATE_CANONICAL_ELEMENT_BYTES, "tags")
         raw = await self._transport._execute_command(
             contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
             command_name="CreateRunWithTags", plan_hash=CREATE_RUN_WITH_TAGS_PLAN_HASH,
@@ -1661,11 +2025,31 @@ class AsyncRiffDBMLflowClient:
         progress: Callable[[CommandBatchProgress], None] | None = None,
     ) -> CommandBatchResult[CreateRunWithTagsOutcome]:
         for input in inputs:
+
             if not 1 <= len(input.tags) <= 100:
-                raise ValueError("invalid bounded collection length for CreateRunWithTags.tags")
-            aggregate_element_bytes = sum(canonical_value_encoded_length(encode_value(item, RunTag)) for item in input.tags)
+                raise InputBudgetError(COLLECTION_COUNT, "tags")
+            for index, item in enumerate(input.tags):
+                if len(item.run_id.encode("utf-8")) > 32:
+                    raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "tags", index, "run_id")
+                if len(item.entry_id.encode("utf-8")) > 64:
+                    raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "tags", index, "entry_id")
+                if len(item.item_key.encode("utf-8")) > 283:
+                    raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "tags", index, "item_key")
+                if len(item.sort_key.encode("utf-8")) > 64:
+                    raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "tags", index, "sort_key")
+                if len(item.text_value.encode("utf-8")) > 8000:
+                    raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "tags", index, "text_value")
+                if len(item.logical_key.encode("utf-8")) > 250:
+                    raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "tags", index, "logical_key")
+                if len(item.value_digest) > 32:
+                    raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "tags", index, "value_digest")
+                if len(item.latest_item_key.encode("utf-8")) > 283:
+                    raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "tags", index, "latest_item_key")
+                if len(item.latest_sort_key.encode("utf-8")) > 64:
+                    raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "tags", index, "latest_sort_key")
+            aggregate_element_bytes = sum(canonical_value_encoded_length(encode_value(item, RunDatum)) for item in input.tags)
             if aggregate_element_bytes > 900000:
-                raise ValueError("invalid aggregate collection bytes for CreateRunWithTags.tags")
+                raise InputBudgetError(AGGREGATE_CANONICAL_ELEMENT_BYTES, "tags")
         return await self._transport._command_batch(inputs, options, self.create_run_with_tags, progress)
 
     async def delete_experiment(self, input: DeleteExperimentInput) -> TypedCommandResult[DeleteExperimentOutcome]:
@@ -1724,6 +2108,77 @@ class AsyncRiffDBMLflowClient:
         progress: Callable[[CommandBatchProgress], None] | None = None,
     ) -> CommandBatchResult[DeleteRunOutcome]:
         return await self._transport._command_batch(inputs, options, self.delete_run, progress)
+
+    async def log_batch(self, input: LogBatchInput) -> TypedCommandResult[LogBatchOutcome]:
+        if not 1 <= len(input.items) <= 1000:
+            raise InputBudgetError(COLLECTION_COUNT, "items")
+        for index, item in enumerate(input.items):
+            if len(item.run_id.encode("utf-8")) > 32:
+                raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "items", index, "run_id")
+            if len(item.entry_id.encode("utf-8")) > 64:
+                raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "items", index, "entry_id")
+            if len(item.item_key.encode("utf-8")) > 283:
+                raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "items", index, "item_key")
+            if len(item.sort_key.encode("utf-8")) > 64:
+                raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "items", index, "sort_key")
+            if len(item.text_value.encode("utf-8")) > 8000:
+                raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "items", index, "text_value")
+            if len(item.logical_key.encode("utf-8")) > 250:
+                raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "items", index, "logical_key")
+            if len(item.value_digest) > 32:
+                raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "items", index, "value_digest")
+            if len(item.latest_item_key.encode("utf-8")) > 283:
+                raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "items", index, "latest_item_key")
+            if len(item.latest_sort_key.encode("utf-8")) > 64:
+                raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "items", index, "latest_sort_key")
+        aggregate_element_bytes = sum(canonical_value_encoded_length(encode_value(item, RunDatum)) for item in input.items)
+        if aggregate_element_bytes > 1000000:
+            raise InputBudgetError(AGGREGATE_CANONICAL_ELEMENT_BYTES, "items")
+        raw = await self._transport._execute_command(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            command_name="LogBatch", plan_hash=LOG_BATCH_PLAN_HASH,
+            input=encode_record(input), attempts=self._command_attempts,
+        )
+        outcomes = {
+            "RunStale": LogBatchRunStale,
+            "RunMissing": LogBatchRunMissing,
+            "BatchLogged": LogBatchBatchLogged,
+            "RunInactive": LogBatchRunInactive,
+            "ParamConflict": LogBatchParamConflict,
+        }
+        return raw._map_outcome(lambda value: decode_variant(outcomes, value))
+
+    async def log_batch_batch(
+        self, inputs: Sequence[LogBatchInput], options: CommandBatchOptions,
+        progress: Callable[[CommandBatchProgress], None] | None = None,
+    ) -> CommandBatchResult[LogBatchOutcome]:
+        for input in inputs:
+
+            if not 1 <= len(input.items) <= 1000:
+                raise InputBudgetError(COLLECTION_COUNT, "items")
+            for index, item in enumerate(input.items):
+                if len(item.run_id.encode("utf-8")) > 32:
+                    raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "items", index, "run_id")
+                if len(item.entry_id.encode("utf-8")) > 64:
+                    raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "items", index, "entry_id")
+                if len(item.item_key.encode("utf-8")) > 283:
+                    raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "items", index, "item_key")
+                if len(item.sort_key.encode("utf-8")) > 64:
+                    raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "items", index, "sort_key")
+                if len(item.text_value.encode("utf-8")) > 8000:
+                    raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "items", index, "text_value")
+                if len(item.logical_key.encode("utf-8")) > 250:
+                    raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "items", index, "logical_key")
+                if len(item.value_digest) > 32:
+                    raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "items", index, "value_digest")
+                if len(item.latest_item_key.encode("utf-8")) > 283:
+                    raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "items", index, "latest_item_key")
+                if len(item.latest_sort_key.encode("utf-8")) > 64:
+                    raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "items", index, "latest_sort_key")
+            aggregate_element_bytes = sum(canonical_value_encoded_length(encode_value(item, RunDatum)) for item in input.items)
+            if aggregate_element_bytes > 1000000:
+                raise InputBudgetError(AGGREGATE_CANONICAL_ELEMENT_BYTES, "items")
+        return await self._transport._command_batch(inputs, options, self.log_batch, progress)
 
     async def rename_experiment(self, input: RenameExperimentInput) -> TypedCommandResult[RenameExperimentOutcome]:
         raw = await self._transport._execute_command(
@@ -1818,3 +2273,22 @@ class AsyncRiffDBMLflowClient:
         progress: Callable[[CommandBatchProgress], None] | None = None,
     ) -> CommandBatchResult[UpdateRunInfoOutcome]:
         return await self._transport._command_batch(inputs, options, self.update_run_info, progress)
+
+    async def validate_run_active(self, input: ValidateRunActiveInput) -> TypedCommandResult[ValidateRunActiveOutcome]:
+        raw = await self._transport._execute_command(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            command_name="ValidateRunActive", plan_hash=VALIDATE_RUN_ACTIVE_PLAN_HASH,
+            input=encode_record(input), attempts=self._command_attempts,
+        )
+        outcomes = {
+            "RunActive": ValidateRunActiveRunActive,
+            "RunMissing": ValidateRunActiveRunMissing,
+            "RunInactive": ValidateRunActiveRunInactive,
+        }
+        return raw._map_outcome(lambda value: decode_variant(outcomes, value))
+
+    async def validate_run_active_batch(
+        self, inputs: Sequence[ValidateRunActiveInput], options: CommandBatchOptions,
+        progress: Callable[[CommandBatchProgress], None] | None = None,
+    ) -> CommandBatchResult[ValidateRunActiveOutcome]:
+        return await self._transport._command_batch(inputs, options, self.validate_run_active, progress)

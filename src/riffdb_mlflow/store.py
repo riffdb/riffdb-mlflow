@@ -3,15 +3,20 @@
 from __future__ import annotations
 
 import json
+import math
 import os
 import secrets
+import struct
+import sys
 from hashlib import sha256
-from typing import Any, NoReturn
+from typing import Any, NoReturn, cast
 from uuid import uuid4
 
 from mlflow.entities import Experiment as MLflowExperiment
 from mlflow.entities import (
     ExperimentTag,
+    Metric,
+    Param,
     RunData,
     RunInfo,
     RunInputs,
@@ -38,11 +43,14 @@ from mlflow.utils.name_utils import _generate_random_name
 from mlflow.utils.search_utils import SearchExperimentsUtils, SearchUtils
 from mlflow.utils.uri import append_to_uri_path
 from mlflow.utils.validation import (
+    _validate_batch_log_data,
+    _validate_batch_log_limits,
     _validate_experiment_artifact_location_length,
     _validate_experiment_id,
     _validate_experiment_id_type,
     _validate_experiment_name,
     _validate_experiment_tag,
+    _validate_param_keys_unique,
     _validate_run_id,
     _validate_tag,
 )
@@ -85,10 +93,18 @@ from riffdb_mlflow.generated.client import (
     GetExperimentFound,
     GetExperimentMissing,
     GetExperimentParams,
+    GetMetricHistoryFound,
+    GetMetricHistoryParams,
     GetRunFound,
     GetRunMissing,
     GetRunParams,
     LifecycleStage,
+    LogBatchBatchLogged,
+    LogBatchInput,
+    LogBatchParamConflict,
+    LogBatchRunInactive,
+    LogBatchRunMissing,
+    LogBatchRunStale,
     RenameExperimentExperimentMissing,
     RenameExperimentExperimentRenamed,
     RenameExperimentInput,
@@ -99,6 +115,8 @@ from riffdb_mlflow.generated.client import (
     RestoreRunRunMissing,
     RestoreRunRunRestored,
     RiffDBMLflowClient,
+    RunDataKind,
+    RunDatum,
     SearchExperimentsByNameILikeParams,
     SearchExperimentsByNameLikeParams,
     SearchExperimentsByNameParams,
@@ -119,19 +137,26 @@ from riffdb_mlflow.generated.client import (
     UpdateRunInfoRunMissing,
     UpdateRunInfoRunStale,
     UpdateRunInfoRunUpdated,
+    ValidateRunActiveInput,
+    ValidateRunActiveRunActive,
+    ValidateRunActiveRunInactive,
+    ValidateRunActiveRunMissing,
 )
 from riffdb_mlflow.generated.client import (
     ExperimentTag as RiffDBExperimentTag,
 )
 from riffdb_mlflow.generated.client import RunStatus as RiffDBRunStatus
-from riffdb_mlflow.generated.client import RunTag as RiffDBRunTag
 
 _SCOPE = "global"
 _DEFAULT_EXPERIMENT_ID = 0
 _DEFAULT_EXPERIMENT_NAME = "Default"
 _PACKED_TAGS_MAX_BYTES = 900_000
+_PACKED_PARAMS_MAX_BYTES = 700_000
+_PACKED_LATEST_METRICS_MAX_BYTES = 400_000
 _COMPILED_SEARCH_PAGE_SIZE = 4
-_COMPILED_RUN_SEARCH_PAGE_SIZE = 4
+_COMPILED_RUN_SEARCH_PAGE_SIZE = 2
+_COMPILED_METRIC_HISTORY_PAGE_SIZE = 499
+_MAX_METRIC_HISTORY_RESULTS = 10_000
 _MAX_RUN_SEARCH_EXPERIMENTS = 1_000
 _MAX_RUN_TAGS = 100
 _MAX_RUN_NAME_LENGTH = 250
@@ -322,18 +347,155 @@ class RiffDBTrackingStore(AbstractStore):
         return encoded
 
     @classmethod
-    def _run_tag_rows(cls, experiment_id: int, run_id: str, tags: Any) -> tuple[RiffDBRunTag, ...]:
+    def _run_tag_rows(cls, experiment_id: int, run_id: str, tags: Any) -> tuple[RunDatum, ...]:
         packed = cls._decode_tags(cls._encode_run_tags(tags))
         return tuple(
-            RiffDBRunTag(
+            RunDatum(
                 experiment_id=experiment_id,
                 run_id=run_id,
-                tag_key=key,
-                value=value,
+                kind=RunDataKind.TAG,
+                item_key=key,
+                entry_id="",
+                logical_key=key,
+                latest_item_key=key,
+                sort_key="",
+                latest_sort_key="",
+                text_value=value,
                 value_digest=cls._digest(value),
+                value_bits=0,
+                value_identity=0,
+                value_order=0,
+                metric_timestamp=0,
+                metric_step=0,
+                is_nan=False,
+                promote_latest=False,
             )
             for key, value in packed.items()
         )
+
+    @staticmethod
+    def _encode_params(params: dict[str, str]) -> bytes:
+        encoded = json.dumps(
+            params, ensure_ascii=False, separators=(",", ":"), sort_keys=True
+        ).encode("utf-8")
+        if len(encoded) > _PACKED_PARAMS_MAX_BYTES:
+            raise MlflowException.invalid_parameter_value(
+                "Run parameters exceed the RiffDB profile's encoded byte limit"
+            )
+        return encoded
+
+    @staticmethod
+    def _decode_params(encoded: bytes) -> dict[str, str]:
+        try:
+            value = json.loads(encoded.decode("utf-8"))
+        except (UnicodeDecodeError, json.JSONDecodeError) as error:
+            raise MlflowException("Stored run parameters are corrupt") from error
+        if not isinstance(value, dict) or not all(
+            isinstance(key, str) and isinstance(item, str) for key, item in value.items()
+        ):
+            raise MlflowException("Stored run parameters have an invalid shape")
+        return value
+
+    @staticmethod
+    def _float_bits(value: float) -> int:
+        return cast(int, struct.unpack(">Q", struct.pack(">d", value))[0])
+
+    @staticmethod
+    def _bits_float(value: int) -> float:
+        return cast(float, struct.unpack(">d", struct.pack(">Q", value))[0])
+
+    @classmethod
+    def _metric_encoding(cls, value: Any) -> tuple[int, int, int, bool, float]:
+        raw = float(value)
+        raw_bits = cls._float_bits(raw)
+        is_nan = math.isnan(raw)
+        if is_nan:
+            sanitized = 0.0
+        elif math.isinf(raw):
+            sanitized = sys.float_info.max if raw > 0 else -sys.float_info.max
+        else:
+            sanitized = raw
+        if sanitized == 0.0:
+            sanitized = 0.0
+        identity = cls._float_bits(sanitized)
+        if identity & (1 << 63):
+            order = (~identity) & ((1 << 64) - 1)
+        else:
+            order = identity ^ (1 << 63)
+        return raw_bits, identity, order, is_nan, sanitized
+
+    @staticmethod
+    def _signed_sort(value: int) -> str:
+        if value < -(1 << 63) or value > (1 << 63) - 1:
+            raise MlflowException.invalid_parameter_value(
+                "Metric timestamp and step must be signed 64-bit integers"
+            )
+        return f"{(value + (1 << 63)) & ((1 << 64) - 1):016x}"
+
+    @classmethod
+    def _metric_identity(cls, timestamp: int, step: int, identity: int, is_nan: bool) -> str:
+        return (
+            cls._signed_sort(timestamp)
+            + cls._signed_sort(step)
+            + f"{identity:016x}"
+            + ("1" if is_nan else "0")
+        )
+
+    @classmethod
+    def _metric_history_sort(cls, timestamp: int, step: int, order: int, is_nan: bool) -> str:
+        return (
+            cls._signed_sort(timestamp)
+            + cls._signed_sort(step)
+            + f"{order:016x}"
+            + ("1" if is_nan else "0")
+        )
+
+    @staticmethod
+    def _metric_item_key(run_id: str, metric_key: str) -> str:
+        return f"{run_id}:{metric_key}"
+
+    @staticmethod
+    def _encode_latest_metrics(values: dict[str, tuple[int, int, int]]) -> bytes:
+        payload = {
+            key: [f"{bits:016x}", timestamp, step]
+            for key, (bits, timestamp, step) in values.items()
+        }
+        encoded = json.dumps(
+            payload, ensure_ascii=False, separators=(",", ":"), sort_keys=True
+        ).encode("utf-8")
+        if len(encoded) > _PACKED_LATEST_METRICS_MAX_BYTES:
+            raise MlflowException.invalid_parameter_value(
+                "Latest metrics exceed the RiffDB profile's encoded byte limit"
+            )
+        return encoded
+
+    @staticmethod
+    def _decode_latest_metrics(encoded: bytes) -> dict[str, tuple[int, int, int]]:
+        try:
+            value = json.loads(encoded.decode("utf-8"))
+        except (UnicodeDecodeError, json.JSONDecodeError) as error:
+            raise MlflowException("Stored latest metrics are corrupt") from error
+        if not isinstance(value, dict):
+            raise MlflowException("Stored latest metrics have an invalid shape")
+        decoded: dict[str, tuple[int, int, int]] = {}
+        for key, item in value.items():
+            if (
+                not isinstance(key, str)
+                or not isinstance(item, list)
+                or len(item) != 3
+                or not isinstance(item[0], str)
+                or not isinstance(item[1], int)
+                or not isinstance(item[2], int)
+            ):
+                raise MlflowException("Stored latest metrics have an invalid shape")
+            try:
+                bits = int(item[0], 16)
+            except ValueError as error:
+                raise MlflowException("Stored latest metrics are corrupt") from error
+            if bits < 0 or bits > (1 << 64) - 1:
+                raise MlflowException("Stored latest metrics are corrupt")
+            decoded[key] = (bits, item[1], item[2])
+        return decoded
 
     @staticmethod
     def _new_run_id(experiment_id: int) -> str:
@@ -372,8 +534,8 @@ class RiffDBTrackingStore(AbstractStore):
                 f"Invalid run status: {status!r}"
             ) from error
 
-    @staticmethod
-    def _to_mlflow_run(row: Any) -> MLflowRun:
+    @classmethod
+    def _to_mlflow_run(cls, row: Any) -> MLflowRun:
         lifecycle = (
             MLflowLifecycleStage.ACTIVE
             if row.lifecycle_stage == LifecycleStage.ACTIVE
@@ -391,10 +553,25 @@ class RiffDBTrackingStore(AbstractStore):
             row.run_name,
         )
         data = RunData(  # type: ignore[no-untyped-call]
+            metrics=[
+                Metric(
+                    key,
+                    cls._bits_float(bits),
+                    timestamp,
+                    step,
+                )
+                for key, (bits, timestamp, step) in cls._decode_latest_metrics(
+                    row.packed_latest_metrics
+                ).items()
+            ],
+            params=[
+                Param(key, value)  # type: ignore[no-untyped-call]
+                for key, value in cls._decode_params(row.packed_params).items()
+            ],
             tags=[
                 RunTag(key, value)  # type: ignore[no-untyped-call]
-                for key, value in RiffDBTrackingStore._decode_tags(row.packed_tags).items()
-            ]
+                for key, value in cls._decode_tags(row.packed_tags).items()
+            ],
         )
         return MLflowRun(info, data, RunInputs(dataset_inputs=[]), RunOutputs(model_outputs=[]))
 
@@ -999,6 +1176,8 @@ class RiffDBTrackingStore(AbstractStore):
                     artifact_uri=artifact_uri,
                     run_name=resolved_name,
                     packed_tags=packed_tags,
+                    packed_params=self._encode_params({}),
+                    packed_latest_metrics=self._encode_latest_metrics({}),
                     tags=tag_rows,
                 )
             )
@@ -1045,8 +1224,67 @@ class RiffDBTrackingStore(AbstractStore):
         metric_key: Any,
         max_results: Any = None,
         page_token: Any = None,
-    ) -> NoReturn:
-        self._pending("get_metric_history")
+    ) -> PagedList[Metric]:
+        normalized_id, experiment_id = self._run_experiment_id(run_id)
+        if not isinstance(metric_key, str) or not metric_key or len(metric_key) > 250:
+            raise MlflowException.invalid_parameter_value("Invalid metric key")
+        if isinstance(max_results, bool) or (
+            max_results is not None and (not isinstance(max_results, int) or max_results < 1)
+        ):
+            raise MlflowException.invalid_parameter_value(
+                "max_results must be a positive integer or None"
+            )
+        requested = _MAX_METRIC_HISTORY_RESULTS if max_results is None else max_results
+        if requested > _MAX_METRIC_HISTORY_RESULTS:
+            raise MlflowException.invalid_parameter_value(
+                f"Metric history requests are bounded to {_MAX_METRIC_HISTORY_RESULTS} rows"
+            )
+
+        client = self._application()
+        current = client.get_run(GetRunParams(experiment_id=experiment_id, run_id=normalized_id))
+        if isinstance(current.value, GetRunMissing):
+            self._missing_run(run_id)
+        if not isinstance(current.value, GetRunFound):
+            raise MlflowException("Invalid GetRun response from RiffDB")
+
+        cursor = page_token
+        metrics: list[Metric] = []
+        while len(metrics) < requested:
+            limit = min(_COMPILED_METRIC_HISTORY_PAGE_SIZE, requested - len(metrics))
+            result = client.get_metric_history(
+                GetMetricHistoryParams(
+                    experiment_id=experiment_id,
+                    item_key=self._metric_item_key(normalized_id, metric_key),
+                    kind=RunDataKind.METRIC,
+                    value_digest=bytes(32),
+                    limit=limit,
+                    after=cursor,
+                )
+            )
+            if not isinstance(result.value, GetMetricHistoryFound):
+                raise MlflowException("RiffDB metric history integrity failure")
+            rows = result.value.metrics
+            metrics.extend(
+                Metric(
+                    row.logical_key,
+                    self._bits_float(row.value_bits),
+                    row.metric_timestamp,
+                    row.metric_step,
+                )
+                for row in rows
+            )
+            cursor = result.next_cursor
+            if cursor is None:
+                break
+            if not rows:
+                raise MlflowException("RiffDB returned a non-advancing metric cursor")
+
+        if max_results is None and cursor is not None:
+            raise MlflowException.invalid_parameter_value(
+                f"Metric history exceeds the profile limit of {_MAX_METRIC_HISTORY_RESULTS} rows; "
+                "request explicit pages"
+            )
+        return PagedList(metrics, cursor if max_results is not None else None)
 
     def _search_runs(
         self,
@@ -1135,8 +1373,228 @@ class RiffDBTrackingStore(AbstractStore):
                 raise MlflowException("RiffDB returned a non-advancing run cursor")
         return runs, cursor
 
-    def log_batch(self, run_id: Any, metrics: Any, params: Any, tags: Any) -> NoReturn:
-        self._pending("log_batch")
+    def log_batch(self, run_id: Any, metrics: Any, params: Any, tags: Any) -> None:
+        normalized_id, experiment_id = self._run_experiment_id(run_id)
+        normalized_metrics, normalized_params, normalized_tags = _validate_batch_log_data(  # type: ignore[no-untyped-call]
+            list(metrics or ()), list(params or ()), list(tags or ())
+        )
+        _validate_batch_log_limits(  # type: ignore[no-untyped-call]
+            normalized_metrics, normalized_params, normalized_tags
+        )
+        _validate_param_keys_unique(normalized_params)  # type: ignore[no-untyped-call]
+
+        client = self._application()
+        if not normalized_metrics and not normalized_params and not normalized_tags:
+            result = client.validate_run_active(
+                ValidateRunActiveInput(
+                    request_id=str(uuid4()),
+                    experiment_id=experiment_id,
+                    run_id=normalized_id,
+                )
+            )
+            if isinstance(result.outcome, ValidateRunActiveRunActive):
+                return
+            if isinstance(result.outcome, ValidateRunActiveRunMissing):
+                self._missing_run(run_id)
+            if isinstance(result.outcome, ValidateRunActiveRunInactive):
+                raise MlflowException(
+                    f"The run {run_id} must be in the active state.",
+                    error_code=INVALID_STATE,
+                )
+            raise MlflowException("Invalid ValidateRunActive response from RiffDB")
+
+        metric_records: list[tuple[Any, int, int, int, bool, float, str, str]] = []
+        seen_metrics: set[tuple[str, int, int, int, bool]] = set()
+        for metric in normalized_metrics:
+            timestamp = int(metric.timestamp)
+            step = int(metric.step)
+            bits, identity, order, is_nan, sanitized = self._metric_encoding(metric.value)
+            deduplication_key = (metric.key, timestamp, step, identity, is_nan)
+            if deduplication_key in seen_metrics:
+                continue
+            seen_metrics.add(deduplication_key)
+            entry_id = self._metric_identity(timestamp, step, identity, is_nan)
+            metric_records.append(
+                (
+                    metric,
+                    bits,
+                    identity,
+                    order,
+                    is_nan,
+                    sanitized,
+                    entry_id,
+                    self._metric_history_sort(timestamp, step, order, is_nan),
+                )
+            )
+
+        collapsed_tags: dict[str, str] = {}
+        for tag in normalized_tags:
+            collapsed_tags[tag.key] = tag.value
+
+        for _ in range(3):
+            current = client.get_run(
+                GetRunParams(experiment_id=experiment_id, run_id=normalized_id)
+            )
+            if isinstance(current.value, GetRunMissing):
+                self._missing_run(run_id)
+            if not isinstance(current.value, GetRunFound):
+                raise MlflowException("Invalid GetRun response from RiffDB")
+            row = current.value.run
+
+            packed_params = self._decode_params(row.packed_params)
+            for param in normalized_params:
+                packed_params[param.key] = param.value
+
+            packed_tags = self._decode_tags(row.packed_tags)
+            packed_tags.update(collapsed_tags)
+
+            latest = self._decode_latest_metrics(row.packed_latest_metrics)
+            promoted: dict[str, str] = {}
+            latest_scores: dict[str, tuple[int, int, float]] = {}
+            for key, (bits, timestamp, step) in latest.items():
+                _, _, _, _, sanitized = self._metric_encoding(self._bits_float(bits))
+                latest_scores[key] = (step, timestamp, sanitized)
+            for (
+                metric,
+                bits,
+                _identity,
+                _order,
+                _is_nan,
+                sanitized,
+                entry_id,
+                _history_sort,
+            ) in metric_records:
+                score = (int(metric.step), int(metric.timestamp), sanitized)
+                if metric.key not in latest_scores or score > latest_scores[metric.key]:
+                    latest_scores[metric.key] = score
+                    latest[metric.key] = (bits, int(metric.timestamp), int(metric.step))
+                    promoted[metric.key] = entry_id
+
+            items: list[RunDatum] = []
+            for (
+                metric,
+                bits,
+                identity,
+                order,
+                is_nan,
+                _sanitized,
+                entry_id,
+                history_sort,
+            ) in metric_records:
+                items.append(
+                    RunDatum(
+                        experiment_id=experiment_id,
+                        run_id=normalized_id,
+                        kind=RunDataKind.METRIC,
+                        item_key=self._metric_item_key(normalized_id, metric.key),
+                        entry_id=entry_id,
+                        logical_key=metric.key,
+                        latest_item_key=metric.key,
+                        sort_key=history_sort,
+                        latest_sort_key=f"{order:016x}",
+                        text_value="",
+                        value_digest=bytes(32),
+                        value_bits=bits,
+                        value_identity=identity,
+                        value_order=order,
+                        metric_timestamp=int(metric.timestamp),
+                        metric_step=int(metric.step),
+                        is_nan=is_nan,
+                        promote_latest=promoted.get(metric.key) == entry_id,
+                    )
+                )
+            items.extend(
+                RunDatum(
+                    experiment_id=experiment_id,
+                    run_id=normalized_id,
+                    kind=RunDataKind.PARAM,
+                    item_key=param.key,
+                    entry_id="",
+                    logical_key=param.key,
+                    latest_item_key=param.key,
+                    sort_key="",
+                    latest_sort_key="",
+                    text_value=param.value,
+                    value_digest=self._digest(param.value),
+                    value_bits=0,
+                    value_identity=0,
+                    value_order=0,
+                    metric_timestamp=0,
+                    metric_step=0,
+                    is_nan=False,
+                    promote_latest=False,
+                )
+                for param in normalized_params
+            )
+            items.extend(
+                RunDatum(
+                    experiment_id=experiment_id,
+                    run_id=normalized_id,
+                    kind=RunDataKind.TAG,
+                    item_key=key,
+                    entry_id="",
+                    logical_key=key,
+                    latest_item_key=key,
+                    sort_key="",
+                    latest_sort_key="",
+                    text_value=value,
+                    value_digest=self._digest(value),
+                    value_bits=0,
+                    value_identity=0,
+                    value_order=0,
+                    metric_timestamp=0,
+                    metric_step=0,
+                    is_nan=False,
+                    promote_latest=False,
+                )
+                for key, value in collapsed_tags.items()
+            )
+
+            result = client.log_batch(
+                LogBatchInput(
+                    request_id=str(uuid4()),
+                    experiment_id=experiment_id,
+                    run_id=normalized_id,
+                    expected_revision=row.revision,
+                    packed_tags=self._encode_run_tags(
+                        RunTag(key, value)  # type: ignore[no-untyped-call]
+                        for key, value in packed_tags.items()
+                    ),
+                    packed_params=self._encode_params(packed_params),
+                    packed_latest_metrics=self._encode_latest_metrics(latest),
+                    items=tuple(items),
+                )
+            )
+            if isinstance(result.outcome, LogBatchBatchLogged):
+                return
+            if isinstance(result.outcome, LogBatchRunStale):
+                continue
+            if isinstance(result.outcome, LogBatchRunMissing):
+                self._missing_run(run_id)
+            if isinstance(result.outcome, LogBatchRunInactive):
+                raise MlflowException(
+                    f"The run {run_id} must be in the active state.",
+                    error_code=INVALID_STATE,
+                )
+            if isinstance(result.outcome, LogBatchParamConflict):
+                old_value = self._decode_params(row.packed_params).get(result.outcome.param_key)
+                new_value = next(
+                    (
+                        param.value
+                        for param in normalized_params
+                        if param.key == result.outcome.param_key
+                    ),
+                    None,
+                )
+                raise MlflowException(
+                    "Changing param values is not allowed. Param with "
+                    f"key='{result.outcome.param_key}' was already logged with "
+                    f"value='{old_value}' for run ID='{run_id}'. Attempted logging "
+                    f"new value '{new_value}'.",
+                    error_code=INVALID_PARAMETER_VALUE,
+                )
+            raise MlflowException("Invalid LogBatch response from RiffDB")
+        raise MlflowException("Run batch conflicted with another write", error_code=ABORTED)
 
     def log_inputs(self, run_id: Any, datasets: Any = None, models: Any = None) -> NoReturn:
         self._pending("log_inputs")

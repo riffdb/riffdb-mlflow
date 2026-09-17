@@ -1,6 +1,7 @@
 contract RiffDBMLflow version 1 {
   enum LifecycleStage { Active, Deleted }
   enum RunStatus { Running, Scheduled, Finished, Failed, Killed }
+  enum RunDataKind { Metric, LatestMetric, Param, Tag }
   enum ExperimentOrder {
     NameAscIdAsc,
     NameAscIdDesc,
@@ -149,19 +150,40 @@ contract RiffDBMLflow version 1 {
     field artifact_uri: string<8000>
     field run_name: string<250>
     field packed_tags: bytes<900000>
+    field packed_params: bytes<700000>
+    field packed_latest_metrics: bytes<400000>
     field revision: u64
+    field initialized: bool
     index by_start (experiment_id, start_time, run_id)
     index by_lifecycle_start (experiment_id, lifecycle_stage, start_time, run_id)
     index by_name (experiment_id, run_name, run_id)
     index by_status (experiment_id, status, run_id)
   }
 
-  entity RunTag {
-    key (experiment_id: u64, run_id: string<32>, tag_key: string<250>)
-    field value: string<8000>
+  entity RunDatum {
+    key (
+      experiment_id: u64,
+      run_id: string<32>,
+      kind: RunDataKind,
+      item_key: string<283>,
+      entry_id: string<64>
+    )
+    field logical_key: string<250>
+    field latest_item_key: string<283>
+    field sort_key: string<64>
+    field latest_sort_key: string<64>
+    field text_value: string<8000>
     field value_digest: bytes<32>
-    index by_key (experiment_id, tag_key, run_id)
-    index by_digest (experiment_id, tag_key, value_digest, run_id)
+    field value_bits: u64
+    field value_identity: u64
+    field value_order: u64
+    field metric_timestamp: i64
+    field metric_step: i64
+    field is_nan: bool
+    field promote_latest: bool
+    index by_run_data (
+      experiment_id, kind, item_key, value_digest, sort_key, run_id, entry_id
+    )
     reference run (experiment_id, run_id) -> Run(experiment_id, run_id)
     delete_policy no_inbound
   }
@@ -175,7 +197,7 @@ contract RiffDBMLflow version 1 {
 
   aggregate Runs {
     root Run
-    child RunTag
+    child RunDatum
     partition_by experiment_id
     conflict_key (experiment_id, run_id)
   }
@@ -320,6 +342,8 @@ contract RiffDBMLflow version 1 {
     input artifact_uri: string<8000>
     input run_name: string<250>
     input packed_tags: bytes<900000>
+    input packed_params: bytes<700000>
+    input packed_latest_metrics: bytes<400000>
     idempotency_key request_id
     create Run(experiment_id, run_id) as run else RunExists {}
     set run.user_id = user_id
@@ -330,7 +354,10 @@ contract RiffDBMLflow version 1 {
     set run.artifact_uri = artifact_uri
     set run.run_name = run_name
     set run.packed_tags = packed_tags
+    set run.packed_params = packed_params
+    set run.packed_latest_metrics = packed_latest_metrics
     set run.revision = 0
+    set run.initialized = true
     return RunCreated { run: run }
   }
 
@@ -343,13 +370,32 @@ contract RiffDBMLflow version 1 {
     input artifact_uri: string<8000>
     input run_name: string<250>
     input packed_tags: bytes<900000>
-    input tags: list<RunTag, 1..100> aggregate_bytes <= 900000
+    input packed_params: bytes<700000>
+    input packed_latest_metrics: bytes<400000>
+    input tags: list<RunDatum, 1..100> aggregate_bytes <= 900000
     idempotency_key request_id
     create Run(experiment_id, run_id) as run else RunExists {}
     for candidate in tags {
-      create RunTag(experiment_id, run_id, candidate.tag_key) as tag else RunTagExists {}
-      set tag.value = candidate.value
+      create RunDatum(
+        experiment_id,
+        run_id,
+        RunDataKind.Tag,
+        candidate.item_key,
+        ""
+      ) as tag else RunTagExists {}
+      set tag.logical_key = candidate.logical_key
+      set tag.latest_item_key = candidate.latest_item_key
+      set tag.sort_key = candidate.sort_key
+      set tag.latest_sort_key = candidate.latest_sort_key
+      set tag.text_value = candidate.text_value
       set tag.value_digest = candidate.value_digest
+      set tag.value_bits = 0
+      set tag.value_identity = 0
+      set tag.value_order = 0
+      set tag.metric_timestamp = 0
+      set tag.metric_step = 0
+      set tag.is_nan = false
+      set tag.promote_latest = false
     }
     set run.user_id = user_id
     set run.status = RunStatus.Running
@@ -359,7 +405,10 @@ contract RiffDBMLflow version 1 {
     set run.artifact_uri = artifact_uri
     set run.run_name = run_name
     set run.packed_tags = packed_tags
+    set run.packed_params = packed_params
+    set run.packed_latest_metrics = packed_latest_metrics
     set run.revision = 0
+    set run.initialized = true
     return RunCreated { run: run }
   }
 
@@ -376,13 +425,30 @@ contract RiffDBMLflow version 1 {
     input expected_revision: u64
     idempotency_key request_id
     mutate Run(experiment_id, run_id) as run else RunMissing {}
-    init_or_mutate RunTag(experiment_id, run_id, "mlflow.runName") as run_name_tag initialize {
-      value: run_name_tag_value,
+    init_or_mutate RunDatum(
+      experiment_id,
+      run_id,
+      RunDataKind.Tag,
+      "mlflow.runName",
+      ""
+    ) as run_name_tag initialize {
+      logical_key: "mlflow.runName",
+      latest_item_key: "mlflow.runName",
+      sort_key: "",
+      latest_sort_key: "",
+      text_value: run_name_tag_value,
       value_digest: run_name_digest,
+      value_bits: 0,
+      value_identity: 0,
+      value_order: 0,
+      metric_timestamp: 0,
+      metric_step: 0,
+      is_nan: false,
+      promote_latest: false,
     }
     require current_revision: run.revision == expected_revision else RunStale {}
     require active: run.lifecycle_stage == LifecycleStage.Active else RunInactive {}
-    set run_name_tag.value = run_name_tag_value
+    set run_name_tag.text_value = run_name_tag_value
     set run_name_tag.value_digest = run_name_digest
     set run.status = status
     set run.end_time = end_time
@@ -390,6 +456,149 @@ contract RiffDBMLflow version 1 {
     set run.packed_tags = packed_tags
     set run.revision = run.revision + 1
     return RunUpdated { run: run }
+  }
+
+  bulk command LogBatch {
+    input request_id: string<128>
+    input experiment_id: u64
+    input run_id: string<32>
+    input expected_revision: u64
+    input packed_tags: bytes<900000>
+    input packed_params: bytes<700000>
+    input packed_latest_metrics: bytes<400000>
+    input items: list<RunDatum, 1..1000> aggregate_bytes <= 1000000
+    idempotency_key request_id
+    observe_or_initialize Run(experiment_id, run_id) as run initialize {
+      user_id: "",
+      status: RunStatus.Running,
+      start_time: 0,
+      end_time: null,
+      lifecycle_stage: LifecycleStage.Deleted,
+      artifact_uri: "",
+      run_name: "",
+      packed_tags: packed_tags,
+      packed_params: packed_params,
+      packed_latest_metrics: packed_latest_metrics,
+      revision: 0,
+      initialized: false,
+    }
+    decide run {
+      when run.initialized == false => reject RunMissing {}
+      when run.revision != expected_revision => reject RunStale {}
+      when run.lifecycle_stage != LifecycleStage.Active => reject RunInactive {}
+      else => apply {
+        set run.packed_tags = packed_tags
+        set run.packed_params = packed_params
+        set run.packed_latest_metrics = packed_latest_metrics
+        set run.revision = run.revision + 1
+        set run.initialized = true
+      }
+    }
+    for candidate in items {
+      observe_or_initialize RunDatum(
+        experiment_id,
+        run_id,
+        candidate.kind,
+        candidate.item_key,
+        candidate.entry_id
+      ) as stored initialize {
+        logical_key: candidate.logical_key,
+        latest_item_key: candidate.latest_item_key,
+        sort_key: candidate.sort_key,
+        latest_sort_key: candidate.latest_sort_key,
+        text_value: candidate.text_value,
+        value_digest: candidate.value_digest,
+        value_bits: candidate.value_bits,
+        value_identity: candidate.value_identity,
+        value_order: candidate.value_order,
+        metric_timestamp: candidate.metric_timestamp,
+        metric_step: candidate.metric_step,
+        is_nan: candidate.is_nan,
+        promote_latest: candidate.promote_latest,
+      }
+      decide stored {
+        when candidate.kind == RunDataKind.Param
+          && stored.text_value != candidate.text_value
+          => reject ParamConflict { param_key: candidate.logical_key }
+        when candidate.kind == RunDataKind.Metric
+          && candidate.promote_latest == true
+          => apply {
+            init_or_mutate RunDatum(
+              experiment_id,
+              run_id,
+              RunDataKind.LatestMetric,
+              candidate.latest_item_key,
+              ""
+            ) as latest initialize {
+              logical_key: candidate.logical_key,
+              latest_item_key: candidate.latest_item_key,
+              sort_key: candidate.latest_sort_key,
+              latest_sort_key: candidate.latest_sort_key,
+              text_value: "",
+              value_digest: candidate.value_digest,
+              value_bits: candidate.value_bits,
+              value_identity: candidate.value_identity,
+              value_order: candidate.value_order,
+              metric_timestamp: candidate.metric_timestamp,
+              metric_step: candidate.metric_step,
+              is_nan: candidate.is_nan,
+              promote_latest: false,
+            }
+            set stored.text_value = candidate.text_value
+            set stored.logical_key = candidate.logical_key
+            set stored.latest_item_key = candidate.latest_item_key
+            set stored.sort_key = candidate.sort_key
+            set stored.latest_sort_key = candidate.latest_sort_key
+            set stored.value_digest = candidate.value_digest
+            set stored.value_bits = candidate.value_bits
+            set stored.value_identity = candidate.value_identity
+            set stored.value_order = candidate.value_order
+            set stored.metric_timestamp = candidate.metric_timestamp
+            set stored.metric_step = candidate.metric_step
+            set stored.is_nan = candidate.is_nan
+            set stored.promote_latest = false
+            set latest.text_value = ""
+            set latest.logical_key = candidate.logical_key
+            set latest.latest_item_key = candidate.latest_item_key
+            set latest.sort_key = candidate.latest_sort_key
+            set latest.latest_sort_key = candidate.latest_sort_key
+            set latest.value_digest = candidate.value_digest
+            set latest.value_bits = candidate.value_bits
+            set latest.value_identity = candidate.value_identity
+            set latest.value_order = candidate.value_order
+            set latest.metric_timestamp = candidate.metric_timestamp
+            set latest.metric_step = candidate.metric_step
+            set latest.is_nan = candidate.is_nan
+            set latest.promote_latest = false
+        }
+        else => apply {
+          set stored.logical_key = candidate.logical_key
+          set stored.latest_item_key = candidate.latest_item_key
+          set stored.sort_key = candidate.sort_key
+          set stored.latest_sort_key = candidate.latest_sort_key
+          set stored.text_value = candidate.text_value
+          set stored.value_digest = candidate.value_digest
+          set stored.value_bits = candidate.value_bits
+          set stored.value_identity = candidate.value_identity
+          set stored.value_order = candidate.value_order
+          set stored.metric_timestamp = candidate.metric_timestamp
+          set stored.metric_step = candidate.metric_step
+          set stored.is_nan = candidate.is_nan
+          set stored.promote_latest = false
+        }
+      }
+    }
+    return BatchLogged { run: run }
+  }
+
+  command ValidateRunActive {
+    input request_id: string<128>
+    input experiment_id: u64
+    input run_id: string<32>
+    idempotency_key request_id
+    read Run(experiment_id, run_id) as run else RunMissing {}
+    require active: run.lifecycle_stage == LifecycleStage.Active else RunInactive {}
+    return RunActive {}
   }
 
   command DeleteRun {

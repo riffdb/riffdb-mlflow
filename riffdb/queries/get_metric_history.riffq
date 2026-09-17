@@ -1,0 +1,24 @@
+query GetMetricHistory(
+    $experiment_id: RunDatum.experiment_id,
+    $item_key: RunDatum.item_key,
+    $kind: RunDatum.kind,
+    $value_digest: RunDatum.value_digest,
+    $limit: Limit<499> = 100,
+    $after: Cursor?,
+) {
+    many metrics from RunDatum
+        where experiment_id == $experiment_id
+          && kind == $kind
+          && item_key == $item_key
+          && value_digest == $value_digest
+        order by sort_key asc, run_id asc, entry_id asc
+        take $limit after $after
+        else IntegrityFailure
+
+    return Found {
+        metrics: metrics {
+            logical_key value_bits metric_timestamp metric_step is_nan
+        }
+    }
+    outcomes Found | IntegrityFailure
+}

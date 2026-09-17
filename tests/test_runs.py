@@ -1,12 +1,14 @@
 from __future__ import annotations
 
+import math
+import struct
 from dataclasses import replace
 from types import SimpleNamespace
 from typing import Any
 
 import pytest
 from mlflow.entities import LifecycleStage as MLflowLifecycleStage
-from mlflow.entities import RunStatus, RunTag, ViewType
+from mlflow.entities import Metric, Param, RunStatus, RunTag, ViewType
 from mlflow.exceptions import MlflowException
 from riffdb_application import Timestamp
 
@@ -17,17 +19,29 @@ from riffdb_mlflow.generated.client import (
     Experiment,
     GetExperimentFound,
     GetExperimentFoundExperiment,
+    GetMetricHistoryFound,
+    GetMetricHistoryFoundMetrics,
     GetRunFound,
     GetRunFoundRun,
     GetRunMissing,
     LifecycleStage,
+    LogBatchBatchLogged,
+    LogBatchParamConflict,
+    LogBatchRunInactive,
+    LogBatchRunMissing,
+    LogBatchRunStale,
     RestoreRunRunMissing,
     RestoreRunRunRestored,
     Run,
+    RunDataKind,
+    RunDatum,
     UpdateRunInfoRunInactive,
     UpdateRunInfoRunMissing,
     UpdateRunInfoRunStale,
     UpdateRunInfoRunUpdated,
+    ValidateRunActiveRunActive,
+    ValidateRunActiveRunInactive,
+    ValidateRunActiveRunMissing,
 )
 from riffdb_mlflow.generated.client import (
     RunStatus as RiffDBRunStatus,
@@ -50,6 +64,7 @@ class FakeRunClient:
             revision=0,
         )
         self.rows: dict[str, Run] = {}
+        self.data: dict[tuple[str, RunDataKind, str, str], RunDatum] = {}
         self.search_calls: list[tuple[str, Any]] = []
         self.stale_once = False
 
@@ -66,7 +81,10 @@ class FakeRunClient:
             artifact_uri=row.artifact_uri,
             run_name=row.run_name,
             packed_tags=row.packed_tags,
+            packed_params=row.packed_params,
+            packed_latest_metrics=row.packed_latest_metrics,
             revision=row.revision,
+            initialized=row.initialized,
         )
 
     def get_experiment(self, _query: Any) -> SimpleNamespace:
@@ -98,7 +116,10 @@ class FakeRunClient:
             artifact_uri=command.artifact_uri,
             run_name=command.run_name,
             packed_tags=command.packed_tags,
+            packed_params=command.packed_params,
+            packed_latest_metrics=command.packed_latest_metrics,
             revision=0,
+            initialized=True,
         )
         self.rows[row.run_id] = row
         return SimpleNamespace(outcome=CreateRunWithTagsRunCreated(run=row))
@@ -108,6 +129,83 @@ class FakeRunClient:
         if row is None:
             return SimpleNamespace(value=GetRunMissing())
         return SimpleNamespace(value=GetRunFound(run=self._get_row(row)))
+
+    def validate_run_active(self, command: Any) -> SimpleNamespace:
+        row = self.rows.get(command.run_id)
+        if row is None:
+            return SimpleNamespace(outcome=ValidateRunActiveRunMissing())
+        if row.lifecycle_stage != LifecycleStage.ACTIVE:
+            return SimpleNamespace(outcome=ValidateRunActiveRunInactive())
+        return SimpleNamespace(outcome=ValidateRunActiveRunActive())
+
+    def log_batch(self, command: Any) -> SimpleNamespace:
+        row = self.rows.get(command.run_id)
+        if row is None:
+            return SimpleNamespace(outcome=LogBatchRunMissing())
+        if row.lifecycle_stage != LifecycleStage.ACTIVE:
+            return SimpleNamespace(outcome=LogBatchRunInactive())
+        if row.revision != command.expected_revision:
+            return SimpleNamespace(outcome=LogBatchRunStale())
+        for item in command.items:
+            key = (item.run_id, item.kind, item.item_key, item.entry_id)
+            stored = self.data.get(key)
+            if (
+                item.kind == RunDataKind.PARAM
+                and stored is not None
+                and stored.text_value != item.text_value
+            ):
+                return SimpleNamespace(outcome=LogBatchParamConflict(param_key=item.logical_key))
+        for item in command.items:
+            key = (item.run_id, item.kind, item.item_key, item.entry_id)
+            self.data[key] = replace(item, promote_latest=False)
+            if item.kind == RunDataKind.METRIC and item.promote_latest:
+                latest = replace(
+                    item,
+                    kind=RunDataKind.LATEST_METRIC,
+                    item_key=item.latest_item_key,
+                    entry_id="",
+                    sort_key=item.latest_sort_key,
+                    promote_latest=False,
+                )
+                self.data[(item.run_id, latest.kind, latest.item_key, "")] = latest
+        updated = replace(
+            row,
+            packed_tags=command.packed_tags,
+            packed_params=command.packed_params,
+            packed_latest_metrics=command.packed_latest_metrics,
+            revision=row.revision + 1,
+        )
+        self.rows[row.run_id] = updated
+        return SimpleNamespace(outcome=LogBatchBatchLogged(run=updated))
+
+    def get_metric_history(self, parameters: Any) -> SimpleNamespace:
+        rows = sorted(
+            (
+                item
+                for item in self.data.values()
+                if item.experiment_id == parameters.experiment_id
+                and item.kind == parameters.kind
+                and item.item_key == parameters.item_key
+                and item.value_digest == parameters.value_digest
+            ),
+            key=lambda item: (item.sort_key, item.run_id, item.entry_id),
+        )
+        offset = int(parameters.after) if parameters.after is not None else 0
+        end = min(offset + parameters.limit, len(rows))
+        values = tuple(
+            GetMetricHistoryFoundMetrics(
+                logical_key=item.logical_key,
+                value_bits=item.value_bits,
+                metric_timestamp=item.metric_timestamp,
+                metric_step=item.metric_step,
+                is_nan=item.is_nan,
+            )
+            for item in rows[offset:end]
+        )
+        return SimpleNamespace(
+            value=GetMetricHistoryFound(metrics=values),
+            next_cursor=str(end) if end < len(rows) else None,
+        )
 
     def update_run_info(self, command: Any) -> SimpleNamespace:
         row = self.rows.get(command.run_id)
@@ -254,7 +352,10 @@ def test_run_search_coalesces_compiled_pages_and_dispatches_lifecycle() -> None:
             artifact_uri=f"s3://artifacts/7/{run_id}/artifacts",
             run_name=f"run-{index}",
             packed_tags=b"{}",
+            packed_params=b"{}",
+            packed_latest_metrics=b"{}",
             revision=0,
+            initialized=True,
         )
     store = RiffDBTrackingStore("riffdb://mlflow-development", "s3://artifacts")
     store._client = client
@@ -272,10 +373,102 @@ def test_run_search_coalesces_compiled_pages_and_dispatches_lifecycle() -> None:
     )
     assert len(second) == 100
     assert second.token == "101"
-    assert [call[1].limit for call in client.search_calls] == [1] + [4] * 25
+    assert [call[1].limit for call in client.search_calls] == [1] + [2] * 50
     assert {call[0] for call in client.search_calls} == {"SearchRunsByLifecycle"}
 
     before = len(client.search_calls)
     with pytest.raises(MlflowException, match="filters are not implemented"):
         store.search_runs(["7"], "attributes.status = 'RUNNING'", ViewType.ALL)
     assert len(client.search_calls) == before
+
+
+def _seed_active_run(store: RiffDBTrackingStore) -> str:
+    run_id = "00000000000000070000000000000042"
+    client = store._client
+    assert isinstance(client, FakeRunClient)
+    client.rows[run_id] = Run(
+        experiment_id=7,
+        run_id=run_id,
+        user_id="alice",
+        status=RiffDBRunStatus.RUNNING,
+        start_time=1,
+        end_time=None,
+        lifecycle_stage=LifecycleStage.ACTIVE,
+        artifact_uri=f"s3://artifacts/7/{run_id}/artifacts",
+        run_name="batch-run",
+        packed_tags=b'{"mlflow.runName":"batch-run"}',
+        packed_params=b"{}",
+        packed_latest_metrics=b"{}",
+        revision=0,
+        initialized=True,
+    )
+    return run_id
+
+
+def _float_from_bits(bits: int) -> float:
+    return struct.unpack(">d", struct.pack(">Q", bits))[0]
+
+
+def _bits_from_float(value: float) -> int:
+    return struct.unpack(">Q", struct.pack(">d", value))[0]
+
+
+def test_log_batch_preserves_metric_payloads_latest_order_and_pages(
+    store: RiffDBTrackingStore,
+) -> None:
+    run_id = _seed_active_run(store)
+    first_nan_bits = 0x7FF8000000000042
+    second_nan_bits = 0x7FF8000000000099
+    first_nan = _float_from_bits(first_nan_bits)
+    second_nan = _float_from_bits(second_nan_bits)
+
+    store.log_batch(
+        run_id,
+        metrics=[
+            Metric("loss", math.inf, 5, 1),
+            Metric("loss", -0.0, 10, 0),
+            Metric("loss", first_nan, 20, 2),
+            Metric("loss", second_nan, 20, 2),
+        ],
+        params=[Param("optimizer", "adam")],
+        tags=[RunTag("team", "one"), RunTag("team", "two")],
+    )
+
+    run = store.get_run(run_id)
+    assert run.data.params == {"optimizer": "adam"}
+    assert run.data.tags["team"] == "two"
+    assert math.isnan(run.data.metrics["loss"])
+    assert _bits_from_float(run.data.metrics["loss"]) == first_nan_bits
+
+    first = store.get_metric_history(run_id, "loss", max_results=1)
+    assert len(first) == 1
+    assert first.token == "1"
+    assert math.isinf(first[0].value)
+    remainder = store.get_metric_history(run_id, "loss", max_results=100, page_token=first.token)
+    assert len(remainder) == 2
+    assert remainder.token is None
+    assert _bits_from_float(remainder[0].value) == _bits_from_float(-0.0)
+    assert _bits_from_float(remainder[1].value) == first_nan_bits
+
+    store.log_batch(
+        run_id,
+        metrics=[Metric("loss", 99.0, 999, 1)],
+        params=[],
+        tags=[],
+    )
+    assert _bits_from_float(store.get_run(run_id).data.metrics["loss"]) == first_nan_bits
+
+
+def test_log_batch_maps_transaction_current_param_conflict_and_empty_validation(
+    store: RiffDBTrackingStore,
+) -> None:
+    run_id = _seed_active_run(store)
+    store.log_batch(run_id, metrics=[], params=[Param("depth", "3")], tags=[])
+    with pytest.raises(MlflowException, match="Changing param values is not allowed"):
+        store.log_batch(run_id, metrics=[], params=[Param("depth", "5")], tags=[])
+    assert store.get_run(run_id).data.params == {"depth": "3"}
+
+    store.log_batch(run_id, metrics=[], params=[], tags=[])
+    store.delete_run(run_id)
+    with pytest.raises(MlflowException, match="active state"):
+        store.log_batch(run_id, metrics=[], params=[], tags=[])
