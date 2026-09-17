@@ -44,3 +44,16 @@ make check
 
 Source is public on GitHub. Package releases remain out of scope until real
 RiffDB loopback and upstream MLflow semantics are green.
+
+
+## RiffDB compatibility CI
+
+This adapter owns its RiffDB compatibility checks. Pull requests compile the
+application sources and verify existing locks and generated artifacts against
+the full commit in `.github/riffdb-revision`. Scheduled checks use RiffDB
+`main`; manual dispatch accepts a full commit or `main`. Failures are reported
+here and do not block RiffDB itself. Framework conformance remains separate.
+
+To upgrade, update the pin, migrate sources as needed, review the result of
+`riffdb application lock --write`, and verify with `riffdb application check`.
+Commit the pin and migration together in this repository.
