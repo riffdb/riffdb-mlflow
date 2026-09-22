@@ -22,8 +22,8 @@ def _compact_tag(value: object, tag: str, keys: frozenset[str]) -> dict[str, obj
 
 CONTRACT_LINEAGE: Final[str] = "RiffDBMLflow"
 CONTRACT_VERSION: Final[int] = 1
-CONTRACT_BUNDLE_HASH: Final[str] = "ace8994193d98b54229e08791e60aa2e30509af7207524446de5cfcf35b24e91"
-QUERY_MODULE_HASH: Final[str] = "2963202682b546e7a1ca069761fd8e81b2b1b22cdd725dfb659353c9ea823392"
+CONTRACT_BUNDLE_HASH: Final[str] = "14bd2f1eed882ea60633b0bd693f05cdf46ca4eac3508b1c325f0da0c47fa16b"
+QUERY_MODULE_HASH: Final[str] = "db2ba77d9fe5aa341110624dc972470ccefd116abbb0e36f48b737d40ffc7755"
 
 COLLECTION_COUNT: Final[str] = "collection_count"
 INDIVIDUAL_VALUE_BYTES: Final[str] = "individual_value_bytes"
@@ -129,7 +129,7 @@ class ExperimentTag:
     value_digest: bytes
     experiment_id: Annotated[int, "u64"]
 
-GET_EXPERIMENT_QUERY_PLAN_HASH: Final[str] = "3fe650a30d5b144d26d4a440b4c540f679dc409d3f8f60f30f8f2c09ac3b3fed"
+GET_EXPERIMENT_QUERY_PLAN_HASH: Final[str] = "5bcd8c7ce85e56b3649f369403c30178c4265d767e7fec80f4960d7ebb5037c2"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class GetExperimentParams:
@@ -158,7 +158,7 @@ class GetExperimentMissing:
 
 GetExperimentResult: TypeAlias = GetExperimentFound | GetExperimentMissing
 
-GET_EXPERIMENT_BY_NAME_QUERY_PLAN_HASH: Final[str] = "e2a7027a7db74b87e1e0bec5c53b3cf784e30d654b0d383f3a9493b029601c59"
+GET_EXPERIMENT_BY_NAME_QUERY_PLAN_HASH: Final[str] = "a2a587b01eac8d71ab6c3ef86f2b24f09783c5e88385731436470d0aa034e108"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class GetExperimentByNameParams:
@@ -183,7 +183,7 @@ class GetExperimentByNameFound:
 
 GetExperimentByNameResult: TypeAlias = GetExperimentByNameFound
 
-GET_METRIC_HISTORY_QUERY_PLAN_HASH: Final[str] = "87a3cf65f2beeccef7400b184b6184c4b522e33e32afdfe3c017fcc9b34253c6"
+GET_METRIC_HISTORY_QUERY_PLAN_HASH: Final[str] = "20d8b314eb16b37ef2bef23bcdceea23b218541e12dbbe85559c335eec13ec5f"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class GetMetricHistoryParams:
@@ -213,7 +213,7 @@ class GetMetricHistoryIntegrityFailure:
 
 GetMetricHistoryResult: TypeAlias = GetMetricHistoryFound | GetMetricHistoryIntegrityFailure
 
-GET_RUN_QUERY_PLAN_HASH: Final[str] = "f3bbfa72170c71a4a77c9e46ba3010dc03a4c8a10570e462097b765f6e175868"
+GET_RUN_QUERY_PLAN_HASH: Final[str] = "62bc6401f28a2ab949301812f3591d2e2fe3fac0ae367dbc13240cd49dd77d34"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class GetRunParams:
@@ -248,7 +248,7 @@ class GetRunMissing:
 
 GetRunResult: TypeAlias = GetRunFound | GetRunMissing
 
-SEARCH_EXPERIMENTS_QUERY_PLAN_HASH: Final[str] = "42612a7118d7c0453c5d06aef690de2e70e70feb881827628c0c5d633845e753"
+SEARCH_EXPERIMENTS_QUERY_PLAN_HASH: Final[str] = "f833e0adf2154ee89c74a93d7847aa3b77d78ef47293c7e978bdf46f9abf0748"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsParams:
@@ -280,7 +280,7 @@ class SearchExperimentsIntegrityFailure:
 
 SearchExperimentsResult: TypeAlias = SearchExperimentsFound | SearchExperimentsIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_NAME_QUERY_PLAN_HASH: Final[str] = "a9505f25937be06343fbf81745929af82ef0d79a07494e9f06dcbfcc67ee6794"
+SEARCH_EXPERIMENTS_BY_NAME_QUERY_PLAN_HASH: Final[str] = "609968a15cee75e0a1e13b887e5a74f4f6f5ccb1689e3a4123d445fa2e353521"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByNameParams:
@@ -313,7 +313,7 @@ class SearchExperimentsByNameIntegrityFailure:
 
 SearchExperimentsByNameResult: TypeAlias = SearchExperimentsByNameFound | SearchExperimentsByNameIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_NAME_ILIKE_QUERY_PLAN_HASH: Final[str] = "bc917a7fdd111bd559d605fdeb2549cb8b023f59dd8cb7aed27bf6a89107dfe2"
+SEARCH_EXPERIMENTS_BY_NAME_ILIKE_QUERY_PLAN_HASH: Final[str] = "029687fd0bea329d95daa2e129f8ebb0977cb1294e47dc10dc45f352b5d45dde"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByNameILikeParams:
@@ -346,7 +346,7 @@ class SearchExperimentsByNameILikeIntegrityFailure:
 
 SearchExperimentsByNameILikeResult: TypeAlias = SearchExperimentsByNameILikeFound | SearchExperimentsByNameILikeIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_NAME_LIKE_QUERY_PLAN_HASH: Final[str] = "c139d9b01b1b59a98554cf3e55c0641333de9eaf5c633548d85658e86fd5c210"
+SEARCH_EXPERIMENTS_BY_NAME_LIKE_QUERY_PLAN_HASH: Final[str] = "28aabb1329499d64d08ad7974675e3835cf096ade30fda3a2baa8e4b4acf8114"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByNameLikeParams:
@@ -379,7 +379,7 @@ class SearchExperimentsByNameLikeIntegrityFailure:
 
 SearchExperimentsByNameLikeResult: TypeAlias = SearchExperimentsByNameLikeFound | SearchExperimentsByNameLikeIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_TAG_QUERY_PLAN_HASH: Final[str] = "47e59d36e3ff831c858db84da6e0217b0d50c2429f36724940f26b9260e62d99"
+SEARCH_EXPERIMENTS_BY_TAG_QUERY_PLAN_HASH: Final[str] = "582679bd0164511d02bcc4f94f95bf2528a0c72575c92bc8b5289a78b55e77c7"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByTagParams:
@@ -413,7 +413,7 @@ class SearchExperimentsByTagIntegrityFailure:
 
 SearchExperimentsByTagResult: TypeAlias = SearchExperimentsByTagFound | SearchExperimentsByTagIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_TAG_ILIKE_QUERY_PLAN_HASH: Final[str] = "a109ed0a23679dfbf8764ed825fead0a302f07a561ad7edc62e2199b2ec99a8d"
+SEARCH_EXPERIMENTS_BY_TAG_ILIKE_QUERY_PLAN_HASH: Final[str] = "435b0b9f5d98beaaf0d5f2664521c2d68b5ed991ad4184b94ccdd0224d4f8618"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByTagILikeParams:
@@ -447,7 +447,7 @@ class SearchExperimentsByTagILikeIntegrityFailure:
 
 SearchExperimentsByTagILikeResult: TypeAlias = SearchExperimentsByTagILikeFound | SearchExperimentsByTagILikeIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_TAG_LIKE_QUERY_PLAN_HASH: Final[str] = "4fa379df48ed1f9dc589da64348754599a198ba4f081fbabb3d122a3ffaf2a0e"
+SEARCH_EXPERIMENTS_BY_TAG_LIKE_QUERY_PLAN_HASH: Final[str] = "016a5fc77dc108fe9cf229222a1411b8d01d48b8c576d99a180d1fe9417db9e2"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByTagLikeParams:
@@ -481,7 +481,7 @@ class SearchExperimentsByTagLikeIntegrityFailure:
 
 SearchExperimentsByTagLikeResult: TypeAlias = SearchExperimentsByTagLikeFound | SearchExperimentsByTagLikeIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_TWO_TAGS_QUERY_PLAN_HASH: Final[str] = "e912992e97e528f7cbe45ca3f0ed4b6c779c0b95b0a4879f6d34fe7b87e1894d"
+SEARCH_EXPERIMENTS_BY_TWO_TAGS_QUERY_PLAN_HASH: Final[str] = "c18d534c7c4699aae2304c25e7797d9866fb921389d4d5ef2d52c4f0fd3d8d9b"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByTwoTagsParams:
@@ -517,7 +517,7 @@ class SearchExperimentsByTwoTagsIntegrityFailure:
 
 SearchExperimentsByTwoTagsResult: TypeAlias = SearchExperimentsByTwoTagsFound | SearchExperimentsByTwoTagsIntegrityFailure
 
-SEARCH_RUNS_QUERY_PLAN_HASH: Final[str] = "0004f9495fcd2ce39692c159edd32f29874ae09ac8d2d9d60faed5dcaba3b68c"
+SEARCH_RUNS_QUERY_PLAN_HASH: Final[str] = "944d16eb56f01d046c20c838a9fcf31fffb0d841f8c4d7323c7a86ec2579d8e5"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchRunsParams:
@@ -553,7 +553,7 @@ class SearchRunsIntegrityFailure:
 
 SearchRunsResult: TypeAlias = SearchRunsFound | SearchRunsIntegrityFailure
 
-SEARCH_RUNS_BY_LIFECYCLE_QUERY_PLAN_HASH: Final[str] = "692dbfc43a37bc5032ad7638acb2153a05861f17774e5385719190bf0d30cc81"
+SEARCH_RUNS_BY_LIFECYCLE_QUERY_PLAN_HASH: Final[str] = "34fd33fc696de284c6a40f2a5201f3f207ee09adc49c48941ddd73483c0c9da5"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchRunsByLifecycleParams:
@@ -770,7 +770,7 @@ class LogBatchInput:
     expected_revision: Annotated[int, "u64"]
     packed_latest_metrics: bytes
 
-LOG_BATCH_PLAN_HASH: Final[str] = "2b267f75a1bc315ca261a6c5606c224b09344c4a5ca0a83fc037eba63ffe1fba"
+LOG_BATCH_PLAN_HASH: Final[str] = "f05f77500d23510a29cefa3374bd0984eb24554e823c0b71d90b371c14c60743"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class LogBatchRunStale:
     outcome: Literal["RunStale"] = field(default="RunStale", init=False)
@@ -859,7 +859,7 @@ class SetExperimentTagInput:
     experiment_id: Annotated[int, "u64"]
     expected_revision: Annotated[int, "u64"]
 
-SET_EXPERIMENT_TAG_PLAN_HASH: Final[str] = "dbe87aeac3f19a1e8706ad3396531d87f1babfaaa9ccc429f38bc826401175bb"
+SET_EXPERIMENT_TAG_PLAN_HASH: Final[str] = "d6f238cb7bae735665ae5f8c6a9d681ecf2ea800fca04745b398d2c1be370d30"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SetExperimentTagExperimentStale:
     outcome: Literal["ExperimentStale"] = field(default="ExperimentStale", init=False)
@@ -892,7 +892,7 @@ class UpdateRunInfoInput:
     expected_revision: Annotated[int, "u64"]
     run_name_tag_value: str
 
-UPDATE_RUN_INFO_PLAN_HASH: Final[str] = "3768fd9f83e8a50a4486903f10c4233ca6e4a6608b18f873ac6fdd120668c002"
+UPDATE_RUN_INFO_PLAN_HASH: Final[str] = "ca64ac7a88b3c7522bfc13713aa82eb5eb80d5a259d6a5a68a36954800cad9d9"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class UpdateRunInfoRunStale:
     outcome: Literal["RunStale"] = field(default="RunStale", init=False)

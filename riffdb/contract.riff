@@ -307,8 +307,8 @@ contract RiffDBMLflow version 1 {
     }
     require current_revision: experiment.revision == expected_revision else ExperimentStale {}
     require active: experiment.lifecycle_stage == LifecycleStage.Active else ExperimentInactive {}
-    set tag.value = value
-    set tag.value_digest = value_digest
+    overwrite tag.value = value
+    overwrite tag.value_digest = value_digest
     set experiment.packed_tags = packed_tags
     set experiment.last_update_time = now
     set experiment.revision = experiment.revision + 1
@@ -448,8 +448,8 @@ contract RiffDBMLflow version 1 {
     }
     require current_revision: run.revision == expected_revision else RunStale {}
     require active: run.lifecycle_stage == LifecycleStage.Active else RunInactive {}
-    set run_name_tag.text_value = run_name_tag_value
-    set run_name_tag.value_digest = run_name_digest
+    overwrite run_name_tag.text_value = run_name_tag_value
+    overwrite run_name_tag.value_digest = run_name_digest
     set run.status = status
     set run.end_time = end_time
     set run.run_name = run_name
@@ -557,19 +557,19 @@ contract RiffDBMLflow version 1 {
             set stored.metric_step = candidate.metric_step
             set stored.is_nan = candidate.is_nan
             set stored.promote_latest = false
-            set latest.text_value = ""
-            set latest.logical_key = candidate.logical_key
-            set latest.latest_item_key = candidate.latest_item_key
-            set latest.sort_key = candidate.latest_sort_key
-            set latest.latest_sort_key = candidate.latest_sort_key
-            set latest.value_digest = candidate.value_digest
-            set latest.value_bits = candidate.value_bits
-            set latest.value_identity = candidate.value_identity
-            set latest.value_order = candidate.value_order
-            set latest.metric_timestamp = candidate.metric_timestamp
-            set latest.metric_step = candidate.metric_step
-            set latest.is_nan = candidate.is_nan
-            set latest.promote_latest = false
+            overwrite latest.text_value = ""
+            overwrite latest.logical_key = candidate.logical_key
+            overwrite latest.latest_item_key = candidate.latest_item_key
+            overwrite latest.sort_key = candidate.latest_sort_key
+            overwrite latest.latest_sort_key = candidate.latest_sort_key
+            overwrite latest.value_digest = candidate.value_digest
+            overwrite latest.value_bits = candidate.value_bits
+            overwrite latest.value_identity = candidate.value_identity
+            overwrite latest.value_order = candidate.value_order
+            overwrite latest.metric_timestamp = candidate.metric_timestamp
+            overwrite latest.metric_step = candidate.metric_step
+            overwrite latest.is_nan = candidate.is_nan
+            overwrite latest.promote_latest = false
         }
         else => apply {
           set stored.logical_key = candidate.logical_key
