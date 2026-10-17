@@ -12,7 +12,7 @@ license = { text = "MIT OR Apache-2.0" }
 authors = [{ name = "RiffDB contributors" }]
 dependencies = [
   "mlflow==3.15.1",
-  "riffdb==0.1.0.dev18",
+  "riffdb==0.1.0.dev19",
 ]
 
 [project.entry-points."mlflow.tracking_store"]

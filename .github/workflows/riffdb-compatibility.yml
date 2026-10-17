@@ -53,7 +53,7 @@ jobs:
           path: riffdb
           persist-credentials: false
       - name: Install Rust toolchain
-        run: rustup toolchain install 1.97.0 --profile minimal
+        run: rustup toolchain install 1.98.1 --profile minimal
       - name: Cache Cargo sources
         uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
         with:

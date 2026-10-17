@@ -31,7 +31,6 @@ contract RiffDBMLflow version 1 {
     field revision: u64
     unique by_name (scope, name)
     index by_id (scope, experiment_id)
-    index by_name_lookup (scope, name, experiment_id)
     index by_name_digest (scope, name_digest, experiment_id)
     index by_lifecycle_update (scope, lifecycle_stage, last_update_time, experiment_id)
     index by_update (scope, last_update_time, experiment_id)
@@ -183,7 +182,7 @@ contract RiffDBMLflow version 1 {
     field promote_latest: bool
     index by_run_data (
       experiment_id, kind, item_key, value_digest, sort_key, run_id, entry_id
-    )
+    ) cover(logical_key, value_bits, metric_timestamp, metric_step, is_nan)
     reference run (experiment_id, run_id) -> Run(experiment_id, run_id)
     delete_policy no_inbound
   }
@@ -259,9 +258,9 @@ contract RiffDBMLflow version 1 {
     service now: transaction_time
     idempotency_key request_id
     mutate Experiment("global", experiment_id) as experiment else ExperimentMissing {}
-    set experiment.name = name
-    set experiment.name_digest = name_digest
-    set experiment.last_update_time = now
+    overwrite experiment.name = name
+    overwrite experiment.name_digest = name_digest
+    overwrite experiment.last_update_time = now
     set experiment.revision = experiment.revision + 1
     return ExperimentRenamed { experiment: experiment }
   }
@@ -272,8 +271,8 @@ contract RiffDBMLflow version 1 {
     service now: transaction_time
     idempotency_key request_id
     mutate Experiment("global", experiment_id) as experiment else ExperimentMissing {}
-    set experiment.lifecycle_stage = LifecycleStage.Deleted
-    set experiment.last_update_time = now
+    overwrite experiment.lifecycle_stage = LifecycleStage.Deleted
+    overwrite experiment.last_update_time = now
     set experiment.revision = experiment.revision + 1
     return ExperimentDeleted { experiment: experiment }
   }
@@ -284,8 +283,8 @@ contract RiffDBMLflow version 1 {
     service now: transaction_time
     idempotency_key request_id
     mutate Experiment("global", experiment_id) as experiment else ExperimentMissing {}
-    set experiment.lifecycle_stage = LifecycleStage.Active
-    set experiment.last_update_time = now
+    overwrite experiment.lifecycle_stage = LifecycleStage.Active
+    overwrite experiment.last_update_time = now
     set experiment.revision = experiment.revision + 1
     return ExperimentRestored { experiment: experiment }
   }
@@ -307,8 +306,8 @@ contract RiffDBMLflow version 1 {
     }
     require current_revision: experiment.revision == expected_revision else ExperimentStale {}
     require active: experiment.lifecycle_stage == LifecycleStage.Active else ExperimentInactive {}
-    overwrite tag.value = value
-    overwrite tag.value_digest = value_digest
+    set tag.value = value
+    set tag.value_digest = value_digest
     set experiment.packed_tags = packed_tags
     set experiment.last_update_time = now
     set experiment.revision = experiment.revision + 1
@@ -448,8 +447,8 @@ contract RiffDBMLflow version 1 {
     }
     require current_revision: run.revision == expected_revision else RunStale {}
     require active: run.lifecycle_stage == LifecycleStage.Active else RunInactive {}
-    overwrite run_name_tag.text_value = run_name_tag_value
-    overwrite run_name_tag.value_digest = run_name_digest
+    set run_name_tag.text_value = run_name_tag_value
+    set run_name_tag.value_digest = run_name_digest
     set run.status = status
     set run.end_time = end_time
     set run.run_name = run_name
@@ -487,11 +486,11 @@ contract RiffDBMLflow version 1 {
       when run.revision != expected_revision => reject RunStale {}
       when run.lifecycle_stage != LifecycleStage.Active => reject RunInactive {}
       else => apply {
-        set run.packed_tags = packed_tags
-        set run.packed_params = packed_params
-        set run.packed_latest_metrics = packed_latest_metrics
+        overwrite run.packed_tags = packed_tags
+        overwrite run.packed_params = packed_params
+        overwrite run.packed_latest_metrics = packed_latest_metrics
         set run.revision = run.revision + 1
-        set run.initialized = true
+        overwrite run.initialized = true
       }
     }
     for candidate in items {
@@ -544,19 +543,19 @@ contract RiffDBMLflow version 1 {
               is_nan: candidate.is_nan,
               promote_latest: false,
             }
-            set stored.text_value = candidate.text_value
-            set stored.logical_key = candidate.logical_key
-            set stored.latest_item_key = candidate.latest_item_key
-            set stored.sort_key = candidate.sort_key
-            set stored.latest_sort_key = candidate.latest_sort_key
-            set stored.value_digest = candidate.value_digest
-            set stored.value_bits = candidate.value_bits
-            set stored.value_identity = candidate.value_identity
-            set stored.value_order = candidate.value_order
-            set stored.metric_timestamp = candidate.metric_timestamp
-            set stored.metric_step = candidate.metric_step
-            set stored.is_nan = candidate.is_nan
-            set stored.promote_latest = false
+            overwrite stored.text_value = candidate.text_value
+            overwrite stored.logical_key = candidate.logical_key
+            overwrite stored.latest_item_key = candidate.latest_item_key
+            overwrite stored.sort_key = candidate.sort_key
+            overwrite stored.latest_sort_key = candidate.latest_sort_key
+            overwrite stored.value_digest = candidate.value_digest
+            overwrite stored.value_bits = candidate.value_bits
+            overwrite stored.value_identity = candidate.value_identity
+            overwrite stored.value_order = candidate.value_order
+            overwrite stored.metric_timestamp = candidate.metric_timestamp
+            overwrite stored.metric_step = candidate.metric_step
+            overwrite stored.is_nan = candidate.is_nan
+            overwrite stored.promote_latest = false
             overwrite latest.text_value = ""
             overwrite latest.logical_key = candidate.logical_key
             overwrite latest.latest_item_key = candidate.latest_item_key
@@ -572,19 +571,19 @@ contract RiffDBMLflow version 1 {
             overwrite latest.promote_latest = false
         }
         else => apply {
-          set stored.logical_key = candidate.logical_key
-          set stored.latest_item_key = candidate.latest_item_key
-          set stored.sort_key = candidate.sort_key
-          set stored.latest_sort_key = candidate.latest_sort_key
-          set stored.text_value = candidate.text_value
-          set stored.value_digest = candidate.value_digest
-          set stored.value_bits = candidate.value_bits
-          set stored.value_identity = candidate.value_identity
-          set stored.value_order = candidate.value_order
-          set stored.metric_timestamp = candidate.metric_timestamp
-          set stored.metric_step = candidate.metric_step
-          set stored.is_nan = candidate.is_nan
-          set stored.promote_latest = false
+          overwrite stored.logical_key = candidate.logical_key
+          overwrite stored.latest_item_key = candidate.latest_item_key
+          overwrite stored.sort_key = candidate.sort_key
+          overwrite stored.latest_sort_key = candidate.latest_sort_key
+          overwrite stored.text_value = candidate.text_value
+          overwrite stored.value_digest = candidate.value_digest
+          overwrite stored.value_bits = candidate.value_bits
+          overwrite stored.value_identity = candidate.value_identity
+          overwrite stored.value_order = candidate.value_order
+          overwrite stored.metric_timestamp = candidate.metric_timestamp
+          overwrite stored.metric_step = candidate.metric_step
+          overwrite stored.is_nan = candidate.is_nan
+          overwrite stored.promote_latest = false
         }
       }
     }
@@ -607,7 +606,7 @@ contract RiffDBMLflow version 1 {
     input run_id: string<32>
     idempotency_key request_id
     mutate Run(experiment_id, run_id) as run else RunMissing {}
-    set run.lifecycle_stage = LifecycleStage.Deleted
+    overwrite run.lifecycle_stage = LifecycleStage.Deleted
     set run.revision = run.revision + 1
     return RunDeleted { run: run }
   }
@@ -618,7 +617,7 @@ contract RiffDBMLflow version 1 {
     input run_id: string<32>
     idempotency_key request_id
     mutate Run(experiment_id, run_id) as run else RunMissing {}
-    set run.lifecycle_stage = LifecycleStage.Active
+    overwrite run.lifecycle_stage = LifecycleStage.Active
     set run.revision = run.revision + 1
     return RunRestored { run: run }
   }

@@ -22,8 +22,8 @@ def _compact_tag(value: object, tag: str, keys: frozenset[str]) -> dict[str, obj
 
 CONTRACT_LINEAGE: Final[str] = "RiffDBMLflow"
 CONTRACT_VERSION: Final[int] = 1
-CONTRACT_BUNDLE_HASH: Final[str] = "14bd2f1eed882ea60633b0bd693f05cdf46ca4eac3508b1c325f0da0c47fa16b"
-QUERY_MODULE_HASH: Final[str] = "db2ba77d9fe5aa341110624dc972470ccefd116abbb0e36f48b737d40ffc7755"
+CONTRACT_BUNDLE_HASH: Final[str] = "160c98fb9d86938a37cce20f5ae2f4ad10cecf24c15856b8a3663b1aaebec87f"
+QUERY_MODULE_HASH: Final[str] = "74da2118e995a8fc269c1a9c720dd19c5431e2697bad577fa3fe5279219e0bc0"
 
 COLLECTION_COUNT: Final[str] = "collection_count"
 INDIVIDUAL_VALUE_BYTES: Final[str] = "individual_value_bytes"
@@ -129,7 +129,7 @@ class ExperimentTag:
     value_digest: bytes
     experiment_id: Annotated[int, "u64"]
 
-GET_EXPERIMENT_QUERY_PLAN_HASH: Final[str] = "5bcd8c7ce85e56b3649f369403c30178c4265d767e7fec80f4960d7ebb5037c2"
+GET_EXPERIMENT_QUERY_PLAN_HASH: Final[str] = "54fbb3e0a22b4d08f8d19a4af05246947372a5d3b3e9975649faa196dd596eca"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class GetExperimentParams:
@@ -152,13 +152,31 @@ class GetExperimentFound:
     experiment: GetExperimentFoundExperiment
     outcome: Literal["Found"] = field(default="Found", init=False)
 
+    def is_found(self) -> bool:
+        return True
+
+    def is_missing(self) -> bool:
+        return False
+
+    def unwrap_found(self) -> GetExperimentFound:
+        return self
+
 @dataclass(frozen=True, slots=True, kw_only=True)
 class GetExperimentMissing:
     outcome: Literal["Missing"] = field(default="Missing", init=False)
 
+    def is_found(self) -> bool:
+        return False
+
+    def is_missing(self) -> bool:
+        return True
+
+    def unwrap_found(self) -> GetExperimentFound:
+        raise ValueError("expected GetExperiment outcome found")
+
 GetExperimentResult: TypeAlias = GetExperimentFound | GetExperimentMissing
 
-GET_EXPERIMENT_BY_NAME_QUERY_PLAN_HASH: Final[str] = "a2a587b01eac8d71ab6c3ef86f2b24f09783c5e88385731436470d0aa034e108"
+GET_EXPERIMENT_BY_NAME_QUERY_PLAN_HASH: Final[str] = "3f9d841bca98cebeb51ca03778573d8ff5d8131b296de307b38140a578e87ca0"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class GetExperimentByNameParams:
@@ -166,7 +184,7 @@ class GetExperimentByNameParams:
     name: str
 
 @dataclass(frozen=True, slots=True, kw_only=True)
-class GetExperimentByNameFoundExperiments:
+class GetExperimentByNameFoundExperiment:
     experiment_id: Annotated[int, "u64"]
     name: str
     artifact_location: str | None
@@ -178,12 +196,34 @@ class GetExperimentByNameFoundExperiments:
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class GetExperimentByNameFound:
-    experiments: tuple[GetExperimentByNameFoundExperiments, ...]
+    experiment: GetExperimentByNameFoundExperiment
     outcome: Literal["Found"] = field(default="Found", init=False)
 
-GetExperimentByNameResult: TypeAlias = GetExperimentByNameFound
+    def is_found(self) -> bool:
+        return True
 
-GET_METRIC_HISTORY_QUERY_PLAN_HASH: Final[str] = "20d8b314eb16b37ef2bef23bcdceea23b218541e12dbbe85559c335eec13ec5f"
+    def is_missing(self) -> bool:
+        return False
+
+    def unwrap_found(self) -> GetExperimentByNameFound:
+        return self
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class GetExperimentByNameMissing:
+    outcome: Literal["Missing"] = field(default="Missing", init=False)
+
+    def is_found(self) -> bool:
+        return False
+
+    def is_missing(self) -> bool:
+        return True
+
+    def unwrap_found(self) -> GetExperimentByNameFound:
+        raise ValueError("expected GetExperimentByName outcome found")
+
+GetExperimentByNameResult: TypeAlias = GetExperimentByNameFound | GetExperimentByNameMissing
+
+GET_METRIC_HISTORY_QUERY_PLAN_HASH: Final[str] = "ab3f58e2652e14e8be0af559c9a891997e402bbd6df85d5ee06cfd2de224c48d"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class GetMetricHistoryParams:
@@ -207,13 +247,31 @@ class GetMetricHistoryFound:
     metrics: tuple[GetMetricHistoryFoundMetrics, ...]
     outcome: Literal["Found"] = field(default="Found", init=False)
 
+    def is_found(self) -> bool:
+        return True
+
+    def is_integrity_failure(self) -> bool:
+        return False
+
+    def unwrap_found(self) -> GetMetricHistoryFound:
+        return self
+
 @dataclass(frozen=True, slots=True, kw_only=True)
 class GetMetricHistoryIntegrityFailure:
     outcome: Literal["IntegrityFailure"] = field(default="IntegrityFailure", init=False)
 
+    def is_found(self) -> bool:
+        return False
+
+    def is_integrity_failure(self) -> bool:
+        return True
+
+    def unwrap_found(self) -> GetMetricHistoryFound:
+        raise ValueError("expected GetMetricHistory outcome found")
+
 GetMetricHistoryResult: TypeAlias = GetMetricHistoryFound | GetMetricHistoryIntegrityFailure
 
-GET_RUN_QUERY_PLAN_HASH: Final[str] = "62bc6401f28a2ab949301812f3591d2e2fe3fac0ae367dbc13240cd49dd77d34"
+GET_RUN_QUERY_PLAN_HASH: Final[str] = "e9c80d7d18f7f2f340410f43c18f9e3c06cd11c361b506fd86207a2e62926b76"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class GetRunParams:
@@ -242,13 +300,31 @@ class GetRunFound:
     run: GetRunFoundRun
     outcome: Literal["Found"] = field(default="Found", init=False)
 
+    def is_found(self) -> bool:
+        return True
+
+    def is_missing(self) -> bool:
+        return False
+
+    def unwrap_found(self) -> GetRunFound:
+        return self
+
 @dataclass(frozen=True, slots=True, kw_only=True)
 class GetRunMissing:
     outcome: Literal["Missing"] = field(default="Missing", init=False)
 
+    def is_found(self) -> bool:
+        return False
+
+    def is_missing(self) -> bool:
+        return True
+
+    def unwrap_found(self) -> GetRunFound:
+        raise ValueError("expected GetRun outcome found")
+
 GetRunResult: TypeAlias = GetRunFound | GetRunMissing
 
-SEARCH_EXPERIMENTS_QUERY_PLAN_HASH: Final[str] = "f833e0adf2154ee89c74a93d7847aa3b77d78ef47293c7e978bdf46f9abf0748"
+SEARCH_EXPERIMENTS_QUERY_PLAN_HASH: Final[str] = "24fc1d41dc43ad2a310c6b2afdff5632a51b2036378a2a8c020cd0e05c5b82f6"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsParams:
@@ -274,13 +350,31 @@ class SearchExperimentsFound:
     experiments: tuple[SearchExperimentsFoundExperiments, ...]
     outcome: Literal["Found"] = field(default="Found", init=False)
 
+    def is_found(self) -> bool:
+        return True
+
+    def is_integrity_failure(self) -> bool:
+        return False
+
+    def unwrap_found(self) -> SearchExperimentsFound:
+        return self
+
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsIntegrityFailure:
     outcome: Literal["IntegrityFailure"] = field(default="IntegrityFailure", init=False)
 
+    def is_found(self) -> bool:
+        return False
+
+    def is_integrity_failure(self) -> bool:
+        return True
+
+    def unwrap_found(self) -> SearchExperimentsFound:
+        raise ValueError("expected SearchExperiments outcome found")
+
 SearchExperimentsResult: TypeAlias = SearchExperimentsFound | SearchExperimentsIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_NAME_QUERY_PLAN_HASH: Final[str] = "609968a15cee75e0a1e13b887e5a74f4f6f5ccb1689e3a4123d445fa2e353521"
+SEARCH_EXPERIMENTS_BY_NAME_QUERY_PLAN_HASH: Final[str] = "9edd222dc5684976eb4fae96e5ddec08c8c8fd767b28f7e5ad81d6387703ce5b"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByNameParams:
@@ -307,13 +401,31 @@ class SearchExperimentsByNameFound:
     experiments: tuple[SearchExperimentsByNameFoundExperiments, ...]
     outcome: Literal["Found"] = field(default="Found", init=False)
 
+    def is_found(self) -> bool:
+        return True
+
+    def is_integrity_failure(self) -> bool:
+        return False
+
+    def unwrap_found(self) -> SearchExperimentsByNameFound:
+        return self
+
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByNameIntegrityFailure:
     outcome: Literal["IntegrityFailure"] = field(default="IntegrityFailure", init=False)
 
+    def is_found(self) -> bool:
+        return False
+
+    def is_integrity_failure(self) -> bool:
+        return True
+
+    def unwrap_found(self) -> SearchExperimentsByNameFound:
+        raise ValueError("expected SearchExperimentsByName outcome found")
+
 SearchExperimentsByNameResult: TypeAlias = SearchExperimentsByNameFound | SearchExperimentsByNameIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_NAME_ILIKE_QUERY_PLAN_HASH: Final[str] = "029687fd0bea329d95daa2e129f8ebb0977cb1294e47dc10dc45f352b5d45dde"
+SEARCH_EXPERIMENTS_BY_NAME_ILIKE_QUERY_PLAN_HASH: Final[str] = "fe77cced42fba1d106b040f5ce818705b1657179c68fc8e34883557472fd3e5c"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByNameILikeParams:
@@ -340,13 +452,31 @@ class SearchExperimentsByNameILikeFound:
     experiments: tuple[SearchExperimentsByNameILikeFoundExperiments, ...]
     outcome: Literal["Found"] = field(default="Found", init=False)
 
+    def is_found(self) -> bool:
+        return True
+
+    def is_integrity_failure(self) -> bool:
+        return False
+
+    def unwrap_found(self) -> SearchExperimentsByNameILikeFound:
+        return self
+
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByNameILikeIntegrityFailure:
     outcome: Literal["IntegrityFailure"] = field(default="IntegrityFailure", init=False)
 
+    def is_found(self) -> bool:
+        return False
+
+    def is_integrity_failure(self) -> bool:
+        return True
+
+    def unwrap_found(self) -> SearchExperimentsByNameILikeFound:
+        raise ValueError("expected SearchExperimentsByNameILike outcome found")
+
 SearchExperimentsByNameILikeResult: TypeAlias = SearchExperimentsByNameILikeFound | SearchExperimentsByNameILikeIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_NAME_LIKE_QUERY_PLAN_HASH: Final[str] = "28aabb1329499d64d08ad7974675e3835cf096ade30fda3a2baa8e4b4acf8114"
+SEARCH_EXPERIMENTS_BY_NAME_LIKE_QUERY_PLAN_HASH: Final[str] = "02ad17df18725dbf7bb36565759df65a708a78ab038197d7961c57921df918d4"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByNameLikeParams:
@@ -373,13 +503,31 @@ class SearchExperimentsByNameLikeFound:
     experiments: tuple[SearchExperimentsByNameLikeFoundExperiments, ...]
     outcome: Literal["Found"] = field(default="Found", init=False)
 
+    def is_found(self) -> bool:
+        return True
+
+    def is_integrity_failure(self) -> bool:
+        return False
+
+    def unwrap_found(self) -> SearchExperimentsByNameLikeFound:
+        return self
+
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByNameLikeIntegrityFailure:
     outcome: Literal["IntegrityFailure"] = field(default="IntegrityFailure", init=False)
 
+    def is_found(self) -> bool:
+        return False
+
+    def is_integrity_failure(self) -> bool:
+        return True
+
+    def unwrap_found(self) -> SearchExperimentsByNameLikeFound:
+        raise ValueError("expected SearchExperimentsByNameLike outcome found")
+
 SearchExperimentsByNameLikeResult: TypeAlias = SearchExperimentsByNameLikeFound | SearchExperimentsByNameLikeIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_TAG_QUERY_PLAN_HASH: Final[str] = "582679bd0164511d02bcc4f94f95bf2528a0c72575c92bc8b5289a78b55e77c7"
+SEARCH_EXPERIMENTS_BY_TAG_QUERY_PLAN_HASH: Final[str] = "644e284d15b48cc79b6cba6b55728516205a96bc41c3b5db5599530999df9f09"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByTagParams:
@@ -407,13 +555,31 @@ class SearchExperimentsByTagFound:
     experiments: tuple[SearchExperimentsByTagFoundExperiments, ...]
     outcome: Literal["Found"] = field(default="Found", init=False)
 
+    def is_found(self) -> bool:
+        return True
+
+    def is_integrity_failure(self) -> bool:
+        return False
+
+    def unwrap_found(self) -> SearchExperimentsByTagFound:
+        return self
+
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByTagIntegrityFailure:
     outcome: Literal["IntegrityFailure"] = field(default="IntegrityFailure", init=False)
 
+    def is_found(self) -> bool:
+        return False
+
+    def is_integrity_failure(self) -> bool:
+        return True
+
+    def unwrap_found(self) -> SearchExperimentsByTagFound:
+        raise ValueError("expected SearchExperimentsByTag outcome found")
+
 SearchExperimentsByTagResult: TypeAlias = SearchExperimentsByTagFound | SearchExperimentsByTagIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_TAG_ILIKE_QUERY_PLAN_HASH: Final[str] = "435b0b9f5d98beaaf0d5f2664521c2d68b5ed991ad4184b94ccdd0224d4f8618"
+SEARCH_EXPERIMENTS_BY_TAG_ILIKE_QUERY_PLAN_HASH: Final[str] = "7ed19a7a6fde4d6b431f40cb3e3de47de9488fcf15448e73f00d6e0d3da00cf7"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByTagILikeParams:
@@ -441,13 +607,31 @@ class SearchExperimentsByTagILikeFound:
     experiments: tuple[SearchExperimentsByTagILikeFoundExperiments, ...]
     outcome: Literal["Found"] = field(default="Found", init=False)
 
+    def is_found(self) -> bool:
+        return True
+
+    def is_integrity_failure(self) -> bool:
+        return False
+
+    def unwrap_found(self) -> SearchExperimentsByTagILikeFound:
+        return self
+
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByTagILikeIntegrityFailure:
     outcome: Literal["IntegrityFailure"] = field(default="IntegrityFailure", init=False)
 
+    def is_found(self) -> bool:
+        return False
+
+    def is_integrity_failure(self) -> bool:
+        return True
+
+    def unwrap_found(self) -> SearchExperimentsByTagILikeFound:
+        raise ValueError("expected SearchExperimentsByTagILike outcome found")
+
 SearchExperimentsByTagILikeResult: TypeAlias = SearchExperimentsByTagILikeFound | SearchExperimentsByTagILikeIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_TAG_LIKE_QUERY_PLAN_HASH: Final[str] = "016a5fc77dc108fe9cf229222a1411b8d01d48b8c576d99a180d1fe9417db9e2"
+SEARCH_EXPERIMENTS_BY_TAG_LIKE_QUERY_PLAN_HASH: Final[str] = "c8ecbd82e952db9b435e5b9039fad337e9624851963c1e3d94f6ee37a0ccd396"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByTagLikeParams:
@@ -475,13 +659,31 @@ class SearchExperimentsByTagLikeFound:
     experiments: tuple[SearchExperimentsByTagLikeFoundExperiments, ...]
     outcome: Literal["Found"] = field(default="Found", init=False)
 
+    def is_found(self) -> bool:
+        return True
+
+    def is_integrity_failure(self) -> bool:
+        return False
+
+    def unwrap_found(self) -> SearchExperimentsByTagLikeFound:
+        return self
+
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByTagLikeIntegrityFailure:
     outcome: Literal["IntegrityFailure"] = field(default="IntegrityFailure", init=False)
 
+    def is_found(self) -> bool:
+        return False
+
+    def is_integrity_failure(self) -> bool:
+        return True
+
+    def unwrap_found(self) -> SearchExperimentsByTagLikeFound:
+        raise ValueError("expected SearchExperimentsByTagLike outcome found")
+
 SearchExperimentsByTagLikeResult: TypeAlias = SearchExperimentsByTagLikeFound | SearchExperimentsByTagLikeIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_TWO_TAGS_QUERY_PLAN_HASH: Final[str] = "c18d534c7c4699aae2304c25e7797d9866fb921389d4d5ef2d52c4f0fd3d8d9b"
+SEARCH_EXPERIMENTS_BY_TWO_TAGS_QUERY_PLAN_HASH: Final[str] = "8d0713c516aee5367276e029ef843230832fd6f71776c270db5cbf3d2d6a3e7b"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByTwoTagsParams:
@@ -511,13 +713,31 @@ class SearchExperimentsByTwoTagsFound:
     experiments: tuple[SearchExperimentsByTwoTagsFoundExperiments, ...]
     outcome: Literal["Found"] = field(default="Found", init=False)
 
+    def is_found(self) -> bool:
+        return True
+
+    def is_integrity_failure(self) -> bool:
+        return False
+
+    def unwrap_found(self) -> SearchExperimentsByTwoTagsFound:
+        return self
+
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByTwoTagsIntegrityFailure:
     outcome: Literal["IntegrityFailure"] = field(default="IntegrityFailure", init=False)
 
+    def is_found(self) -> bool:
+        return False
+
+    def is_integrity_failure(self) -> bool:
+        return True
+
+    def unwrap_found(self) -> SearchExperimentsByTwoTagsFound:
+        raise ValueError("expected SearchExperimentsByTwoTags outcome found")
+
 SearchExperimentsByTwoTagsResult: TypeAlias = SearchExperimentsByTwoTagsFound | SearchExperimentsByTwoTagsIntegrityFailure
 
-SEARCH_RUNS_QUERY_PLAN_HASH: Final[str] = "944d16eb56f01d046c20c838a9fcf31fffb0d841f8c4d7323c7a86ec2579d8e5"
+SEARCH_RUNS_QUERY_PLAN_HASH: Final[str] = "475be97da08c23bacafe09ee894b9456f37008491a3455a6691c60a80a407c7f"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchRunsParams:
@@ -547,13 +767,31 @@ class SearchRunsFound:
     runs: tuple[SearchRunsFoundRuns, ...]
     outcome: Literal["Found"] = field(default="Found", init=False)
 
+    def is_found(self) -> bool:
+        return True
+
+    def is_integrity_failure(self) -> bool:
+        return False
+
+    def unwrap_found(self) -> SearchRunsFound:
+        return self
+
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchRunsIntegrityFailure:
     outcome: Literal["IntegrityFailure"] = field(default="IntegrityFailure", init=False)
 
+    def is_found(self) -> bool:
+        return False
+
+    def is_integrity_failure(self) -> bool:
+        return True
+
+    def unwrap_found(self) -> SearchRunsFound:
+        raise ValueError("expected SearchRuns outcome found")
+
 SearchRunsResult: TypeAlias = SearchRunsFound | SearchRunsIntegrityFailure
 
-SEARCH_RUNS_BY_LIFECYCLE_QUERY_PLAN_HASH: Final[str] = "34fd33fc696de284c6a40f2a5201f3f207ee09adc49c48941ddd73483c0c9da5"
+SEARCH_RUNS_BY_LIFECYCLE_QUERY_PLAN_HASH: Final[str] = "d5e650c0afea0565c0f0bedb08d8e80977459242554e54fefa7a686af6c982a5"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchRunsByLifecycleParams:
@@ -584,30 +822,60 @@ class SearchRunsByLifecycleFound:
     runs: tuple[SearchRunsByLifecycleFoundRuns, ...]
     outcome: Literal["Found"] = field(default="Found", init=False)
 
+    def is_found(self) -> bool:
+        return True
+
+    def is_integrity_failure(self) -> bool:
+        return False
+
+    def unwrap_found(self) -> SearchRunsByLifecycleFound:
+        return self
+
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchRunsByLifecycleIntegrityFailure:
     outcome: Literal["IntegrityFailure"] = field(default="IntegrityFailure", init=False)
+
+    def is_found(self) -> bool:
+        return False
+
+    def is_integrity_failure(self) -> bool:
+        return True
+
+    def unwrap_found(self) -> SearchRunsByLifecycleFound:
+        raise ValueError("expected SearchRunsByLifecycle outcome found")
 
 SearchRunsByLifecycleResult: TypeAlias = SearchRunsByLifecycleFound | SearchRunsByLifecycleIntegrityFailure
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class CreateExperimentInput:
     name: str
-    request_id: str
+    request_id: str = field(default_factory=lambda: str(__import__("uuid").uuid4()))
     name_digest: bytes
     packed_tags: bytes
     experiment_id: Annotated[int, "u64"]
     artifact_location: str | None
 
-CREATE_EXPERIMENT_PLAN_HASH: Final[str] = "edf2f8ce209162004846f8c7202e22e9c76e4d0596d89afbd55e727dbece2b16"
+CREATE_EXPERIMENT_PLAN_HASH: Final[str] = "d2536a64cfca299a78e132e32168706fad33c934fb4bc7eaa139461afebcf1f1"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class CreateExperimentExperimentExists:
     outcome: Literal["ExperimentExists"] = field(default="ExperimentExists", init=False)
+
+    def is_experiment_exists(self) -> bool:
+        return True
+
+    def is_experiment_created(self) -> bool:
+        return False
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class CreateExperimentExperimentCreated:
     experiment: Experiment
     outcome: Literal["ExperimentCreated"] = field(default="ExperimentCreated", init=False)
+
+    def is_experiment_exists(self) -> bool:
+        return False
+
+    def is_experiment_created(self) -> bool:
+        return True
 
 CreateExperimentOutcome: TypeAlias = CreateExperimentExperimentExists | CreateExperimentExperimentCreated
 
@@ -615,25 +883,52 @@ CreateExperimentOutcome: TypeAlias = CreateExperimentExperimentExists | CreateEx
 class CreateExperimentWithTagsInput:
     name: str
     tags: tuple[ExperimentTag, ...]
-    request_id: str
+    request_id: str = field(default_factory=lambda: str(__import__("uuid").uuid4()))
     name_digest: bytes
     packed_tags: bytes
     experiment_id: Annotated[int, "u64"]
     artifact_location: str | None
 
-CREATE_EXPERIMENT_WITH_TAGS_PLAN_HASH: Final[str] = "a6738a906b352abf65519e472dd50249326c17a80bad1fd8ee8f5766e7cf5864"
+CREATE_EXPERIMENT_WITH_TAGS_PLAN_HASH: Final[str] = "e96d7f41593a9d7f2524468482eff562620d56abc07b7be8ddfc2868325c907d"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class CreateExperimentWithTagsExperimentExists:
     outcome: Literal["ExperimentExists"] = field(default="ExperimentExists", init=False)
+
+    def is_experiment_exists(self) -> bool:
+        return True
+
+    def is_experiment_created(self) -> bool:
+        return False
+
+    def is_experiment_tag_exists(self) -> bool:
+        return False
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class CreateExperimentWithTagsExperimentCreated:
     experiment: Experiment
     outcome: Literal["ExperimentCreated"] = field(default="ExperimentCreated", init=False)
 
+    def is_experiment_exists(self) -> bool:
+        return False
+
+    def is_experiment_created(self) -> bool:
+        return True
+
+    def is_experiment_tag_exists(self) -> bool:
+        return False
+
 @dataclass(frozen=True, slots=True, kw_only=True)
 class CreateExperimentWithTagsExperimentTagExists:
     outcome: Literal["ExperimentTagExists"] = field(default="ExperimentTagExists", init=False)
+
+    def is_experiment_exists(self) -> bool:
+        return False
+
+    def is_experiment_created(self) -> bool:
+        return False
+
+    def is_experiment_tag_exists(self) -> bool:
+        return True
 
 CreateExperimentWithTagsOutcome: TypeAlias = CreateExperimentWithTagsExperimentExists | CreateExperimentWithTagsExperimentCreated | CreateExperimentWithTagsExperimentTagExists
 
@@ -642,7 +937,7 @@ class CreateRunInput:
     run_id: str
     user_id: str
     run_name: str
-    request_id: str
+    request_id: str = field(default_factory=lambda: str(__import__("uuid").uuid4()))
     start_time: Annotated[int, "i64"]
     packed_tags: bytes
     artifact_uri: str
@@ -650,15 +945,27 @@ class CreateRunInput:
     packed_params: bytes
     packed_latest_metrics: bytes
 
-CREATE_RUN_PLAN_HASH: Final[str] = "f83c7ddf74eea750b97af9ac5760172dae4b3453d6c6fc5d2b9e1c8dc3283a0e"
+CREATE_RUN_PLAN_HASH: Final[str] = "d009d4a9b4b622941f6c56874add0e0dcbed15b4adeea76c1e4fba9e26cdd9c1"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class CreateRunRunExists:
     outcome: Literal["RunExists"] = field(default="RunExists", init=False)
+
+    def is_run_exists(self) -> bool:
+        return True
+
+    def is_run_created(self) -> bool:
+        return False
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class CreateRunRunCreated:
     run: Run
     outcome: Literal["RunCreated"] = field(default="RunCreated", init=False)
+
+    def is_run_exists(self) -> bool:
+        return False
+
+    def is_run_created(self) -> bool:
+        return True
 
 CreateRunOutcome: TypeAlias = CreateRunRunExists | CreateRunRunCreated
 
@@ -668,7 +975,7 @@ class CreateRunWithTagsInput:
     run_id: str
     user_id: str
     run_name: str
-    request_id: str
+    request_id: str = field(default_factory=lambda: str(__import__("uuid").uuid4()))
     start_time: Annotated[int, "i64"]
     packed_tags: bytes
     artifact_uri: str
@@ -676,86 +983,212 @@ class CreateRunWithTagsInput:
     packed_params: bytes
     packed_latest_metrics: bytes
 
-CREATE_RUN_WITH_TAGS_PLAN_HASH: Final[str] = "749c234f4c3dece67944a53159ed370abc8244a31b8e5721145037af2999bd51"
+CREATE_RUN_WITH_TAGS_PLAN_HASH: Final[str] = "6872c066682bdbed36fafcc451775e016c259bcffd171f8f15e262b6f926e3bf"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class CreateRunWithTagsRunExists:
     outcome: Literal["RunExists"] = field(default="RunExists", init=False)
+
+    def is_run_exists(self) -> bool:
+        return True
+
+    def is_run_created(self) -> bool:
+        return False
+
+    def is_run_tag_exists(self) -> bool:
+        return False
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class CreateRunWithTagsRunCreated:
     run: Run
     outcome: Literal["RunCreated"] = field(default="RunCreated", init=False)
 
+    def is_run_exists(self) -> bool:
+        return False
+
+    def is_run_created(self) -> bool:
+        return True
+
+    def is_run_tag_exists(self) -> bool:
+        return False
+
 @dataclass(frozen=True, slots=True, kw_only=True)
 class CreateRunWithTagsRunTagExists:
     outcome: Literal["RunTagExists"] = field(default="RunTagExists", init=False)
+
+    def is_run_exists(self) -> bool:
+        return False
+
+    def is_run_created(self) -> bool:
+        return False
+
+    def is_run_tag_exists(self) -> bool:
+        return True
 
 CreateRunWithTagsOutcome: TypeAlias = CreateRunWithTagsRunExists | CreateRunWithTagsRunCreated | CreateRunWithTagsRunTagExists
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class DeleteExperimentInput:
-    request_id: str
+    request_id: str = field(default_factory=lambda: str(__import__("uuid").uuid4()))
     experiment_id: Annotated[int, "u64"]
 
-DELETE_EXPERIMENT_PLAN_HASH: Final[str] = "544e96c1c5d4844ccbf936bdfa32d77e0e02cb94c14ed746ff1312a687ace94f"
+DELETE_EXPERIMENT_PLAN_HASH: Final[str] = "5ddfcefa2316be8c5cc14fdf133b6414a0fbfafe1487758909614c46adf590fa"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class DeleteExperimentExperimentDeleted:
     experiment: Experiment
     outcome: Literal["ExperimentDeleted"] = field(default="ExperimentDeleted", init=False)
 
+    def is_experiment_deleted(self) -> bool:
+        return True
+
+    def is_experiment_missing(self) -> bool:
+        return False
+
 @dataclass(frozen=True, slots=True, kw_only=True)
 class DeleteExperimentExperimentMissing:
     outcome: Literal["ExperimentMissing"] = field(default="ExperimentMissing", init=False)
+
+    def is_experiment_deleted(self) -> bool:
+        return False
+
+    def is_experiment_missing(self) -> bool:
+        return True
 
 DeleteExperimentOutcome: TypeAlias = DeleteExperimentExperimentDeleted | DeleteExperimentExperimentMissing
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class DeleteExperimentTagInput:
     tag_key: str
-    request_id: str
+    request_id: str = field(default_factory=lambda: str(__import__("uuid").uuid4()))
     packed_tags: bytes
     experiment_id: Annotated[int, "u64"]
     expected_revision: Annotated[int, "u64"]
 
-DELETE_EXPERIMENT_TAG_PLAN_HASH: Final[str] = "fef359652e213e5f9d231d4b9758cf32b1f405f58947cb577112f2e3c1c74355"
+DELETE_EXPERIMENT_TAG_PLAN_HASH: Final[str] = "368432aba0339100abe069b8a0e1d94aa751e486a35057fcbad93cde50a02306"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class DeleteExperimentTagExperimentStale:
     outcome: Literal["ExperimentStale"] = field(default="ExperimentStale", init=False)
+
+    def is_experiment_stale(self) -> bool:
+        return True
+
+    def is_experiment_missing(self) -> bool:
+        return False
+
+    def is_experiment_inactive(self) -> bool:
+        return False
+
+    def is_experiment_tag_deleted(self) -> bool:
+        return False
+
+    def is_experiment_tag_missing(self) -> bool:
+        return False
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class DeleteExperimentTagExperimentMissing:
     outcome: Literal["ExperimentMissing"] = field(default="ExperimentMissing", init=False)
 
+    def is_experiment_stale(self) -> bool:
+        return False
+
+    def is_experiment_missing(self) -> bool:
+        return True
+
+    def is_experiment_inactive(self) -> bool:
+        return False
+
+    def is_experiment_tag_deleted(self) -> bool:
+        return False
+
+    def is_experiment_tag_missing(self) -> bool:
+        return False
+
 @dataclass(frozen=True, slots=True, kw_only=True)
 class DeleteExperimentTagExperimentInactive:
     outcome: Literal["ExperimentInactive"] = field(default="ExperimentInactive", init=False)
+
+    def is_experiment_stale(self) -> bool:
+        return False
+
+    def is_experiment_missing(self) -> bool:
+        return False
+
+    def is_experiment_inactive(self) -> bool:
+        return True
+
+    def is_experiment_tag_deleted(self) -> bool:
+        return False
+
+    def is_experiment_tag_missing(self) -> bool:
+        return False
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class DeleteExperimentTagExperimentTagDeleted:
     experiment: Experiment
     outcome: Literal["ExperimentTagDeleted"] = field(default="ExperimentTagDeleted", init=False)
 
+    def is_experiment_stale(self) -> bool:
+        return False
+
+    def is_experiment_missing(self) -> bool:
+        return False
+
+    def is_experiment_inactive(self) -> bool:
+        return False
+
+    def is_experiment_tag_deleted(self) -> bool:
+        return True
+
+    def is_experiment_tag_missing(self) -> bool:
+        return False
+
 @dataclass(frozen=True, slots=True, kw_only=True)
 class DeleteExperimentTagExperimentTagMissing:
     outcome: Literal["ExperimentTagMissing"] = field(default="ExperimentTagMissing", init=False)
+
+    def is_experiment_stale(self) -> bool:
+        return False
+
+    def is_experiment_missing(self) -> bool:
+        return False
+
+    def is_experiment_inactive(self) -> bool:
+        return False
+
+    def is_experiment_tag_deleted(self) -> bool:
+        return False
+
+    def is_experiment_tag_missing(self) -> bool:
+        return True
 
 DeleteExperimentTagOutcome: TypeAlias = DeleteExperimentTagExperimentStale | DeleteExperimentTagExperimentMissing | DeleteExperimentTagExperimentInactive | DeleteExperimentTagExperimentTagDeleted | DeleteExperimentTagExperimentTagMissing
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class DeleteRunInput:
     run_id: str
-    request_id: str
+    request_id: str = field(default_factory=lambda: str(__import__("uuid").uuid4()))
     experiment_id: Annotated[int, "u64"]
 
-DELETE_RUN_PLAN_HASH: Final[str] = "137297c673fec969cb88960ae278e85271371efb21b856e570c5f27d70c0a58c"
+DELETE_RUN_PLAN_HASH: Final[str] = "8f33a426c7ae564a6ce67e1405f224078371126d6e2af54e6ffbf2ba85cf8c84"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class DeleteRunRunDeleted:
     run: Run
     outcome: Literal["RunDeleted"] = field(default="RunDeleted", init=False)
 
+    def is_run_deleted(self) -> bool:
+        return True
+
+    def is_run_missing(self) -> bool:
+        return False
+
 @dataclass(frozen=True, slots=True, kw_only=True)
 class DeleteRunRunMissing:
     outcome: Literal["RunMissing"] = field(default="RunMissing", init=False)
+
+    def is_run_deleted(self) -> bool:
+        return False
+
+    def is_run_missing(self) -> bool:
+        return True
 
 DeleteRunOutcome: TypeAlias = DeleteRunRunDeleted | DeleteRunRunMissing
 
@@ -763,89 +1196,200 @@ DeleteRunOutcome: TypeAlias = DeleteRunRunDeleted | DeleteRunRunMissing
 class LogBatchInput:
     items: tuple[RunDatum, ...]
     run_id: str
-    request_id: str
+    request_id: str = field(default_factory=lambda: str(__import__("uuid").uuid4()))
     packed_tags: bytes
     experiment_id: Annotated[int, "u64"]
     packed_params: bytes
     expected_revision: Annotated[int, "u64"]
     packed_latest_metrics: bytes
 
-LOG_BATCH_PLAN_HASH: Final[str] = "f05f77500d23510a29cefa3374bd0984eb24554e823c0b71d90b371c14c60743"
+LOG_BATCH_PLAN_HASH: Final[str] = "b3b592da5d7a13f4b68f7d63e965b38f526198662ac5407c1361ca4419b8b613"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class LogBatchRunStale:
     outcome: Literal["RunStale"] = field(default="RunStale", init=False)
 
+    def is_run_stale(self) -> bool:
+        return True
+
+    def is_run_missing(self) -> bool:
+        return False
+
+    def is_batch_logged(self) -> bool:
+        return False
+
+    def is_run_inactive(self) -> bool:
+        return False
+
+    def is_param_conflict(self) -> bool:
+        return False
+
 @dataclass(frozen=True, slots=True, kw_only=True)
 class LogBatchRunMissing:
     outcome: Literal["RunMissing"] = field(default="RunMissing", init=False)
+
+    def is_run_stale(self) -> bool:
+        return False
+
+    def is_run_missing(self) -> bool:
+        return True
+
+    def is_batch_logged(self) -> bool:
+        return False
+
+    def is_run_inactive(self) -> bool:
+        return False
+
+    def is_param_conflict(self) -> bool:
+        return False
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class LogBatchBatchLogged:
     run: Run
     outcome: Literal["BatchLogged"] = field(default="BatchLogged", init=False)
 
+    def is_run_stale(self) -> bool:
+        return False
+
+    def is_run_missing(self) -> bool:
+        return False
+
+    def is_batch_logged(self) -> bool:
+        return True
+
+    def is_run_inactive(self) -> bool:
+        return False
+
+    def is_param_conflict(self) -> bool:
+        return False
+
 @dataclass(frozen=True, slots=True, kw_only=True)
 class LogBatchRunInactive:
     outcome: Literal["RunInactive"] = field(default="RunInactive", init=False)
+
+    def is_run_stale(self) -> bool:
+        return False
+
+    def is_run_missing(self) -> bool:
+        return False
+
+    def is_batch_logged(self) -> bool:
+        return False
+
+    def is_run_inactive(self) -> bool:
+        return True
+
+    def is_param_conflict(self) -> bool:
+        return False
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class LogBatchParamConflict:
     param_key: str
     outcome: Literal["ParamConflict"] = field(default="ParamConflict", init=False)
 
+    def is_run_stale(self) -> bool:
+        return False
+
+    def is_run_missing(self) -> bool:
+        return False
+
+    def is_batch_logged(self) -> bool:
+        return False
+
+    def is_run_inactive(self) -> bool:
+        return False
+
+    def is_param_conflict(self) -> bool:
+        return True
+
 LogBatchOutcome: TypeAlias = LogBatchRunStale | LogBatchRunMissing | LogBatchBatchLogged | LogBatchRunInactive | LogBatchParamConflict
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class RenameExperimentInput:
     name: str
-    request_id: str
+    request_id: str = field(default_factory=lambda: str(__import__("uuid").uuid4()))
     name_digest: bytes
     experiment_id: Annotated[int, "u64"]
 
-RENAME_EXPERIMENT_PLAN_HASH: Final[str] = "c2d3a34650891af81c766c795d8c6e62d778d6ef4893746cc672ebeb591a7141"
+RENAME_EXPERIMENT_PLAN_HASH: Final[str] = "aaebf9ffcd2b3b7bca412876d75bed26668f17a8bb6c49bdc7ba2aff272346b2"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class RenameExperimentExperimentMissing:
     outcome: Literal["ExperimentMissing"] = field(default="ExperimentMissing", init=False)
+
+    def is_experiment_missing(self) -> bool:
+        return True
+
+    def is_experiment_renamed(self) -> bool:
+        return False
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class RenameExperimentExperimentRenamed:
     experiment: Experiment
     outcome: Literal["ExperimentRenamed"] = field(default="ExperimentRenamed", init=False)
 
+    def is_experiment_missing(self) -> bool:
+        return False
+
+    def is_experiment_renamed(self) -> bool:
+        return True
+
 RenameExperimentOutcome: TypeAlias = RenameExperimentExperimentMissing | RenameExperimentExperimentRenamed
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class RestoreExperimentInput:
-    request_id: str
+    request_id: str = field(default_factory=lambda: str(__import__("uuid").uuid4()))
     experiment_id: Annotated[int, "u64"]
 
-RESTORE_EXPERIMENT_PLAN_HASH: Final[str] = "134ecd8eab3981e634aad0ac67b6004379624208a910f2e58fb27a5669ce1575"
+RESTORE_EXPERIMENT_PLAN_HASH: Final[str] = "f1b9c3170282e0c80ccc91c5705fcde89e969588b4966048140e596012f07f73"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class RestoreExperimentExperimentMissing:
     outcome: Literal["ExperimentMissing"] = field(default="ExperimentMissing", init=False)
+
+    def is_experiment_missing(self) -> bool:
+        return True
+
+    def is_experiment_restored(self) -> bool:
+        return False
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class RestoreExperimentExperimentRestored:
     experiment: Experiment
     outcome: Literal["ExperimentRestored"] = field(default="ExperimentRestored", init=False)
 
+    def is_experiment_missing(self) -> bool:
+        return False
+
+    def is_experiment_restored(self) -> bool:
+        return True
+
 RestoreExperimentOutcome: TypeAlias = RestoreExperimentExperimentMissing | RestoreExperimentExperimentRestored
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class RestoreRunInput:
     run_id: str
-    request_id: str
+    request_id: str = field(default_factory=lambda: str(__import__("uuid").uuid4()))
     experiment_id: Annotated[int, "u64"]
 
-RESTORE_RUN_PLAN_HASH: Final[str] = "01a55264ef29896facb78533359e95dafc54d8f050b6a517234a4880f04a83d4"
+RESTORE_RUN_PLAN_HASH: Final[str] = "5f03cd8e89d3b9ef259b4b4cee485c4dc4849dc5f1b19102cd6809fee3201fb2"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class RestoreRunRunMissing:
     outcome: Literal["RunMissing"] = field(default="RunMissing", init=False)
+
+    def is_run_missing(self) -> bool:
+        return True
+
+    def is_run_restored(self) -> bool:
+        return False
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class RestoreRunRunRestored:
     run: Run
     outcome: Literal["RunRestored"] = field(default="RunRestored", init=False)
+
+    def is_run_missing(self) -> bool:
+        return False
+
+    def is_run_restored(self) -> bool:
+        return True
 
 RestoreRunOutcome: TypeAlias = RestoreRunRunMissing | RestoreRunRunRestored
 
@@ -853,29 +1397,77 @@ RestoreRunOutcome: TypeAlias = RestoreRunRunMissing | RestoreRunRunRestored
 class SetExperimentTagInput:
     value: str
     tag_key: str
-    request_id: str
+    request_id: str = field(default_factory=lambda: str(__import__("uuid").uuid4()))
     packed_tags: bytes
     value_digest: bytes
     experiment_id: Annotated[int, "u64"]
     expected_revision: Annotated[int, "u64"]
 
-SET_EXPERIMENT_TAG_PLAN_HASH: Final[str] = "d6f238cb7bae735665ae5f8c6a9d681ecf2ea800fca04745b398d2c1be370d30"
+SET_EXPERIMENT_TAG_PLAN_HASH: Final[str] = "152f92a240395feb14effe3f19cf6786ac070fc02b0491057826f7aba562f8e6"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SetExperimentTagExperimentStale:
     outcome: Literal["ExperimentStale"] = field(default="ExperimentStale", init=False)
+
+    def is_experiment_stale(self) -> bool:
+        return True
+
+    def is_experiment_tag_set(self) -> bool:
+        return False
+
+    def is_experiment_missing(self) -> bool:
+        return False
+
+    def is_experiment_inactive(self) -> bool:
+        return False
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SetExperimentTagExperimentTagSet:
     experiment: Experiment
     outcome: Literal["ExperimentTagSet"] = field(default="ExperimentTagSet", init=False)
 
+    def is_experiment_stale(self) -> bool:
+        return False
+
+    def is_experiment_tag_set(self) -> bool:
+        return True
+
+    def is_experiment_missing(self) -> bool:
+        return False
+
+    def is_experiment_inactive(self) -> bool:
+        return False
+
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SetExperimentTagExperimentMissing:
     outcome: Literal["ExperimentMissing"] = field(default="ExperimentMissing", init=False)
 
+    def is_experiment_stale(self) -> bool:
+        return False
+
+    def is_experiment_tag_set(self) -> bool:
+        return False
+
+    def is_experiment_missing(self) -> bool:
+        return True
+
+    def is_experiment_inactive(self) -> bool:
+        return False
+
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SetExperimentTagExperimentInactive:
     outcome: Literal["ExperimentInactive"] = field(default="ExperimentInactive", init=False)
+
+    def is_experiment_stale(self) -> bool:
+        return False
+
+    def is_experiment_tag_set(self) -> bool:
+        return False
+
+    def is_experiment_missing(self) -> bool:
+        return False
+
+    def is_experiment_inactive(self) -> bool:
+        return True
 
 SetExperimentTagOutcome: TypeAlias = SetExperimentTagExperimentStale | SetExperimentTagExperimentTagSet | SetExperimentTagExperimentMissing | SetExperimentTagExperimentInactive
 
@@ -885,30 +1477,78 @@ class UpdateRunInfoInput:
     status: RunStatus
     end_time: Annotated[int, "i64"] | None
     run_name: str
-    request_id: str
+    request_id: str = field(default_factory=lambda: str(__import__("uuid").uuid4()))
     packed_tags: bytes
     experiment_id: Annotated[int, "u64"]
     run_name_digest: bytes
     expected_revision: Annotated[int, "u64"]
     run_name_tag_value: str
 
-UPDATE_RUN_INFO_PLAN_HASH: Final[str] = "ca64ac7a88b3c7522bfc13713aa82eb5eb80d5a259d6a5a68a36954800cad9d9"
+UPDATE_RUN_INFO_PLAN_HASH: Final[str] = "b217c21392a67c6b6a10ebb49d68c67e203ed18feee89157bb621f2e03735e0d"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class UpdateRunInfoRunStale:
     outcome: Literal["RunStale"] = field(default="RunStale", init=False)
 
+    def is_run_stale(self) -> bool:
+        return True
+
+    def is_run_missing(self) -> bool:
+        return False
+
+    def is_run_updated(self) -> bool:
+        return False
+
+    def is_run_inactive(self) -> bool:
+        return False
+
 @dataclass(frozen=True, slots=True, kw_only=True)
 class UpdateRunInfoRunMissing:
     outcome: Literal["RunMissing"] = field(default="RunMissing", init=False)
+
+    def is_run_stale(self) -> bool:
+        return False
+
+    def is_run_missing(self) -> bool:
+        return True
+
+    def is_run_updated(self) -> bool:
+        return False
+
+    def is_run_inactive(self) -> bool:
+        return False
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class UpdateRunInfoRunUpdated:
     run: Run
     outcome: Literal["RunUpdated"] = field(default="RunUpdated", init=False)
 
+    def is_run_stale(self) -> bool:
+        return False
+
+    def is_run_missing(self) -> bool:
+        return False
+
+    def is_run_updated(self) -> bool:
+        return True
+
+    def is_run_inactive(self) -> bool:
+        return False
+
 @dataclass(frozen=True, slots=True, kw_only=True)
 class UpdateRunInfoRunInactive:
     outcome: Literal["RunInactive"] = field(default="RunInactive", init=False)
+
+    def is_run_stale(self) -> bool:
+        return False
+
+    def is_run_missing(self) -> bool:
+        return False
+
+    def is_run_updated(self) -> bool:
+        return False
+
+    def is_run_inactive(self) -> bool:
+        return True
 
 UpdateRunInfoOutcome: TypeAlias = UpdateRunInfoRunStale | UpdateRunInfoRunMissing | UpdateRunInfoRunUpdated | UpdateRunInfoRunInactive
 
@@ -923,22 +1563,67 @@ VALIDATE_RUN_ACTIVE_PLAN_HASH: Final[str] = "750505d7e9b31dd76486b7772f5e48f5e08
 class ValidateRunActiveRunActive:
     outcome: Literal["RunActive"] = field(default="RunActive", init=False)
 
+    def is_run_active(self) -> bool:
+        return True
+
+    def is_run_missing(self) -> bool:
+        return False
+
+    def is_run_inactive(self) -> bool:
+        return False
+
 @dataclass(frozen=True, slots=True, kw_only=True)
 class ValidateRunActiveRunMissing:
     outcome: Literal["RunMissing"] = field(default="RunMissing", init=False)
+
+    def is_run_active(self) -> bool:
+        return False
+
+    def is_run_missing(self) -> bool:
+        return True
+
+    def is_run_inactive(self) -> bool:
+        return False
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class ValidateRunActiveRunInactive:
     outcome: Literal["RunInactive"] = field(default="RunInactive", init=False)
 
+    def is_run_active(self) -> bool:
+        return False
+
+    def is_run_missing(self) -> bool:
+        return False
+
+    def is_run_inactive(self) -> bool:
+        return True
+
 ValidateRunActiveOutcome: TypeAlias = ValidateRunActiveRunActive | ValidateRunActiveRunMissing | ValidateRunActiveRunInactive
 
 class RiffDBMLflowClient:
-    def __init__(self, transport: SyncApplicationTransport, command_attempts: AttemptBudget) -> None:
+    def __init__(self, transport: SyncApplicationTransport, command_attempts: AttemptBudget = AttemptBudget(3), *, read_after_commit: int | None = None, track_causal_writes: bool = True) -> None:
         self._transport = transport
         self._command_attempts = command_attempts
+        self._read_after_commit = read_after_commit
+        self._track_causal_writes = track_causal_writes
+
+    @classmethod
+    def from_transport(cls, transport: SyncApplicationTransport, command_attempts: AttemptBudget = AttemptBudget(3)) -> RiffDBMLflowClient:
+        return cls(transport, command_attempts)
+
+    def with_read_after_commit(self, commit_sequence: int | None) -> RiffDBMLflowClient:
+        return RiffDBMLflowClient(self._transport, self._command_attempts, read_after_commit=commit_sequence, track_causal_writes=self._track_causal_writes)
+
+    def causal_session(self, initial_commit_sequence: int | None = None) -> RiffDBMLflowClient:
+        return RiffDBMLflowClient(self._transport, self._command_attempts, read_after_commit=initial_commit_sequence if initial_commit_sequence is not None else self._read_after_commit, track_causal_writes=True)
+
+    @property
+    def last_commit_sequence(self) -> int | None:
+        return self._read_after_commit
 
     def get_experiment(self, parameters: GetExperimentParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetExperimentResult]:
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
         raw = self._transport._execute_named_query(
             contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
             contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
@@ -951,7 +1636,12 @@ class RiffDBMLflowClient:
         }
         return raw._map_value(lambda value: decode_variant(outcomes, value))
 
+    def get_experiment_after_commit(self, parameters: GetExperimentParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetExperimentResult]:
+        return self.get_experiment(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
     def get_experiment_by_name(self, parameters: GetExperimentByNameParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetExperimentByNameResult]:
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
         raw = self._transport._execute_named_query(
             contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
             contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
@@ -960,8 +1650,12 @@ class RiffDBMLflowClient:
         )
         outcomes = {
             "Found": GetExperimentByNameFound,
+            "Missing": GetExperimentByNameMissing,
         }
         return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    def get_experiment_by_name_after_commit(self, parameters: GetExperimentByNameParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetExperimentByNameResult]:
+        return self.get_experiment_by_name(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
 
     def get_metric_history(self, parameters: GetMetricHistoryParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetMetricHistoryResult]:
         if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 499):
@@ -973,6 +1667,8 @@ class RiffDBMLflowClient:
                 raise ValueError("generated cursor conflicts with query options")
             options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
         encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
         raw = self._transport._execute_named_query(
             contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
             contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
@@ -985,7 +1681,28 @@ class RiffDBMLflowClient:
         }
         return raw._map_value(lambda value: decode_variant(outcomes, value))
 
+    def get_metric_history_after_commit(self, parameters: GetMetricHistoryParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetMetricHistoryResult]:
+        return self.get_metric_history(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    def get_metric_history_pages(self, parameters: GetMetricHistoryParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[GetMetricHistoryResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[GetMetricHistoryResult]] = []
+        for _ in range(max_pages):
+            page_parameters = GetMetricHistoryParams(experiment_id=parameters.experiment_id, item_key=parameters.item_key, kind=parameters.kind, value_digest=parameters.value_digest, limit=parameters.limit, after=None)
+            page = self.get_metric_history(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
+
     def get_run(self, parameters: GetRunParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetRunResult]:
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
         raw = self._transport._execute_named_query(
             contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
             contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
@@ -998,6 +1715,9 @@ class RiffDBMLflowClient:
         }
         return raw._map_value(lambda value: decode_variant(outcomes, value))
 
+    def get_run_after_commit(self, parameters: GetRunParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetRunResult]:
+        return self.get_run(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
     def search_experiments(self, parameters: SearchExperimentsParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsResult]:
         if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
             raise ValueError("limit must be an integer from 1 through 4")
@@ -1008,6 +1728,8 @@ class RiffDBMLflowClient:
                 raise ValueError("generated cursor conflicts with query options")
             options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
         encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
         raw = self._transport._execute_named_query(
             contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
             contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
@@ -1020,6 +1742,25 @@ class RiffDBMLflowClient:
         }
         return raw._map_value(lambda value: decode_variant(outcomes, value))
 
+    def search_experiments_after_commit(self, parameters: SearchExperimentsParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsResult]:
+        return self.search_experiments(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    def search_experiments_pages(self, parameters: SearchExperimentsParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[SearchExperimentsResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[SearchExperimentsResult]] = []
+        for _ in range(max_pages):
+            page_parameters = SearchExperimentsParams(scope=parameters.scope, lifecycle_stages=parameters.lifecycle_stages, order=parameters.order, limit=parameters.limit, after=None)
+            page = self.search_experiments(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
+
     def search_experiments_by_name(self, parameters: SearchExperimentsByNameParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByNameResult]:
         if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
             raise ValueError("limit must be an integer from 1 through 4")
@@ -1030,6 +1771,8 @@ class RiffDBMLflowClient:
                 raise ValueError("generated cursor conflicts with query options")
             options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
         encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
         raw = self._transport._execute_named_query(
             contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
             contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
@@ -1042,6 +1785,25 @@ class RiffDBMLflowClient:
         }
         return raw._map_value(lambda value: decode_variant(outcomes, value))
 
+    def search_experiments_by_name_after_commit(self, parameters: SearchExperimentsByNameParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByNameResult]:
+        return self.search_experiments_by_name(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    def search_experiments_by_name_pages(self, parameters: SearchExperimentsByNameParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[SearchExperimentsByNameResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[SearchExperimentsByNameResult]] = []
+        for _ in range(max_pages):
+            page_parameters = SearchExperimentsByNameParams(scope=parameters.scope, name_digest=parameters.name_digest, lifecycle_stages=parameters.lifecycle_stages, order=parameters.order, limit=parameters.limit, after=None)
+            page = self.search_experiments_by_name(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
+
     def search_experiments_by_name_ilike(self, parameters: SearchExperimentsByNameILikeParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByNameILikeResult]:
         if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
             raise ValueError("limit must be an integer from 1 through 4")
@@ -1052,6 +1814,8 @@ class RiffDBMLflowClient:
                 raise ValueError("generated cursor conflicts with query options")
             options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
         encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
         raw = self._transport._execute_named_query(
             contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
             contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
@@ -1064,6 +1828,25 @@ class RiffDBMLflowClient:
         }
         return raw._map_value(lambda value: decode_variant(outcomes, value))
 
+    def search_experiments_by_name_ilike_after_commit(self, parameters: SearchExperimentsByNameILikeParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByNameILikeResult]:
+        return self.search_experiments_by_name_ilike(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    def search_experiments_by_name_ilike_pages(self, parameters: SearchExperimentsByNameILikeParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[SearchExperimentsByNameILikeResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[SearchExperimentsByNameILikeResult]] = []
+        for _ in range(max_pages):
+            page_parameters = SearchExperimentsByNameILikeParams(scope=parameters.scope, pattern=parameters.pattern, lifecycle_stages=parameters.lifecycle_stages, order=parameters.order, limit=parameters.limit, after=None)
+            page = self.search_experiments_by_name_ilike(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
+
     def search_experiments_by_name_like(self, parameters: SearchExperimentsByNameLikeParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByNameLikeResult]:
         if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
             raise ValueError("limit must be an integer from 1 through 4")
@@ -1074,6 +1857,8 @@ class RiffDBMLflowClient:
                 raise ValueError("generated cursor conflicts with query options")
             options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
         encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
         raw = self._transport._execute_named_query(
             contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
             contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
@@ -1086,6 +1871,25 @@ class RiffDBMLflowClient:
         }
         return raw._map_value(lambda value: decode_variant(outcomes, value))
 
+    def search_experiments_by_name_like_after_commit(self, parameters: SearchExperimentsByNameLikeParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByNameLikeResult]:
+        return self.search_experiments_by_name_like(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    def search_experiments_by_name_like_pages(self, parameters: SearchExperimentsByNameLikeParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[SearchExperimentsByNameLikeResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[SearchExperimentsByNameLikeResult]] = []
+        for _ in range(max_pages):
+            page_parameters = SearchExperimentsByNameLikeParams(scope=parameters.scope, pattern=parameters.pattern, lifecycle_stages=parameters.lifecycle_stages, order=parameters.order, limit=parameters.limit, after=None)
+            page = self.search_experiments_by_name_like(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
+
     def search_experiments_by_tag(self, parameters: SearchExperimentsByTagParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByTagResult]:
         if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
             raise ValueError("limit must be an integer from 1 through 4")
@@ -1096,6 +1900,8 @@ class RiffDBMLflowClient:
                 raise ValueError("generated cursor conflicts with query options")
             options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
         encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
         raw = self._transport._execute_named_query(
             contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
             contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
@@ -1108,6 +1914,25 @@ class RiffDBMLflowClient:
         }
         return raw._map_value(lambda value: decode_variant(outcomes, value))
 
+    def search_experiments_by_tag_after_commit(self, parameters: SearchExperimentsByTagParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByTagResult]:
+        return self.search_experiments_by_tag(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    def search_experiments_by_tag_pages(self, parameters: SearchExperimentsByTagParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[SearchExperimentsByTagResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[SearchExperimentsByTagResult]] = []
+        for _ in range(max_pages):
+            page_parameters = SearchExperimentsByTagParams(scope=parameters.scope, tag_key=parameters.tag_key, value_digest=parameters.value_digest, lifecycle_stages=parameters.lifecycle_stages, order=parameters.order, limit=parameters.limit, after=None)
+            page = self.search_experiments_by_tag(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
+
     def search_experiments_by_tag_ilike(self, parameters: SearchExperimentsByTagILikeParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByTagILikeResult]:
         if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
             raise ValueError("limit must be an integer from 1 through 4")
@@ -1118,6 +1943,8 @@ class RiffDBMLflowClient:
                 raise ValueError("generated cursor conflicts with query options")
             options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
         encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
         raw = self._transport._execute_named_query(
             contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
             contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
@@ -1130,6 +1957,25 @@ class RiffDBMLflowClient:
         }
         return raw._map_value(lambda value: decode_variant(outcomes, value))
 
+    def search_experiments_by_tag_ilike_after_commit(self, parameters: SearchExperimentsByTagILikeParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByTagILikeResult]:
+        return self.search_experiments_by_tag_ilike(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    def search_experiments_by_tag_ilike_pages(self, parameters: SearchExperimentsByTagILikeParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[SearchExperimentsByTagILikeResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[SearchExperimentsByTagILikeResult]] = []
+        for _ in range(max_pages):
+            page_parameters = SearchExperimentsByTagILikeParams(scope=parameters.scope, tag_key=parameters.tag_key, pattern=parameters.pattern, lifecycle_stages=parameters.lifecycle_stages, order=parameters.order, limit=parameters.limit, after=None)
+            page = self.search_experiments_by_tag_ilike(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
+
     def search_experiments_by_tag_like(self, parameters: SearchExperimentsByTagLikeParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByTagLikeResult]:
         if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
             raise ValueError("limit must be an integer from 1 through 4")
@@ -1140,6 +1986,8 @@ class RiffDBMLflowClient:
                 raise ValueError("generated cursor conflicts with query options")
             options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
         encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
         raw = self._transport._execute_named_query(
             contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
             contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
@@ -1152,6 +2000,25 @@ class RiffDBMLflowClient:
         }
         return raw._map_value(lambda value: decode_variant(outcomes, value))
 
+    def search_experiments_by_tag_like_after_commit(self, parameters: SearchExperimentsByTagLikeParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByTagLikeResult]:
+        return self.search_experiments_by_tag_like(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    def search_experiments_by_tag_like_pages(self, parameters: SearchExperimentsByTagLikeParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[SearchExperimentsByTagLikeResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[SearchExperimentsByTagLikeResult]] = []
+        for _ in range(max_pages):
+            page_parameters = SearchExperimentsByTagLikeParams(scope=parameters.scope, tag_key=parameters.tag_key, pattern=parameters.pattern, lifecycle_stages=parameters.lifecycle_stages, order=parameters.order, limit=parameters.limit, after=None)
+            page = self.search_experiments_by_tag_like(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
+
     def search_experiments_by_two_tags(self, parameters: SearchExperimentsByTwoTagsParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByTwoTagsResult]:
         if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
             raise ValueError("limit must be an integer from 1 through 4")
@@ -1162,6 +2029,8 @@ class RiffDBMLflowClient:
                 raise ValueError("generated cursor conflicts with query options")
             options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
         encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
         raw = self._transport._execute_named_query(
             contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
             contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
@@ -1174,6 +2043,25 @@ class RiffDBMLflowClient:
         }
         return raw._map_value(lambda value: decode_variant(outcomes, value))
 
+    def search_experiments_by_two_tags_after_commit(self, parameters: SearchExperimentsByTwoTagsParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByTwoTagsResult]:
+        return self.search_experiments_by_two_tags(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    def search_experiments_by_two_tags_pages(self, parameters: SearchExperimentsByTwoTagsParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[SearchExperimentsByTwoTagsResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[SearchExperimentsByTwoTagsResult]] = []
+        for _ in range(max_pages):
+            page_parameters = SearchExperimentsByTwoTagsParams(scope=parameters.scope, first_tag_key=parameters.first_tag_key, first_value_digest=parameters.first_value_digest, second_tag_key=parameters.second_tag_key, second_value_digest=parameters.second_value_digest, lifecycle_stages=parameters.lifecycle_stages, order=parameters.order, limit=parameters.limit, after=None)
+            page = self.search_experiments_by_two_tags(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
+
     def search_runs(self, parameters: SearchRunsParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchRunsResult]:
         if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 2):
             raise ValueError("limit must be an integer from 1 through 2")
@@ -1184,6 +2072,8 @@ class RiffDBMLflowClient:
                 raise ValueError("generated cursor conflicts with query options")
             options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
         encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
         raw = self._transport._execute_named_query(
             contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
             contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
@@ -1196,6 +2086,25 @@ class RiffDBMLflowClient:
         }
         return raw._map_value(lambda value: decode_variant(outcomes, value))
 
+    def search_runs_after_commit(self, parameters: SearchRunsParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchRunsResult]:
+        return self.search_runs(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    def search_runs_pages(self, parameters: SearchRunsParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[SearchRunsResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[SearchRunsResult]] = []
+        for _ in range(max_pages):
+            page_parameters = SearchRunsParams(experiment_ids=parameters.experiment_ids, limit=parameters.limit, after=None)
+            page = self.search_runs(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
+
     def search_runs_by_lifecycle(self, parameters: SearchRunsByLifecycleParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchRunsByLifecycleResult]:
         if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 2):
             raise ValueError("limit must be an integer from 1 through 2")
@@ -1206,6 +2115,8 @@ class RiffDBMLflowClient:
                 raise ValueError("generated cursor conflicts with query options")
             options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
         encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
         raw = self._transport._execute_named_query(
             contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
             contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
@@ -1218,6 +2129,25 @@ class RiffDBMLflowClient:
         }
         return raw._map_value(lambda value: decode_variant(outcomes, value))
 
+    def search_runs_by_lifecycle_after_commit(self, parameters: SearchRunsByLifecycleParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchRunsByLifecycleResult]:
+        return self.search_runs_by_lifecycle(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    def search_runs_by_lifecycle_pages(self, parameters: SearchRunsByLifecycleParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[SearchRunsByLifecycleResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[SearchRunsByLifecycleResult]] = []
+        for _ in range(max_pages):
+            page_parameters = SearchRunsByLifecycleParams(experiment_ids=parameters.experiment_ids, lifecycle_stage=parameters.lifecycle_stage, limit=parameters.limit, after=None)
+            page = self.search_runs_by_lifecycle(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
+
     def create_experiment(self, input: CreateExperimentInput) -> TypedCommandResult[CreateExperimentOutcome]:
         raw = self._transport._execute_command(
             contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
@@ -1228,7 +2158,10 @@ class RiffDBMLflowClient:
             "ExperimentExists": CreateExperimentExperimentExists,
             "ExperimentCreated": CreateExperimentExperimentCreated,
         }
-        return raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        result: TypedCommandResult[CreateExperimentOutcome] = raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        if self._track_causal_writes and result.commit_sequence is not None and result.commit_sequence > 0:
+            self._read_after_commit = result.commit_sequence if self._read_after_commit is None or result.commit_sequence > self._read_after_commit else self._read_after_commit
+        return result
 
     def create_experiment_batch(
         self, inputs: Sequence[CreateExperimentInput], options: CommandBatchOptions,
@@ -1261,7 +2194,10 @@ class RiffDBMLflowClient:
             "ExperimentCreated": CreateExperimentWithTagsExperimentCreated,
             "ExperimentTagExists": CreateExperimentWithTagsExperimentTagExists,
         }
-        return raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        result: TypedCommandResult[CreateExperimentWithTagsOutcome] = raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        if self._track_causal_writes and result.commit_sequence is not None and result.commit_sequence > 0:
+            self._read_after_commit = result.commit_sequence if self._read_after_commit is None or result.commit_sequence > self._read_after_commit else self._read_after_commit
+        return result
 
     def create_experiment_with_tags_batch(
         self, inputs: Sequence[CreateExperimentWithTagsInput], options: CommandBatchOptions,
@@ -1295,7 +2231,10 @@ class RiffDBMLflowClient:
             "RunExists": CreateRunRunExists,
             "RunCreated": CreateRunRunCreated,
         }
-        return raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        result: TypedCommandResult[CreateRunOutcome] = raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        if self._track_causal_writes and result.commit_sequence is not None and result.commit_sequence > 0:
+            self._read_after_commit = result.commit_sequence if self._read_after_commit is None or result.commit_sequence > self._read_after_commit else self._read_after_commit
+        return result
 
     def create_run_batch(
         self, inputs: Sequence[CreateRunInput], options: CommandBatchOptions,
@@ -1338,7 +2277,10 @@ class RiffDBMLflowClient:
             "RunCreated": CreateRunWithTagsRunCreated,
             "RunTagExists": CreateRunWithTagsRunTagExists,
         }
-        return raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        result: TypedCommandResult[CreateRunWithTagsOutcome] = raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        if self._track_causal_writes and result.commit_sequence is not None and result.commit_sequence > 0:
+            self._read_after_commit = result.commit_sequence if self._read_after_commit is None or result.commit_sequence > self._read_after_commit else self._read_after_commit
+        return result
 
     def create_run_with_tags_batch(
         self, inputs: Sequence[CreateRunWithTagsInput], options: CommandBatchOptions,
@@ -1382,7 +2324,10 @@ class RiffDBMLflowClient:
             "ExperimentDeleted": DeleteExperimentExperimentDeleted,
             "ExperimentMissing": DeleteExperimentExperimentMissing,
         }
-        return raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        result: TypedCommandResult[DeleteExperimentOutcome] = raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        if self._track_causal_writes and result.commit_sequence is not None and result.commit_sequence > 0:
+            self._read_after_commit = result.commit_sequence if self._read_after_commit is None or result.commit_sequence > self._read_after_commit else self._read_after_commit
+        return result
 
     def delete_experiment_batch(
         self, inputs: Sequence[DeleteExperimentInput], options: CommandBatchOptions,
@@ -1403,7 +2348,10 @@ class RiffDBMLflowClient:
             "ExperimentTagDeleted": DeleteExperimentTagExperimentTagDeleted,
             "ExperimentTagMissing": DeleteExperimentTagExperimentTagMissing,
         }
-        return raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        result: TypedCommandResult[DeleteExperimentTagOutcome] = raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        if self._track_causal_writes and result.commit_sequence is not None and result.commit_sequence > 0:
+            self._read_after_commit = result.commit_sequence if self._read_after_commit is None or result.commit_sequence > self._read_after_commit else self._read_after_commit
+        return result
 
     def delete_experiment_tag_batch(
         self, inputs: Sequence[DeleteExperimentTagInput], options: CommandBatchOptions,
@@ -1421,7 +2369,10 @@ class RiffDBMLflowClient:
             "RunDeleted": DeleteRunRunDeleted,
             "RunMissing": DeleteRunRunMissing,
         }
-        return raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        result: TypedCommandResult[DeleteRunOutcome] = raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        if self._track_causal_writes and result.commit_sequence is not None and result.commit_sequence > 0:
+            self._read_after_commit = result.commit_sequence if self._read_after_commit is None or result.commit_sequence > self._read_after_commit else self._read_after_commit
+        return result
 
     def delete_run_batch(
         self, inputs: Sequence[DeleteRunInput], options: CommandBatchOptions,
@@ -1466,7 +2417,10 @@ class RiffDBMLflowClient:
             "RunInactive": LogBatchRunInactive,
             "ParamConflict": LogBatchParamConflict,
         }
-        return raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        result: TypedCommandResult[LogBatchOutcome] = raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        if self._track_causal_writes and result.commit_sequence is not None and result.commit_sequence > 0:
+            self._read_after_commit = result.commit_sequence if self._read_after_commit is None or result.commit_sequence > self._read_after_commit else self._read_after_commit
+        return result
 
     def log_batch_batch(
         self, inputs: Sequence[LogBatchInput], options: CommandBatchOptions,
@@ -1510,7 +2464,10 @@ class RiffDBMLflowClient:
             "ExperimentMissing": RenameExperimentExperimentMissing,
             "ExperimentRenamed": RenameExperimentExperimentRenamed,
         }
-        return raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        result: TypedCommandResult[RenameExperimentOutcome] = raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        if self._track_causal_writes and result.commit_sequence is not None and result.commit_sequence > 0:
+            self._read_after_commit = result.commit_sequence if self._read_after_commit is None or result.commit_sequence > self._read_after_commit else self._read_after_commit
+        return result
 
     def rename_experiment_batch(
         self, inputs: Sequence[RenameExperimentInput], options: CommandBatchOptions,
@@ -1528,7 +2485,10 @@ class RiffDBMLflowClient:
             "ExperimentMissing": RestoreExperimentExperimentMissing,
             "ExperimentRestored": RestoreExperimentExperimentRestored,
         }
-        return raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        result: TypedCommandResult[RestoreExperimentOutcome] = raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        if self._track_causal_writes and result.commit_sequence is not None and result.commit_sequence > 0:
+            self._read_after_commit = result.commit_sequence if self._read_after_commit is None or result.commit_sequence > self._read_after_commit else self._read_after_commit
+        return result
 
     def restore_experiment_batch(
         self, inputs: Sequence[RestoreExperimentInput], options: CommandBatchOptions,
@@ -1546,7 +2506,10 @@ class RiffDBMLflowClient:
             "RunMissing": RestoreRunRunMissing,
             "RunRestored": RestoreRunRunRestored,
         }
-        return raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        result: TypedCommandResult[RestoreRunOutcome] = raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        if self._track_causal_writes and result.commit_sequence is not None and result.commit_sequence > 0:
+            self._read_after_commit = result.commit_sequence if self._read_after_commit is None or result.commit_sequence > self._read_after_commit else self._read_after_commit
+        return result
 
     def restore_run_batch(
         self, inputs: Sequence[RestoreRunInput], options: CommandBatchOptions,
@@ -1566,7 +2529,10 @@ class RiffDBMLflowClient:
             "ExperimentMissing": SetExperimentTagExperimentMissing,
             "ExperimentInactive": SetExperimentTagExperimentInactive,
         }
-        return raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        result: TypedCommandResult[SetExperimentTagOutcome] = raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        if self._track_causal_writes and result.commit_sequence is not None and result.commit_sequence > 0:
+            self._read_after_commit = result.commit_sequence if self._read_after_commit is None or result.commit_sequence > self._read_after_commit else self._read_after_commit
+        return result
 
     def set_experiment_tag_batch(
         self, inputs: Sequence[SetExperimentTagInput], options: CommandBatchOptions,
@@ -1586,7 +2552,10 @@ class RiffDBMLflowClient:
             "RunUpdated": UpdateRunInfoRunUpdated,
             "RunInactive": UpdateRunInfoRunInactive,
         }
-        return raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        result: TypedCommandResult[UpdateRunInfoOutcome] = raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        if self._track_causal_writes and result.commit_sequence is not None and result.commit_sequence > 0:
+            self._read_after_commit = result.commit_sequence if self._read_after_commit is None or result.commit_sequence > self._read_after_commit else self._read_after_commit
+        return result
 
     def update_run_info_batch(
         self, inputs: Sequence[UpdateRunInfoInput], options: CommandBatchOptions,
@@ -1605,7 +2574,10 @@ class RiffDBMLflowClient:
             "RunMissing": ValidateRunActiveRunMissing,
             "RunInactive": ValidateRunActiveRunInactive,
         }
-        return raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        result: TypedCommandResult[ValidateRunActiveOutcome] = raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        if self._track_causal_writes and result.commit_sequence is not None and result.commit_sequence > 0:
+            self._read_after_commit = result.commit_sequence if self._read_after_commit is None or result.commit_sequence > self._read_after_commit else self._read_after_commit
+        return result
 
     def validate_run_active_batch(
         self, inputs: Sequence[ValidateRunActiveInput], options: CommandBatchOptions,
@@ -1614,11 +2586,29 @@ class RiffDBMLflowClient:
         return self._transport._command_batch(inputs, options, self.validate_run_active, progress)
 
 class AsyncRiffDBMLflowClient:
-    def __init__(self, transport: AsyncApplicationTransport, command_attempts: AttemptBudget) -> None:
+    def __init__(self, transport: AsyncApplicationTransport, command_attempts: AttemptBudget = AttemptBudget(3), *, read_after_commit: int | None = None, track_causal_writes: bool = True) -> None:
         self._transport = transport
         self._command_attempts = command_attempts
+        self._read_after_commit = read_after_commit
+        self._track_causal_writes = track_causal_writes
+
+    @classmethod
+    def from_transport(cls, transport: AsyncApplicationTransport, command_attempts: AttemptBudget = AttemptBudget(3)) -> AsyncRiffDBMLflowClient:
+        return cls(transport, command_attempts)
+
+    def with_read_after_commit(self, commit_sequence: int | None) -> AsyncRiffDBMLflowClient:
+        return AsyncRiffDBMLflowClient(self._transport, self._command_attempts, read_after_commit=commit_sequence, track_causal_writes=self._track_causal_writes)
+
+    def causal_session(self, initial_commit_sequence: int | None = None) -> AsyncRiffDBMLflowClient:
+        return AsyncRiffDBMLflowClient(self._transport, self._command_attempts, read_after_commit=initial_commit_sequence if initial_commit_sequence is not None else self._read_after_commit, track_causal_writes=True)
+
+    @property
+    def last_commit_sequence(self) -> int | None:
+        return self._read_after_commit
 
     async def get_experiment(self, parameters: GetExperimentParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetExperimentResult]:
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
         raw = await self._transport._execute_named_query(
             contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
             contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
@@ -1631,7 +2621,12 @@ class AsyncRiffDBMLflowClient:
         }
         return raw._map_value(lambda value: decode_variant(outcomes, value))
 
+    async def get_experiment_after_commit(self, parameters: GetExperimentParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetExperimentResult]:
+        return await self.get_experiment(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
     async def get_experiment_by_name(self, parameters: GetExperimentByNameParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetExperimentByNameResult]:
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
         raw = await self._transport._execute_named_query(
             contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
             contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
@@ -1640,8 +2635,12 @@ class AsyncRiffDBMLflowClient:
         )
         outcomes = {
             "Found": GetExperimentByNameFound,
+            "Missing": GetExperimentByNameMissing,
         }
         return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    async def get_experiment_by_name_after_commit(self, parameters: GetExperimentByNameParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetExperimentByNameResult]:
+        return await self.get_experiment_by_name(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
 
     async def get_metric_history(self, parameters: GetMetricHistoryParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetMetricHistoryResult]:
         if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 499):
@@ -1653,6 +2652,8 @@ class AsyncRiffDBMLflowClient:
                 raise ValueError("generated cursor conflicts with query options")
             options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
         encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
         raw = await self._transport._execute_named_query(
             contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
             contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
@@ -1665,7 +2666,28 @@ class AsyncRiffDBMLflowClient:
         }
         return raw._map_value(lambda value: decode_variant(outcomes, value))
 
+    async def get_metric_history_after_commit(self, parameters: GetMetricHistoryParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetMetricHistoryResult]:
+        return await self.get_metric_history(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    async def get_metric_history_pages(self, parameters: GetMetricHistoryParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[GetMetricHistoryResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[GetMetricHistoryResult]] = []
+        for _ in range(max_pages):
+            page_parameters = GetMetricHistoryParams(experiment_id=parameters.experiment_id, item_key=parameters.item_key, kind=parameters.kind, value_digest=parameters.value_digest, limit=parameters.limit, after=None)
+            page = await self.get_metric_history(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
+
     async def get_run(self, parameters: GetRunParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetRunResult]:
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
         raw = await self._transport._execute_named_query(
             contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
             contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
@@ -1678,6 +2700,9 @@ class AsyncRiffDBMLflowClient:
         }
         return raw._map_value(lambda value: decode_variant(outcomes, value))
 
+    async def get_run_after_commit(self, parameters: GetRunParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetRunResult]:
+        return await self.get_run(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
     async def search_experiments(self, parameters: SearchExperimentsParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsResult]:
         if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
             raise ValueError("limit must be an integer from 1 through 4")
@@ -1688,6 +2713,8 @@ class AsyncRiffDBMLflowClient:
                 raise ValueError("generated cursor conflicts with query options")
             options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
         encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
         raw = await self._transport._execute_named_query(
             contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
             contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
@@ -1700,6 +2727,25 @@ class AsyncRiffDBMLflowClient:
         }
         return raw._map_value(lambda value: decode_variant(outcomes, value))
 
+    async def search_experiments_after_commit(self, parameters: SearchExperimentsParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsResult]:
+        return await self.search_experiments(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    async def search_experiments_pages(self, parameters: SearchExperimentsParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[SearchExperimentsResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[SearchExperimentsResult]] = []
+        for _ in range(max_pages):
+            page_parameters = SearchExperimentsParams(scope=parameters.scope, lifecycle_stages=parameters.lifecycle_stages, order=parameters.order, limit=parameters.limit, after=None)
+            page = await self.search_experiments(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
+
     async def search_experiments_by_name(self, parameters: SearchExperimentsByNameParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByNameResult]:
         if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
             raise ValueError("limit must be an integer from 1 through 4")
@@ -1710,6 +2756,8 @@ class AsyncRiffDBMLflowClient:
                 raise ValueError("generated cursor conflicts with query options")
             options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
         encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
         raw = await self._transport._execute_named_query(
             contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
             contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
@@ -1722,6 +2770,25 @@ class AsyncRiffDBMLflowClient:
         }
         return raw._map_value(lambda value: decode_variant(outcomes, value))
 
+    async def search_experiments_by_name_after_commit(self, parameters: SearchExperimentsByNameParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByNameResult]:
+        return await self.search_experiments_by_name(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    async def search_experiments_by_name_pages(self, parameters: SearchExperimentsByNameParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[SearchExperimentsByNameResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[SearchExperimentsByNameResult]] = []
+        for _ in range(max_pages):
+            page_parameters = SearchExperimentsByNameParams(scope=parameters.scope, name_digest=parameters.name_digest, lifecycle_stages=parameters.lifecycle_stages, order=parameters.order, limit=parameters.limit, after=None)
+            page = await self.search_experiments_by_name(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
+
     async def search_experiments_by_name_ilike(self, parameters: SearchExperimentsByNameILikeParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByNameILikeResult]:
         if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
             raise ValueError("limit must be an integer from 1 through 4")
@@ -1732,6 +2799,8 @@ class AsyncRiffDBMLflowClient:
                 raise ValueError("generated cursor conflicts with query options")
             options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
         encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
         raw = await self._transport._execute_named_query(
             contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
             contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
@@ -1744,6 +2813,25 @@ class AsyncRiffDBMLflowClient:
         }
         return raw._map_value(lambda value: decode_variant(outcomes, value))
 
+    async def search_experiments_by_name_ilike_after_commit(self, parameters: SearchExperimentsByNameILikeParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByNameILikeResult]:
+        return await self.search_experiments_by_name_ilike(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    async def search_experiments_by_name_ilike_pages(self, parameters: SearchExperimentsByNameILikeParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[SearchExperimentsByNameILikeResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[SearchExperimentsByNameILikeResult]] = []
+        for _ in range(max_pages):
+            page_parameters = SearchExperimentsByNameILikeParams(scope=parameters.scope, pattern=parameters.pattern, lifecycle_stages=parameters.lifecycle_stages, order=parameters.order, limit=parameters.limit, after=None)
+            page = await self.search_experiments_by_name_ilike(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
+
     async def search_experiments_by_name_like(self, parameters: SearchExperimentsByNameLikeParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByNameLikeResult]:
         if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
             raise ValueError("limit must be an integer from 1 through 4")
@@ -1754,6 +2842,8 @@ class AsyncRiffDBMLflowClient:
                 raise ValueError("generated cursor conflicts with query options")
             options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
         encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
         raw = await self._transport._execute_named_query(
             contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
             contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
@@ -1766,6 +2856,25 @@ class AsyncRiffDBMLflowClient:
         }
         return raw._map_value(lambda value: decode_variant(outcomes, value))
 
+    async def search_experiments_by_name_like_after_commit(self, parameters: SearchExperimentsByNameLikeParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByNameLikeResult]:
+        return await self.search_experiments_by_name_like(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    async def search_experiments_by_name_like_pages(self, parameters: SearchExperimentsByNameLikeParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[SearchExperimentsByNameLikeResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[SearchExperimentsByNameLikeResult]] = []
+        for _ in range(max_pages):
+            page_parameters = SearchExperimentsByNameLikeParams(scope=parameters.scope, pattern=parameters.pattern, lifecycle_stages=parameters.lifecycle_stages, order=parameters.order, limit=parameters.limit, after=None)
+            page = await self.search_experiments_by_name_like(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
+
     async def search_experiments_by_tag(self, parameters: SearchExperimentsByTagParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByTagResult]:
         if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
             raise ValueError("limit must be an integer from 1 through 4")
@@ -1776,6 +2885,8 @@ class AsyncRiffDBMLflowClient:
                 raise ValueError("generated cursor conflicts with query options")
             options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
         encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
         raw = await self._transport._execute_named_query(
             contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
             contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
@@ -1788,6 +2899,25 @@ class AsyncRiffDBMLflowClient:
         }
         return raw._map_value(lambda value: decode_variant(outcomes, value))
 
+    async def search_experiments_by_tag_after_commit(self, parameters: SearchExperimentsByTagParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByTagResult]:
+        return await self.search_experiments_by_tag(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    async def search_experiments_by_tag_pages(self, parameters: SearchExperimentsByTagParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[SearchExperimentsByTagResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[SearchExperimentsByTagResult]] = []
+        for _ in range(max_pages):
+            page_parameters = SearchExperimentsByTagParams(scope=parameters.scope, tag_key=parameters.tag_key, value_digest=parameters.value_digest, lifecycle_stages=parameters.lifecycle_stages, order=parameters.order, limit=parameters.limit, after=None)
+            page = await self.search_experiments_by_tag(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
+
     async def search_experiments_by_tag_ilike(self, parameters: SearchExperimentsByTagILikeParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByTagILikeResult]:
         if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
             raise ValueError("limit must be an integer from 1 through 4")
@@ -1798,6 +2928,8 @@ class AsyncRiffDBMLflowClient:
                 raise ValueError("generated cursor conflicts with query options")
             options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
         encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
         raw = await self._transport._execute_named_query(
             contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
             contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
@@ -1810,6 +2942,25 @@ class AsyncRiffDBMLflowClient:
         }
         return raw._map_value(lambda value: decode_variant(outcomes, value))
 
+    async def search_experiments_by_tag_ilike_after_commit(self, parameters: SearchExperimentsByTagILikeParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByTagILikeResult]:
+        return await self.search_experiments_by_tag_ilike(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    async def search_experiments_by_tag_ilike_pages(self, parameters: SearchExperimentsByTagILikeParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[SearchExperimentsByTagILikeResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[SearchExperimentsByTagILikeResult]] = []
+        for _ in range(max_pages):
+            page_parameters = SearchExperimentsByTagILikeParams(scope=parameters.scope, tag_key=parameters.tag_key, pattern=parameters.pattern, lifecycle_stages=parameters.lifecycle_stages, order=parameters.order, limit=parameters.limit, after=None)
+            page = await self.search_experiments_by_tag_ilike(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
+
     async def search_experiments_by_tag_like(self, parameters: SearchExperimentsByTagLikeParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByTagLikeResult]:
         if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
             raise ValueError("limit must be an integer from 1 through 4")
@@ -1820,6 +2971,8 @@ class AsyncRiffDBMLflowClient:
                 raise ValueError("generated cursor conflicts with query options")
             options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
         encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
         raw = await self._transport._execute_named_query(
             contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
             contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
@@ -1832,6 +2985,25 @@ class AsyncRiffDBMLflowClient:
         }
         return raw._map_value(lambda value: decode_variant(outcomes, value))
 
+    async def search_experiments_by_tag_like_after_commit(self, parameters: SearchExperimentsByTagLikeParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByTagLikeResult]:
+        return await self.search_experiments_by_tag_like(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    async def search_experiments_by_tag_like_pages(self, parameters: SearchExperimentsByTagLikeParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[SearchExperimentsByTagLikeResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[SearchExperimentsByTagLikeResult]] = []
+        for _ in range(max_pages):
+            page_parameters = SearchExperimentsByTagLikeParams(scope=parameters.scope, tag_key=parameters.tag_key, pattern=parameters.pattern, lifecycle_stages=parameters.lifecycle_stages, order=parameters.order, limit=parameters.limit, after=None)
+            page = await self.search_experiments_by_tag_like(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
+
     async def search_experiments_by_two_tags(self, parameters: SearchExperimentsByTwoTagsParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByTwoTagsResult]:
         if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
             raise ValueError("limit must be an integer from 1 through 4")
@@ -1842,6 +3014,8 @@ class AsyncRiffDBMLflowClient:
                 raise ValueError("generated cursor conflicts with query options")
             options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
         encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
         raw = await self._transport._execute_named_query(
             contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
             contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
@@ -1854,6 +3028,25 @@ class AsyncRiffDBMLflowClient:
         }
         return raw._map_value(lambda value: decode_variant(outcomes, value))
 
+    async def search_experiments_by_two_tags_after_commit(self, parameters: SearchExperimentsByTwoTagsParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByTwoTagsResult]:
+        return await self.search_experiments_by_two_tags(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    async def search_experiments_by_two_tags_pages(self, parameters: SearchExperimentsByTwoTagsParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[SearchExperimentsByTwoTagsResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[SearchExperimentsByTwoTagsResult]] = []
+        for _ in range(max_pages):
+            page_parameters = SearchExperimentsByTwoTagsParams(scope=parameters.scope, first_tag_key=parameters.first_tag_key, first_value_digest=parameters.first_value_digest, second_tag_key=parameters.second_tag_key, second_value_digest=parameters.second_value_digest, lifecycle_stages=parameters.lifecycle_stages, order=parameters.order, limit=parameters.limit, after=None)
+            page = await self.search_experiments_by_two_tags(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
+
     async def search_runs(self, parameters: SearchRunsParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchRunsResult]:
         if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 2):
             raise ValueError("limit must be an integer from 1 through 2")
@@ -1864,6 +3057,8 @@ class AsyncRiffDBMLflowClient:
                 raise ValueError("generated cursor conflicts with query options")
             options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
         encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
         raw = await self._transport._execute_named_query(
             contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
             contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
@@ -1876,6 +3071,25 @@ class AsyncRiffDBMLflowClient:
         }
         return raw._map_value(lambda value: decode_variant(outcomes, value))
 
+    async def search_runs_after_commit(self, parameters: SearchRunsParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchRunsResult]:
+        return await self.search_runs(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    async def search_runs_pages(self, parameters: SearchRunsParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[SearchRunsResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[SearchRunsResult]] = []
+        for _ in range(max_pages):
+            page_parameters = SearchRunsParams(experiment_ids=parameters.experiment_ids, limit=parameters.limit, after=None)
+            page = await self.search_runs(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
+
     async def search_runs_by_lifecycle(self, parameters: SearchRunsByLifecycleParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchRunsByLifecycleResult]:
         if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 2):
             raise ValueError("limit must be an integer from 1 through 2")
@@ -1886,6 +3100,8 @@ class AsyncRiffDBMLflowClient:
                 raise ValueError("generated cursor conflicts with query options")
             options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
         encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
         raw = await self._transport._execute_named_query(
             contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
             contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
@@ -1898,6 +3114,25 @@ class AsyncRiffDBMLflowClient:
         }
         return raw._map_value(lambda value: decode_variant(outcomes, value))
 
+    async def search_runs_by_lifecycle_after_commit(self, parameters: SearchRunsByLifecycleParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchRunsByLifecycleResult]:
+        return await self.search_runs_by_lifecycle(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    async def search_runs_by_lifecycle_pages(self, parameters: SearchRunsByLifecycleParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[SearchRunsByLifecycleResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[SearchRunsByLifecycleResult]] = []
+        for _ in range(max_pages):
+            page_parameters = SearchRunsByLifecycleParams(experiment_ids=parameters.experiment_ids, lifecycle_stage=parameters.lifecycle_stage, limit=parameters.limit, after=None)
+            page = await self.search_runs_by_lifecycle(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
+
     async def create_experiment(self, input: CreateExperimentInput) -> TypedCommandResult[CreateExperimentOutcome]:
         raw = await self._transport._execute_command(
             contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
@@ -1908,7 +3143,10 @@ class AsyncRiffDBMLflowClient:
             "ExperimentExists": CreateExperimentExperimentExists,
             "ExperimentCreated": CreateExperimentExperimentCreated,
         }
-        return raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        result: TypedCommandResult[CreateExperimentOutcome] = raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        if self._track_causal_writes and result.commit_sequence is not None and result.commit_sequence > 0:
+            self._read_after_commit = result.commit_sequence if self._read_after_commit is None or result.commit_sequence > self._read_after_commit else self._read_after_commit
+        return result
 
     async def create_experiment_batch(
         self, inputs: Sequence[CreateExperimentInput], options: CommandBatchOptions,
@@ -1941,7 +3179,10 @@ class AsyncRiffDBMLflowClient:
             "ExperimentCreated": CreateExperimentWithTagsExperimentCreated,
             "ExperimentTagExists": CreateExperimentWithTagsExperimentTagExists,
         }
-        return raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        result: TypedCommandResult[CreateExperimentWithTagsOutcome] = raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        if self._track_causal_writes and result.commit_sequence is not None and result.commit_sequence > 0:
+            self._read_after_commit = result.commit_sequence if self._read_after_commit is None or result.commit_sequence > self._read_after_commit else self._read_after_commit
+        return result
 
     async def create_experiment_with_tags_batch(
         self, inputs: Sequence[CreateExperimentWithTagsInput], options: CommandBatchOptions,
@@ -1975,7 +3216,10 @@ class AsyncRiffDBMLflowClient:
             "RunExists": CreateRunRunExists,
             "RunCreated": CreateRunRunCreated,
         }
-        return raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        result: TypedCommandResult[CreateRunOutcome] = raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        if self._track_causal_writes and result.commit_sequence is not None and result.commit_sequence > 0:
+            self._read_after_commit = result.commit_sequence if self._read_after_commit is None or result.commit_sequence > self._read_after_commit else self._read_after_commit
+        return result
 
     async def create_run_batch(
         self, inputs: Sequence[CreateRunInput], options: CommandBatchOptions,
@@ -2018,7 +3262,10 @@ class AsyncRiffDBMLflowClient:
             "RunCreated": CreateRunWithTagsRunCreated,
             "RunTagExists": CreateRunWithTagsRunTagExists,
         }
-        return raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        result: TypedCommandResult[CreateRunWithTagsOutcome] = raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        if self._track_causal_writes and result.commit_sequence is not None and result.commit_sequence > 0:
+            self._read_after_commit = result.commit_sequence if self._read_after_commit is None or result.commit_sequence > self._read_after_commit else self._read_after_commit
+        return result
 
     async def create_run_with_tags_batch(
         self, inputs: Sequence[CreateRunWithTagsInput], options: CommandBatchOptions,
@@ -2062,7 +3309,10 @@ class AsyncRiffDBMLflowClient:
             "ExperimentDeleted": DeleteExperimentExperimentDeleted,
             "ExperimentMissing": DeleteExperimentExperimentMissing,
         }
-        return raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        result: TypedCommandResult[DeleteExperimentOutcome] = raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        if self._track_causal_writes and result.commit_sequence is not None and result.commit_sequence > 0:
+            self._read_after_commit = result.commit_sequence if self._read_after_commit is None or result.commit_sequence > self._read_after_commit else self._read_after_commit
+        return result
 
     async def delete_experiment_batch(
         self, inputs: Sequence[DeleteExperimentInput], options: CommandBatchOptions,
@@ -2083,7 +3333,10 @@ class AsyncRiffDBMLflowClient:
             "ExperimentTagDeleted": DeleteExperimentTagExperimentTagDeleted,
             "ExperimentTagMissing": DeleteExperimentTagExperimentTagMissing,
         }
-        return raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        result: TypedCommandResult[DeleteExperimentTagOutcome] = raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        if self._track_causal_writes and result.commit_sequence is not None and result.commit_sequence > 0:
+            self._read_after_commit = result.commit_sequence if self._read_after_commit is None or result.commit_sequence > self._read_after_commit else self._read_after_commit
+        return result
 
     async def delete_experiment_tag_batch(
         self, inputs: Sequence[DeleteExperimentTagInput], options: CommandBatchOptions,
@@ -2101,7 +3354,10 @@ class AsyncRiffDBMLflowClient:
             "RunDeleted": DeleteRunRunDeleted,
             "RunMissing": DeleteRunRunMissing,
         }
-        return raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        result: TypedCommandResult[DeleteRunOutcome] = raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        if self._track_causal_writes and result.commit_sequence is not None and result.commit_sequence > 0:
+            self._read_after_commit = result.commit_sequence if self._read_after_commit is None or result.commit_sequence > self._read_after_commit else self._read_after_commit
+        return result
 
     async def delete_run_batch(
         self, inputs: Sequence[DeleteRunInput], options: CommandBatchOptions,
@@ -2146,7 +3402,10 @@ class AsyncRiffDBMLflowClient:
             "RunInactive": LogBatchRunInactive,
             "ParamConflict": LogBatchParamConflict,
         }
-        return raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        result: TypedCommandResult[LogBatchOutcome] = raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        if self._track_causal_writes and result.commit_sequence is not None and result.commit_sequence > 0:
+            self._read_after_commit = result.commit_sequence if self._read_after_commit is None or result.commit_sequence > self._read_after_commit else self._read_after_commit
+        return result
 
     async def log_batch_batch(
         self, inputs: Sequence[LogBatchInput], options: CommandBatchOptions,
@@ -2190,7 +3449,10 @@ class AsyncRiffDBMLflowClient:
             "ExperimentMissing": RenameExperimentExperimentMissing,
             "ExperimentRenamed": RenameExperimentExperimentRenamed,
         }
-        return raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        result: TypedCommandResult[RenameExperimentOutcome] = raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        if self._track_causal_writes and result.commit_sequence is not None and result.commit_sequence > 0:
+            self._read_after_commit = result.commit_sequence if self._read_after_commit is None or result.commit_sequence > self._read_after_commit else self._read_after_commit
+        return result
 
     async def rename_experiment_batch(
         self, inputs: Sequence[RenameExperimentInput], options: CommandBatchOptions,
@@ -2208,7 +3470,10 @@ class AsyncRiffDBMLflowClient:
             "ExperimentMissing": RestoreExperimentExperimentMissing,
             "ExperimentRestored": RestoreExperimentExperimentRestored,
         }
-        return raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        result: TypedCommandResult[RestoreExperimentOutcome] = raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        if self._track_causal_writes and result.commit_sequence is not None and result.commit_sequence > 0:
+            self._read_after_commit = result.commit_sequence if self._read_after_commit is None or result.commit_sequence > self._read_after_commit else self._read_after_commit
+        return result
 
     async def restore_experiment_batch(
         self, inputs: Sequence[RestoreExperimentInput], options: CommandBatchOptions,
@@ -2226,7 +3491,10 @@ class AsyncRiffDBMLflowClient:
             "RunMissing": RestoreRunRunMissing,
             "RunRestored": RestoreRunRunRestored,
         }
-        return raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        result: TypedCommandResult[RestoreRunOutcome] = raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        if self._track_causal_writes and result.commit_sequence is not None and result.commit_sequence > 0:
+            self._read_after_commit = result.commit_sequence if self._read_after_commit is None or result.commit_sequence > self._read_after_commit else self._read_after_commit
+        return result
 
     async def restore_run_batch(
         self, inputs: Sequence[RestoreRunInput], options: CommandBatchOptions,
@@ -2246,7 +3514,10 @@ class AsyncRiffDBMLflowClient:
             "ExperimentMissing": SetExperimentTagExperimentMissing,
             "ExperimentInactive": SetExperimentTagExperimentInactive,
         }
-        return raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        result: TypedCommandResult[SetExperimentTagOutcome] = raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        if self._track_causal_writes and result.commit_sequence is not None and result.commit_sequence > 0:
+            self._read_after_commit = result.commit_sequence if self._read_after_commit is None or result.commit_sequence > self._read_after_commit else self._read_after_commit
+        return result
 
     async def set_experiment_tag_batch(
         self, inputs: Sequence[SetExperimentTagInput], options: CommandBatchOptions,
@@ -2266,7 +3537,10 @@ class AsyncRiffDBMLflowClient:
             "RunUpdated": UpdateRunInfoRunUpdated,
             "RunInactive": UpdateRunInfoRunInactive,
         }
-        return raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        result: TypedCommandResult[UpdateRunInfoOutcome] = raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        if self._track_causal_writes and result.commit_sequence is not None and result.commit_sequence > 0:
+            self._read_after_commit = result.commit_sequence if self._read_after_commit is None or result.commit_sequence > self._read_after_commit else self._read_after_commit
+        return result
 
     async def update_run_info_batch(
         self, inputs: Sequence[UpdateRunInfoInput], options: CommandBatchOptions,
@@ -2285,7 +3559,10 @@ class AsyncRiffDBMLflowClient:
             "RunMissing": ValidateRunActiveRunMissing,
             "RunInactive": ValidateRunActiveRunInactive,
         }
-        return raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        result: TypedCommandResult[ValidateRunActiveOutcome] = raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        if self._track_causal_writes and result.commit_sequence is not None and result.commit_sequence > 0:
+            self._read_after_commit = result.commit_sequence if self._read_after_commit is None or result.commit_sequence > self._read_after_commit else self._read_after_commit
+        return result
 
     async def validate_run_active_batch(
         self, inputs: Sequence[ValidateRunActiveInput], options: CommandBatchOptions,

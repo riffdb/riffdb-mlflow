@@ -17,7 +17,8 @@ from riffdb_mlflow.generated.client import (
     DeleteExperimentExperimentMissing,
     Experiment,
     GetExperimentByNameFound,
-    GetExperimentByNameFoundExperiments,
+    GetExperimentByNameFoundExperiment,
+    GetExperimentByNameMissing,
     GetExperimentFound,
     GetExperimentFoundExperiment,
     GetExperimentMissing,
@@ -84,21 +85,23 @@ class FakeExperimentClient:
         )
 
     def get_experiment_by_name(self, query: Any) -> SimpleNamespace:
-        matching = tuple(
-            GetExperimentByNameFoundExperiments(
-                experiment_id=row.experiment_id,
-                name=row.name,
-                artifact_location=row.artifact_location,
-                lifecycle_stage=row.lifecycle_stage,
-                creation_time=row.creation_time,
-                last_update_time=row.last_update_time,
-                packed_tags=row.packed_tags,
-                revision=row.revision,
-            )
-            for row in self.rows.values()
-            if row.name == query.name
-        )
-        return SimpleNamespace(value=GetExperimentByNameFound(experiments=matching))
+        for row in self.rows.values():
+            if row.name == query.name:
+                return SimpleNamespace(
+                    value=GetExperimentByNameFound(
+                        experiment=GetExperimentByNameFoundExperiment(
+                            experiment_id=row.experiment_id,
+                            name=row.name,
+                            artifact_location=row.artifact_location,
+                            lifecycle_stage=row.lifecycle_stage,
+                            creation_time=row.creation_time,
+                            last_update_time=row.last_update_time,
+                            packed_tags=row.packed_tags,
+                            revision=row.revision,
+                        )
+                    )
+                )
+        return SimpleNamespace(value=GetExperimentByNameMissing())
 
     def delete_experiment(self, command: Any) -> SimpleNamespace:
         row = self.rows.get(command.experiment_id)

@@ -2,14 +2,13 @@ query GetExperimentByName(
     $scope: Experiment.scope,
     $name: Experiment.name,
 ) {
-    many experiments from Experiment
+    one experiment from Experiment
         where scope == $scope
           && name == $name
-        order by experiment_id asc
-        take 1
+        else Missing
 
     return Found {
-        experiments: experiments {
+        experiment: experiment {
             experiment_id
             name
             artifact_location
@@ -21,5 +20,5 @@ query GetExperimentByName(
         }
     }
 
-    outcomes Found
+    outcomes Found | Missing
 }

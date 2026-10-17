@@ -89,6 +89,7 @@ from riffdb_mlflow.generated.client import (
     DeleteRunRunMissing,
     ExperimentOrder,
     GetExperimentByNameFound,
+    GetExperimentByNameMissing,
     GetExperimentByNameParams,
     GetExperimentFound,
     GetExperimentMissing,
@@ -911,16 +912,16 @@ class RiffDBTrackingStore(AbstractStore):
         result = self._application().get_experiment_by_name(
             GetExperimentByNameParams(scope=_SCOPE, name=experiment_name)
         )
+        if isinstance(result.value, GetExperimentByNameMissing):
+            return None
         if not isinstance(result.value, GetExperimentByNameFound):
             raise MlflowException("Invalid GetExperimentByName response from RiffDB")
-        if not result.value.experiments:
-            return None
-        return self._to_mlflow_experiment(result.value.experiments[0])
+        return self._to_mlflow_experiment(result.value.experiment)
 
     def delete_experiment(self, experiment_id: Any) -> None:
         numeric_id = self._numeric_experiment_id(experiment_id)
         result = self._application().delete_experiment(
-            DeleteExperimentInput(request_id=str(uuid4()), experiment_id=numeric_id)
+            DeleteExperimentInput(experiment_id=numeric_id)
         )
         if isinstance(result.outcome, DeleteExperimentExperimentMissing):
             self._missing_experiment(experiment_id)
@@ -930,7 +931,7 @@ class RiffDBTrackingStore(AbstractStore):
     def restore_experiment(self, experiment_id: Any) -> None:
         numeric_id = self._numeric_experiment_id(experiment_id)
         result = self._application().restore_experiment(
-            RestoreExperimentInput(request_id=str(uuid4()), experiment_id=numeric_id)
+            RestoreExperimentInput(experiment_id=numeric_id)
         )
         if isinstance(result.outcome, RestoreExperimentExperimentMissing):
             self._missing_experiment(experiment_id)
@@ -942,7 +943,6 @@ class RiffDBTrackingStore(AbstractStore):
         _validate_experiment_name(new_name)  # type: ignore[no-untyped-call]
         result = self._application().rename_experiment(
             RenameExperimentInput(
-                request_id=str(uuid4()),
                 experiment_id=numeric_id,
                 name=new_name,
                 name_digest=self._digest(new_name),

@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 5
 requires-python = ">=3.13"
 resolution-markers = [
     "python_full_version >= '3.15'",
@@ -2020,21 +2020,21 @@ wheels = [
 
 [[package]]
 name = "riffdb"
-version = "0.1.0.dev18"
+version = "0.1.0.dev19"
 source = { registry = "http://127.0.0.1:4874/python/simple/" }
 dependencies = [
     { name = "riffdb-application" },
 ]
 wheels = [
-    { url = "http://127.0.0.1:4874/python/packages/riffdb-0.1.0.dev18-py3-none-any.whl", hash = "sha256:8928fdbeae55fdd0e5d2913d895fbdced0ba2d95ec6994c94a73e7198bac4b51" },
+    { url = "http://127.0.0.1:4874/python/packages/riffdb-0.1.0.dev19-py3-none-any.whl", hash = "sha256:aec97518a889efdde08eca32f05422d2dd3367b9c99968b61c9e8d8d08e308f7" },
 ]
 
 [[package]]
 name = "riffdb-application"
-version = "0.1.0.dev18"
+version = "0.1.0.dev19"
 source = { registry = "http://127.0.0.1:4874/python/simple/" }
 wheels = [
-    { url = "http://127.0.0.1:4874/python/packages/riffdb_application-0.1.0.dev18-cp313-abi3-linux_x86_64.whl", hash = "sha256:d8bada2c1f038b03c1159aea19a87d3ca3812b977b757adc9284b6c1f45cbefe" },
+    { url = "http://127.0.0.1:4874/python/packages/riffdb_application-0.1.0.dev19-cp313-abi3-linux_x86_64.whl", hash = "sha256:368edbb6592dec1378d9dce60c7517176ac8fe241fa40e667db45a933b228896" },
 ]
 
 [[package]]
@@ -2056,7 +2056,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "mlflow", specifier = "==3.15.1" },
-    { name = "riffdb", specifier = "==0.1.0.dev18" },
+    { name = "riffdb", specifier = "==0.1.0.dev19" },
 ]
 
 [package.metadata.requires-dev]
