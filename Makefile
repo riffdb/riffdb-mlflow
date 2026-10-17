@@ -1,4 +1,6 @@
 UV ?= uv
+PYTHON ?= $(UV) run python
+RIFFDB ?= riffdb
 
 .PHONY: bootstrap format lint typecheck test check conformance
 
@@ -21,6 +23,5 @@ check: format lint typecheck test
 	git diff --exit-code
 
 conformance:
-	@echo "real RiffDB MLflow conformance is not implemented yet" >&2
-	@exit 1
+	$(RIFFDB) dev --reset --exec '$(PYTHON) -m riffdb_mlflow "$$RIFFDB_ENDPOINT" "$$RIFFDB_CREDENTIAL_FILE" "$$RIFFDB_DATABASE"'
 

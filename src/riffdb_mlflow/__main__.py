@@ -10,6 +10,22 @@ import sys
 from hashlib import sha256
 from typing import cast
 
+from mlflow.entities import (
+    ExperimentTag as MLflowExperimentTag,
+)
+from mlflow.entities import (
+    LifecycleStage as MLflowLifecycleStage,
+)
+from mlflow.entities import (
+    Metric,
+    Param,
+    RunTag,
+    ViewType,
+)
+from mlflow.entities import (
+    RunStatus as MLflowRunStatus,
+)
+from mlflow.exceptions import MlflowException
 from riffdb_application import (
     AttemptBudget,
     BearerCredential,
@@ -112,6 +128,13 @@ def _encode_latest_metrics(values: dict[str, tuple[int, int, int]]) -> bytes:
     ).encode()
 
 
+def _latest_item_key(kind: RunDataKind, key: str, entry_id: str, *, promote_latest: bool) -> str:
+    if kind == RunDataKind.METRIC and promote_latest:
+        return key
+    digest = sha256(f"{kind.value}:{key}:{entry_id}".encode()).hexdigest()
+    return f"~{digest}"
+
+
 def _run_tag(experiment_id: int, run_id: str, key: str, value: str) -> RunDatum:
     return RunDatum(
         experiment_id=experiment_id,
@@ -120,7 +143,7 @@ def _run_tag(experiment_id: int, run_id: str, key: str, value: str) -> RunDatum:
         item_key=key,
         entry_id="",
         logical_key=key,
-        latest_item_key=key,
+        latest_item_key=_latest_item_key(RunDataKind.TAG, key, "", promote_latest=False),
         sort_key="",
         latest_sort_key="",
         text_value=value,
@@ -144,7 +167,7 @@ def _run_param(experiment_id: int, run_id: str, key: str, value: str) -> RunDatu
         item_key=row.item_key,
         entry_id=row.entry_id,
         logical_key=row.logical_key,
-        latest_item_key=row.latest_item_key,
+        latest_item_key=_latest_item_key(RunDataKind.PARAM, key, "", promote_latest=False),
         sort_key=row.sort_key,
         latest_sort_key=row.latest_sort_key,
         text_value=row.text_value,
@@ -170,14 +193,17 @@ def _run_metric(
     promote_latest: bool,
 ) -> RunDatum:
     bits, identity, order, is_nan = _metric_encoding(value)
+    entry_id = _metric_identity(timestamp, step, identity, is_nan)
     return RunDatum(
         experiment_id=experiment_id,
         run_id=run_id,
         kind=RunDataKind.METRIC,
         item_key=_metric_item_key(run_id, key),
-        entry_id=_metric_identity(timestamp, step, identity, is_nan),
+        entry_id=entry_id,
         logical_key=key,
-        latest_item_key=key,
+        latest_item_key=_latest_item_key(
+            RunDataKind.METRIC, key, entry_id, promote_latest=promote_latest
+        ),
         sort_key=_metric_sort(timestamp, step, order, is_nan),
         latest_sort_key=f"{order:016x}",
         text_value="",
@@ -194,6 +220,8 @@ def _run_metric(
 
 def _metadata(credential_file: str, database: str) -> CallMetadata:
     credential = BearerCredential.from_protected_file(credential_file)
+    if os.environ.get("RIFFDB_TENANT") == "":
+        os.environ.pop("RIFFDB_TENANT", None)
     return CallMetadata.authenticated(credential).with_database(DatabaseAlias(database))
 
 
@@ -484,36 +512,6 @@ def run(endpoint: str, credential_file: str, database: str) -> dict[str, object]
         )
         packed_params = b'{"optimizer":"adam"}'
         packed_latest_metrics = _encode_latest_metrics({"loss": (latest_metric.value_bits, 501, 2)})
-        repro = os.environ.get("RIFFDB_MLFLOW_REPRO")
-        if repro == "tag":
-            batch_items = (_run_tag(first_run.experiment_id, first_run.run_id, "stage", "fit"),)
-            packed_params = b"{}"
-            packed_latest_metrics = b"{}"
-        elif repro == "metric":
-            batch_items = (first_metric,)
-            packed_params = b"{}"
-            packed_latest_metrics = b"{}"
-        elif repro == "promote":
-            batch_items = (latest_metric,)
-            packed_params = b"{}"
-        elif repro == "pair":
-            batch_items = (first_metric, latest_metric)
-            packed_params = b"{}"
-        elif repro == "different":
-            other_metric = _run_metric(
-                first_run.experiment_id,
-                first_run.run_id,
-                "accuracy",
-                0.9,
-                501,
-                2,
-                promote_latest=True,
-            )
-            batch_items = (first_metric, other_metric)
-            packed_params = b"{}"
-            packed_latest_metrics = _encode_latest_metrics(
-                {"accuracy": (other_metric.value_bits, 501, 2)}
-            )
         batch_tags = {"mlflow.runName": "renamed-loopback", "stage": "fit", "team": "research"}
         batch_input = LogBatchInput(
             request_id="mlflow-loopback-log-batch",
@@ -620,6 +618,8 @@ def run(endpoint: str, credential_file: str, database: str) -> dict[str, object]
         if run_total != 3:
             raise RuntimeError("all-lifecycle run pages did not return all restored rows")
 
+        _verify_tracking_store(transport, database)
+
         return {
             "folded_matches": len(folded.value.experiments),
             "intersection_matches": len(intersection.value.experiments),
@@ -635,6 +635,128 @@ def run(endpoint: str, credential_file: str, database: str) -> dict[str, object]
             "tag_revision": tag_delete.outcome.experiment.revision,
             "schema": "riffdb-mlflow-loopback/v1",
         }
+
+
+def _verify_tracking_store(transport: SyncApplicationTransport, database: str) -> None:
+    from riffdb_mlflow.store import RiffDBTrackingStore
+
+    store = RiffDBTrackingStore(f"riffdb://{database}", "s3://mlflow-artifacts")
+    store._transport = transport
+    store._client = RiffDBMLflowClient(transport, AttemptBudget(3))
+
+    default_exp = store.get_experiment("0")
+    if default_exp.name != "Default" or default_exp.experiment_id != "0":
+        raise RuntimeError("default experiment was not initialized by RiffDBTrackingStore")
+
+    exp_id = store.create_experiment(
+        "Store Plugin Experiment",
+        tags=[
+            MLflowExperimentTag("team", "ml-platform"),  # type: ignore[no-untyped-call]
+            MLflowExperimentTag("env", "ci"),  # type: ignore[no-untyped-call]
+        ],
+    )
+    by_name = store.get_experiment_by_name("Store Plugin Experiment")
+    if by_name is None or by_name.experiment_id != exp_id:
+        raise RuntimeError("store get_experiment_by_name did not resolve created experiment")
+
+    store.rename_experiment(exp_id, "Store Plugin Renamed")
+    store.set_experiment_tag(exp_id, MLflowExperimentTag("owner", "alice"))  # type: ignore[no-untyped-call]
+    if store.get_experiment(exp_id).tags.get("owner") != "alice":
+        raise RuntimeError("store set_experiment_tag did not persist")
+    store.delete_experiment_tag(exp_id, "owner")
+    if "owner" in store.get_experiment(exp_id).tags:
+        raise RuntimeError("store delete_experiment_tag did not delete tag")
+
+    store.delete_experiment(exp_id)
+    if store.get_experiment(exp_id).lifecycle_stage != MLflowLifecycleStage.DELETED:
+        raise RuntimeError("store delete_experiment did not mark experiment deleted")
+    store.restore_experiment(exp_id)
+    if store.get_experiment(exp_id).lifecycle_stage != MLflowLifecycleStage.ACTIVE:
+        raise RuntimeError("store restore_experiment did not restore experiment")
+
+    matched = store.search_experiments(filter_string="tag.team = 'ml-platform' AND tag.env = 'ci'")
+    if [item.experiment_id for item in matched] != [exp_id]:
+        raise RuntimeError("store search_experiments two-tag filter did not match")
+
+    run_one = store.create_run(
+        exp_id,
+        user_id="alice",
+        start_time=1000,
+        tags=[RunTag("team", "ml-platform")],  # type: ignore[no-untyped-call]
+        run_name="store-run-1",
+    )
+    run_two = store.create_run(
+        exp_id,
+        user_id="bob",
+        start_time=2000,
+        tags=[],
+        run_name="store-run-2",
+    )
+    updated_info = store.update_run_info(
+        run_one.info.run_id, MLflowRunStatus.FINISHED, 3000, "store-run-1-finished"
+    )
+    if updated_info.run_name != "store-run-1-finished" or updated_info.end_time != 3000:
+        raise RuntimeError("store update_run_info did not update run")
+
+    nan_bits = 0x7FF8000000000042
+    nan_val = struct.unpack(">d", struct.pack(">Q", nan_bits))[0]
+    store.log_batch(
+        run_one.info.run_id,
+        metrics=[
+            Metric("loss", 1.5, 100, 1),
+            Metric("loss", 0.5, 200, 2),
+            Metric("special", nan_val, 300, 1),
+        ],
+        params=[
+            Param("lr", "0.01"),  # type: ignore[no-untyped-call]
+            Param("opt", "adam"),  # type: ignore[no-untyped-call]
+        ],
+        tags=[RunTag("stage", "eval")],  # type: ignore[no-untyped-call]
+    )
+    fetched = store.get_run(run_one.info.run_id)
+    if (
+        fetched.data.params != {"lr": "0.01", "opt": "adam"}
+        or fetched.data.tags.get("stage") != "eval"
+        or fetched.data.metrics.get("loss") != 0.5
+        or not math.isnan(fetched.data.metrics["special"])
+    ):
+        raise RuntimeError("store log_batch did not persist metrics, params, and tags")
+
+    try:
+        store.log_batch(
+            run_one.info.run_id,
+            metrics=[],
+            params=[Param("lr", "0.02")],  # type: ignore[no-untyped-call]
+            tags=[],
+        )
+    except MlflowException as exc:
+        if "Changing param values is not allowed" not in str(exc):
+            raise RuntimeError(f"unexpected param conflict message: {exc}") from exc
+    else:
+        raise RuntimeError("store log_batch did not reject conflicting param value")
+
+    hist_one = store.get_metric_history(run_one.info.run_id, "loss", max_results=1)
+    if len(hist_one) != 1 or hist_one.token is None:
+        raise RuntimeError("store get_metric_history first page was invalid")
+    hist_two = store.get_metric_history(
+        run_one.info.run_id, "loss", max_results=10, page_token=hist_one.token
+    )
+    if len(hist_two) != 1 or hist_two.token is not None:
+        raise RuntimeError("store get_metric_history second page was invalid")
+    if [hist_one[0].value, hist_two[0].value] != [1.5, 0.5]:
+        raise RuntimeError("store get_metric_history values were out of order")
+
+    store.delete_run(run_two.info.run_id)
+    active_runs = store.search_runs([exp_id], "", ViewType.ACTIVE_ONLY)  # type: ignore[no-untyped-call]
+    if [item.info.run_id for item in active_runs] != [run_one.info.run_id]:
+        raise RuntimeError("store search_runs ACTIVE_ONLY did not exclude deleted run")
+    deleted_runs = store.search_runs([exp_id], "", ViewType.DELETED_ONLY)  # type: ignore[no-untyped-call]
+    if [item.info.run_id for item in deleted_runs] != [run_two.info.run_id]:
+        raise RuntimeError("store search_runs DELETED_ONLY did not return deleted run")
+    store.restore_run(run_two.info.run_id)
+    all_runs = store.search_runs([exp_id], "", ViewType.ALL)  # type: ignore[no-untyped-call]
+    if [item.info.run_id for item in all_runs] != [run_two.info.run_id, run_one.info.run_id]:
+        raise RuntimeError("store search_runs ALL did not return restored runs in start_time DESC")
 
 
 def main() -> None:

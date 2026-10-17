@@ -12,7 +12,7 @@ query SearchExperimentsByTag(
             where scope == $scope
               && tag_key == $tag_key
               && value_digest == $value_digest
-        within 65535
+        within 16384
         else IntegrityFailure
 
     many experiments from Experiment

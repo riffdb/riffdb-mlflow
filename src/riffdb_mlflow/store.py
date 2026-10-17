@@ -214,6 +214,8 @@ class RiffDBTrackingStore(AbstractStore):
             credential = BearerCredential.from_protected_file(
                 required["RIFFDB_MLFLOW_CREDENTIAL_FILE"]  # type: ignore[arg-type]
             )
+            if os.environ.get("RIFFDB_TENANT") == "":
+                os.environ.pop("RIFFDB_TENANT", None)
             metadata = CallMetadata.authenticated(credential).with_database(
                 DatabaseAlias(self.database)
             )
@@ -347,6 +349,15 @@ class RiffDBTrackingStore(AbstractStore):
             )
         return encoded
 
+    @staticmethod
+    def _latest_item_key(
+        kind: RunDataKind, key: str, entry_id: str, *, promote_latest: bool
+    ) -> str:
+        if kind == RunDataKind.METRIC and promote_latest:
+            return key
+        digest = sha256(f"{kind.value}:{key}:{entry_id}".encode()).hexdigest()
+        return f"~{digest}"
+
     @classmethod
     def _run_tag_rows(cls, experiment_id: int, run_id: str, tags: Any) -> tuple[RunDatum, ...]:
         packed = cls._decode_tags(cls._encode_run_tags(tags))
@@ -358,7 +369,9 @@ class RiffDBTrackingStore(AbstractStore):
                 item_key=key,
                 entry_id="",
                 logical_key=key,
-                latest_item_key=key,
+                latest_item_key=cls._latest_item_key(
+                    RunDataKind.TAG, key, "", promote_latest=False
+                ),
                 sort_key="",
                 latest_sort_key="",
                 text_value=value,
@@ -1481,6 +1494,7 @@ class RiffDBTrackingStore(AbstractStore):
                 entry_id,
                 history_sort,
             ) in metric_records:
+                promote_latest = promoted.get(metric.key) == entry_id
                 items.append(
                     RunDatum(
                         experiment_id=experiment_id,
@@ -1489,7 +1503,12 @@ class RiffDBTrackingStore(AbstractStore):
                         item_key=self._metric_item_key(normalized_id, metric.key),
                         entry_id=entry_id,
                         logical_key=metric.key,
-                        latest_item_key=metric.key,
+                        latest_item_key=self._latest_item_key(
+                            RunDataKind.METRIC,
+                            metric.key,
+                            entry_id,
+                            promote_latest=promote_latest,
+                        ),
                         sort_key=history_sort,
                         latest_sort_key=f"{order:016x}",
                         text_value="",
@@ -1500,7 +1519,7 @@ class RiffDBTrackingStore(AbstractStore):
                         metric_timestamp=int(metric.timestamp),
                         metric_step=int(metric.step),
                         is_nan=is_nan,
-                        promote_latest=promoted.get(metric.key) == entry_id,
+                        promote_latest=promote_latest,
                     )
                 )
             items.extend(
@@ -1511,7 +1530,9 @@ class RiffDBTrackingStore(AbstractStore):
                     item_key=param.key,
                     entry_id="",
                     logical_key=param.key,
-                    latest_item_key=param.key,
+                    latest_item_key=self._latest_item_key(
+                        RunDataKind.PARAM, param.key, "", promote_latest=False
+                    ),
                     sort_key="",
                     latest_sort_key="",
                     text_value=param.value,
@@ -1534,7 +1555,9 @@ class RiffDBTrackingStore(AbstractStore):
                     item_key=key,
                     entry_id="",
                     logical_key=key,
-                    latest_item_key=key,
+                    latest_item_key=self._latest_item_key(
+                        RunDataKind.TAG, key, "", promote_latest=False
+                    ),
                     sort_key="",
                     latest_sort_key="",
                     text_value=value,

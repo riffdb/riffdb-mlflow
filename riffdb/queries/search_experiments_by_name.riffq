@@ -9,7 +9,7 @@ query SearchExperimentsByName(
     candidates matching_experiments: Experiment.experiment_id
         from Experiment.experiment_id using by_name_digest
             where scope == $scope && name_digest == $name_digest
-        within 65535
+        within 16384
         else IntegrityFailure
 
     many experiments from Experiment

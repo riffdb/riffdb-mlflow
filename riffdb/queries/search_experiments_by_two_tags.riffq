@@ -20,7 +20,7 @@ query SearchExperimentsByTwoTags(
                   && tag_key == $second_tag_key
                   && value_digest == $second_value_digest,
         }
-        within 65535
+        within 16384
         else IntegrityFailure
 
     many experiments from Experiment
