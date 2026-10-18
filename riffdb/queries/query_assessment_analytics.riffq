@@ -1,0 +1,21 @@
+query QueryAssessmentAnalytics(
+    $experiment_id: TraceAssessment.experiment_id,
+    $limit: Limit<500> = 500,
+    $after: Cursor?,
+) {
+    source projected AssessmentAnalytics
+    freshness causal inherit_session_commit true max_wait_ms 5000
+    many assessments from TraceAssessment
+        where experiment_id == $experiment_id
+        order by trace_id asc, assessment_id asc
+        take $limit after $after
+        else IntegrityFailure
+
+    return Found {
+        assessments: assessments {
+            experiment_id trace_id assessment_id name assessment_type
+            value_text numeric_value_milli created_timestamp_ms
+        }
+    }
+    outcomes Found | IntegrityFailure
+}

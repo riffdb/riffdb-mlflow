@@ -187,6 +187,185 @@ contract RiffDBMLflow version 1 {
     delete_policy no_inbound
   }
 
+  entity RunLineage {
+    key (experiment_id: u64, run_id: string<32>)
+    field packed_datasets: bytes<200000>
+    field packed_model_inputs: bytes<100000>
+    field packed_model_outputs: bytes<100000>
+    reference run (experiment_id, run_id) -> Run(experiment_id, run_id)
+    delete_policy no_inbound
+  }
+
+  entity Trace {
+    key (experiment_id: u64, trace_id: string<64>)
+    field request_time_ms: i64
+    field execution_duration_ms: i64
+    field state: string<32>
+    field status_code: string<32>
+    field trace_name: string<256>
+    field client_request_id: optional<string<128>>
+    field request_preview: optional<string<2000>>
+    field response_preview: optional<string<2000>>
+    field source_run_id: optional<string<32>>
+    field span_count: i64
+    field error_span_count: i64
+    field total_input_tokens: i64
+    field total_output_tokens: i64
+    field total_tokens: i64
+    field cache_read_input_tokens: i64
+    field cache_creation_input_tokens: i64
+    field total_cost_micros: i64
+    field session_id: optional<string<128>>
+    field packed_trace_metadata: bytes<16384>
+    field packed_tags: bytes<16384>
+    field packed_run_ids: bytes<16384>
+    field packed_prompt_versions: bytes<16384>
+    field requested_at: timestamp
+    field initialized: bool
+    index by_request_time (experiment_id, request_time_ms, trace_id)
+    index by_state_time (experiment_id, state, request_time_ms, trace_id)
+    delete_policy no_inbound
+  }
+
+  entity TraceSpan {
+    key (experiment_id: u64, trace_id: string<64>, span_id: string<64>)
+    field parent_id: optional<string<64>>
+    field name: string<256>
+    field span_type: string<64>
+    field status: string<32>
+    field start_time_ns: i64
+    field end_time_ns: i64
+    field duration_ms: i64
+    field model_name: string<128>
+    field model_provider: string<64>
+    field input_tokens: i64
+    field output_tokens: i64
+    field total_tokens: i64
+    field input_cost_micros: i64
+    field output_cost_micros: i64
+    field total_cost_micros: i64
+    field started_at: timestamp
+    field packed_span_json: bytes<16384>
+    index by_trace_start (experiment_id, trace_id, start_time_ns, span_id)
+    index by_exp_start (experiment_id, start_time_ns, trace_id, span_id)
+    delete_policy no_inbound
+  }
+
+  entity TraceAssessment {
+    key (experiment_id: u64, trace_id: string<64>, assessment_id: string<64>)
+    field name: string<250>
+    field assessment_type: string<32>
+    field value_text: string<2000>
+    field numeric_value_milli: optional<i64>
+    field created_timestamp_ms: i64
+    field last_updated_timestamp_ms: i64
+    field span_id: optional<string<64>>
+    field packed_assessment_json: bytes<16384>
+    index by_trace_created (experiment_id, trace_id, created_timestamp_ms, assessment_id)
+    index by_exp_created (experiment_id, created_timestamp_ms, trace_id, assessment_id)
+    delete_policy no_inbound
+  }
+
+  entity LoggedModelEntity {
+    key (experiment_id: u64, model_id: string<64>)
+    field name: string<500>
+    field artifact_location: string<8000>
+    field creation_timestamp_ms: i64
+    field last_updated_timestamp_ms: i64
+    field status: string<32>
+    field lifecycle_stage: LifecycleStage
+    field status_message: optional<string<1000>>
+    field source_run_id: optional<string<32>>
+    field model_type: optional<string<250>>
+    field packed_tags: bytes<16384>
+    field packed_params: bytes<16384>
+    field packed_metrics: bytes<16384>
+    index by_creation (experiment_id, creation_timestamp_ms, model_id)
+    index by_status (experiment_id, status, creation_timestamp_ms, model_id)
+    delete_policy no_inbound
+  }
+
+  event SpanObserved {
+    experiment_id: u64
+    span_type: string<64>
+    model_name: string<128>
+    status: string<32>
+    duration_ms: i64
+    input_tokens: i64
+    output_tokens: i64
+    total_tokens: i64
+    cost_micros: i64
+    observed_at: timestamp
+  }
+
+  projection SpanModelRollup {
+    source event SpanObserved
+    key (experiment_id, span_type, model_name, status, hour(observed_at))
+    measure span_count = count()
+    measure total_duration_ms = sum(duration_ms)
+    measure min_duration_ms = min(duration_ms)
+    measure max_duration_ms = max(duration_ms)
+    measure avg_duration_ms = mean(duration_ms)
+    measure sum_input_tokens = sum(input_tokens)
+    measure sum_output_tokens = sum(output_tokens)
+    measure sum_total_tokens = sum(total_tokens)
+    measure sum_cost_micros = sum(cost_micros)
+    frontier transactionally_ordered
+  }
+
+  columnar_projection TraceAnalytics {
+    source entity Trace
+    fields (
+      request_time_ms,
+      execution_duration_ms,
+      state,
+      status_code,
+      trace_name,
+      span_count,
+      error_span_count,
+      total_input_tokens,
+      total_output_tokens,
+      total_tokens,
+      cache_read_input_tokens,
+      cache_creation_input_tokens,
+      total_cost_micros,
+      session_id,
+      requested_at
+    )
+  }
+
+  columnar_projection SpanAnalytics {
+    source entity TraceSpan
+    fields (
+      name,
+      span_type,
+      status,
+      start_time_ns,
+      end_time_ns,
+      duration_ms,
+      model_name,
+      model_provider,
+      input_tokens,
+      output_tokens,
+      total_tokens,
+      input_cost_micros,
+      output_cost_micros,
+      total_cost_micros,
+      started_at
+    )
+  }
+
+  columnar_projection AssessmentAnalytics {
+    source entity TraceAssessment
+    fields (
+      name,
+      assessment_type,
+      value_text,
+      numeric_value_milli,
+      created_timestamp_ms
+    )
+  }
+
   aggregate Experiments {
     root Experiment
     child ExperimentTag
@@ -197,8 +376,23 @@ contract RiffDBMLflow version 1 {
   aggregate Runs {
     root Run
     child RunDatum
+    child RunLineage
     partition_by experiment_id
     conflict_key (experiment_id, run_id)
+  }
+
+  aggregate Traces {
+    root Trace
+    child TraceSpan
+    child TraceAssessment
+    partition_by experiment_id
+    conflict_key (experiment_id, trace_id)
+  }
+
+  aggregate LoggedModels {
+    root LoggedModelEntity
+    partition_by experiment_id
+    conflict_key (experiment_id, model_id)
   }
 
   command CreateExperiment {
@@ -620,5 +814,362 @@ contract RiffDBMLflow version 1 {
     overwrite run.lifecycle_stage = LifecycleStage.Active
     set run.revision = run.revision + 1
     return RunRestored { run: run }
+  }
+
+  command UpsertRunLineage {
+    input request_id: string<128>
+    input experiment_id: u64
+    input run_id: string<32>
+    input packed_datasets: bytes<200000>
+    input packed_model_inputs: bytes<100000>
+    input packed_model_outputs: bytes<100000>
+    idempotency_key request_id
+    read Run(experiment_id, run_id) as run else RunMissing {}
+    init_or_mutate RunLineage(experiment_id, run_id) as lineage initialize {
+      packed_datasets: packed_datasets,
+      packed_model_inputs: packed_model_inputs,
+      packed_model_outputs: packed_model_outputs,
+    }
+    require active: run.lifecycle_stage == LifecycleStage.Active else RunInactive {}
+    overwrite lineage.packed_datasets = packed_datasets
+    overwrite lineage.packed_model_inputs = packed_model_inputs
+    overwrite lineage.packed_model_outputs = packed_model_outputs
+    return RunLineageUpserted { lineage: lineage }
+  }
+
+  command UpsertTrace {
+    input request_id: string<128>
+    input experiment_id: u64
+    input trace_id: string<64>
+    input request_time_ms: i64
+    input execution_duration_ms: i64
+    input state: string<32>
+    input status_code: string<32>
+    input trace_name: string<256>
+    input client_request_id: optional<string<128>>
+    input request_preview: optional<string<2000>>
+    input response_preview: optional<string<2000>>
+    input source_run_id: optional<string<32>>
+    input span_count: i64
+    input error_span_count: i64
+    input total_input_tokens: i64
+    input total_output_tokens: i64
+    input total_tokens: i64
+    input cache_read_input_tokens: i64
+    input cache_creation_input_tokens: i64
+    input total_cost_micros: i64
+    input session_id: optional<string<128>>
+    input packed_trace_metadata: bytes<16384>
+    input packed_tags: bytes<16384>
+    input packed_run_ids: bytes<16384>
+    input packed_prompt_versions: bytes<16384>
+    input requested_at: timestamp
+    input initialized: bool
+    idempotency_key request_id
+    init_or_mutate Trace(experiment_id, trace_id) as trace initialize {
+      request_time_ms: request_time_ms,
+      execution_duration_ms: execution_duration_ms,
+      state: state,
+      status_code: status_code,
+      trace_name: trace_name,
+      client_request_id: client_request_id,
+      request_preview: request_preview,
+      response_preview: response_preview,
+      source_run_id: source_run_id,
+      span_count: span_count,
+      error_span_count: error_span_count,
+      total_input_tokens: total_input_tokens,
+      total_output_tokens: total_output_tokens,
+      total_tokens: total_tokens,
+      cache_read_input_tokens: cache_read_input_tokens,
+      cache_creation_input_tokens: cache_creation_input_tokens,
+      total_cost_micros: total_cost_micros,
+      session_id: session_id,
+      packed_trace_metadata: packed_trace_metadata,
+      packed_tags: packed_tags,
+      packed_run_ids: packed_run_ids,
+      packed_prompt_versions: packed_prompt_versions,
+      requested_at: requested_at,
+      initialized: initialized,
+    }
+    overwrite trace.request_time_ms = request_time_ms
+    overwrite trace.execution_duration_ms = execution_duration_ms
+    overwrite trace.state = state
+    overwrite trace.status_code = status_code
+    overwrite trace.trace_name = trace_name
+    overwrite trace.client_request_id = client_request_id
+    overwrite trace.request_preview = request_preview
+    overwrite trace.response_preview = response_preview
+    overwrite trace.source_run_id = source_run_id
+    overwrite trace.span_count = span_count
+    overwrite trace.error_span_count = error_span_count
+    overwrite trace.total_input_tokens = total_input_tokens
+    overwrite trace.total_output_tokens = total_output_tokens
+    overwrite trace.total_tokens = total_tokens
+    overwrite trace.cache_read_input_tokens = cache_read_input_tokens
+    overwrite trace.cache_creation_input_tokens = cache_creation_input_tokens
+    overwrite trace.total_cost_micros = total_cost_micros
+    overwrite trace.session_id = session_id
+    overwrite trace.packed_trace_metadata = packed_trace_metadata
+    overwrite trace.packed_tags = packed_tags
+    overwrite trace.packed_run_ids = packed_run_ids
+    overwrite trace.packed_prompt_versions = packed_prompt_versions
+    overwrite trace.requested_at = requested_at
+    overwrite trace.initialized = initialized
+    return TraceUpserted { trace: trace }
+  }
+
+  bulk command IngestTraceSpans {
+    input request_id: string<128>
+    input experiment_id: u64
+    input trace_id: string<64>
+    input request_time_ms: i64
+    input execution_duration_ms: i64
+    input state: string<32>
+    input status_code: string<32>
+    input trace_name: string<256>
+    input client_request_id: optional<string<128>>
+    input request_preview: optional<string<2000>>
+    input response_preview: optional<string<2000>>
+    input source_run_id: optional<string<32>>
+    input span_count: i64
+    input error_span_count: i64
+    input total_input_tokens: i64
+    input total_output_tokens: i64
+    input total_tokens: i64
+    input cache_read_input_tokens: i64
+    input cache_creation_input_tokens: i64
+    input total_cost_micros: i64
+    input session_id: optional<string<128>>
+    input packed_trace_metadata: bytes<16384>
+    input packed_tags: bytes<16384>
+    input packed_run_ids: bytes<16384>
+    input packed_prompt_versions: bytes<16384>
+    input requested_at: timestamp
+    input initialized: bool
+    input spans: list<TraceSpan, 1..64> aggregate_bytes <= 1000000
+    idempotency_key request_id
+    init_or_mutate Trace(experiment_id, trace_id) as trace initialize {
+      request_time_ms: request_time_ms,
+      execution_duration_ms: execution_duration_ms,
+      state: state,
+      status_code: status_code,
+      trace_name: trace_name,
+      client_request_id: client_request_id,
+      request_preview: request_preview,
+      response_preview: response_preview,
+      source_run_id: source_run_id,
+      span_count: span_count,
+      error_span_count: error_span_count,
+      total_input_tokens: total_input_tokens,
+      total_output_tokens: total_output_tokens,
+      total_tokens: total_tokens,
+      cache_read_input_tokens: cache_read_input_tokens,
+      cache_creation_input_tokens: cache_creation_input_tokens,
+      total_cost_micros: total_cost_micros,
+      session_id: session_id,
+      packed_trace_metadata: packed_trace_metadata,
+      packed_tags: packed_tags,
+      packed_run_ids: packed_run_ids,
+      packed_prompt_versions: packed_prompt_versions,
+      requested_at: requested_at,
+      initialized: initialized,
+    }
+    for item in spans {
+      init_or_mutate TraceSpan(experiment_id, trace_id, item.span_id) as span initialize {
+        parent_id: item.parent_id,
+        name: item.name,
+        span_type: item.span_type,
+        status: item.status,
+        start_time_ns: item.start_time_ns,
+        end_time_ns: item.end_time_ns,
+        duration_ms: item.duration_ms,
+        model_name: item.model_name,
+        model_provider: item.model_provider,
+        input_tokens: item.input_tokens,
+        output_tokens: item.output_tokens,
+        total_tokens: item.total_tokens,
+        input_cost_micros: item.input_cost_micros,
+        output_cost_micros: item.output_cost_micros,
+        total_cost_micros: item.total_cost_micros,
+        started_at: item.started_at,
+        packed_span_json: item.packed_span_json,
+      }
+      overwrite span.parent_id = item.parent_id
+      overwrite span.name = item.name
+      overwrite span.span_type = item.span_type
+      overwrite span.status = item.status
+      overwrite span.start_time_ns = item.start_time_ns
+      overwrite span.end_time_ns = item.end_time_ns
+      overwrite span.duration_ms = item.duration_ms
+      overwrite span.model_name = item.model_name
+      overwrite span.model_provider = item.model_provider
+      overwrite span.input_tokens = item.input_tokens
+      overwrite span.output_tokens = item.output_tokens
+      overwrite span.total_tokens = item.total_tokens
+      overwrite span.input_cost_micros = item.input_cost_micros
+      overwrite span.output_cost_micros = item.output_cost_micros
+      overwrite span.total_cost_micros = item.total_cost_micros
+      overwrite span.started_at = item.started_at
+      overwrite span.packed_span_json = item.packed_span_json
+      emit SpanObserved {
+        experiment_id: experiment_id,
+        span_type: item.span_type,
+        model_name: item.model_name,
+        status: item.status,
+        duration_ms: item.duration_ms,
+        input_tokens: item.input_tokens,
+        output_tokens: item.output_tokens,
+        total_tokens: item.total_tokens,
+        cost_micros: item.total_cost_micros,
+        observed_at: item.started_at,
+      }
+    }
+    overwrite trace.request_time_ms = request_time_ms
+    overwrite trace.execution_duration_ms = execution_duration_ms
+    overwrite trace.state = state
+    overwrite trace.status_code = status_code
+    overwrite trace.trace_name = trace_name
+    overwrite trace.client_request_id = client_request_id
+    overwrite trace.request_preview = request_preview
+    overwrite trace.response_preview = response_preview
+    overwrite trace.source_run_id = source_run_id
+    overwrite trace.span_count = span_count
+    overwrite trace.error_span_count = error_span_count
+    overwrite trace.total_input_tokens = total_input_tokens
+    overwrite trace.total_output_tokens = total_output_tokens
+    overwrite trace.total_tokens = total_tokens
+    overwrite trace.cache_read_input_tokens = cache_read_input_tokens
+    overwrite trace.cache_creation_input_tokens = cache_creation_input_tokens
+    overwrite trace.total_cost_micros = total_cost_micros
+    overwrite trace.session_id = session_id
+    overwrite trace.packed_trace_metadata = packed_trace_metadata
+    overwrite trace.packed_tags = packed_tags
+    overwrite trace.packed_run_ids = packed_run_ids
+    overwrite trace.packed_prompt_versions = packed_prompt_versions
+    overwrite trace.requested_at = requested_at
+    overwrite trace.initialized = initialized
+    return TraceSpansIngested { trace: trace }
+  }
+
+  command DeleteTrace {
+    input request_id: string<128>
+    input experiment_id: u64
+    input trace_id: string<64>
+    idempotency_key request_id
+    delete Trace(experiment_id, trace_id) as trace else TraceMissing {}
+    return TraceDeleted { trace: trace }
+  }
+
+  command DeleteTraceSpan {
+    input request_id: string<128>
+    input experiment_id: u64
+    input trace_id: string<64>
+    input span_id: string<64>
+    idempotency_key request_id
+    delete TraceSpan(experiment_id, trace_id, span_id) as span else TraceSpanMissing {}
+    return TraceSpanDeleted { span: span }
+  }
+
+  command UpsertTraceAssessment {
+    input request_id: string<128>
+    input experiment_id: u64
+    input trace_id: string<64>
+    input assessment_id: string<64>
+    input name: string<250>
+    input assessment_type: string<32>
+    input value_text: string<2000>
+    input numeric_value_milli: optional<i64>
+    input created_timestamp_ms: i64
+    input last_updated_timestamp_ms: i64
+    input span_id: optional<string<64>>
+    input packed_assessment_json: bytes<16384>
+    idempotency_key request_id
+    read Trace(experiment_id, trace_id) as trace else TraceMissing {}
+    init_or_mutate TraceAssessment(experiment_id, trace_id, assessment_id) as assessment initialize {
+      name: name,
+      assessment_type: assessment_type,
+      value_text: value_text,
+      numeric_value_milli: numeric_value_milli,
+      created_timestamp_ms: created_timestamp_ms,
+      last_updated_timestamp_ms: last_updated_timestamp_ms,
+      span_id: span_id,
+      packed_assessment_json: packed_assessment_json,
+    }
+    overwrite assessment.name = name
+    overwrite assessment.assessment_type = assessment_type
+    overwrite assessment.value_text = value_text
+    overwrite assessment.numeric_value_milli = numeric_value_milli
+    overwrite assessment.created_timestamp_ms = created_timestamp_ms
+    overwrite assessment.last_updated_timestamp_ms = last_updated_timestamp_ms
+    overwrite assessment.span_id = span_id
+    overwrite assessment.packed_assessment_json = packed_assessment_json
+    return TraceAssessmentUpserted { assessment: assessment }
+  }
+
+  command DeleteTraceAssessment {
+    input request_id: string<128>
+    input experiment_id: u64
+    input trace_id: string<64>
+    input assessment_id: string<64>
+    idempotency_key request_id
+    delete TraceAssessment(experiment_id, trace_id, assessment_id) as assessment else TraceAssessmentMissing {}
+    return TraceAssessmentDeleted { assessment: assessment }
+  }
+
+  command UpsertLoggedModel {
+    input request_id: string<128>
+    input experiment_id: u64
+    input model_id: string<64>
+    input name: string<500>
+    input artifact_location: string<8000>
+    input creation_timestamp_ms: i64
+    input last_updated_timestamp_ms: i64
+    input status: string<32>
+    input lifecycle_stage: LifecycleStage
+    input status_message: optional<string<1000>>
+    input source_run_id: optional<string<32>>
+    input model_type: optional<string<250>>
+    input packed_tags: bytes<16384>
+    input packed_params: bytes<16384>
+    input packed_metrics: bytes<16384>
+    idempotency_key request_id
+    init_or_mutate LoggedModelEntity(experiment_id, model_id) as model initialize {
+      name: name,
+      artifact_location: artifact_location,
+      creation_timestamp_ms: creation_timestamp_ms,
+      last_updated_timestamp_ms: last_updated_timestamp_ms,
+      status: status,
+      lifecycle_stage: lifecycle_stage,
+      status_message: status_message,
+      source_run_id: source_run_id,
+      model_type: model_type,
+      packed_tags: packed_tags,
+      packed_params: packed_params,
+      packed_metrics: packed_metrics,
+    }
+    overwrite model.name = name
+    overwrite model.artifact_location = artifact_location
+    overwrite model.creation_timestamp_ms = creation_timestamp_ms
+    overwrite model.last_updated_timestamp_ms = last_updated_timestamp_ms
+    overwrite model.status = status
+    overwrite model.lifecycle_stage = lifecycle_stage
+    overwrite model.status_message = status_message
+    overwrite model.source_run_id = source_run_id
+    overwrite model.model_type = model_type
+    overwrite model.packed_tags = packed_tags
+    overwrite model.packed_params = packed_params
+    overwrite model.packed_metrics = packed_metrics
+    return LoggedModelUpserted { model: model }
+  }
+
+  command DeleteLoggedModelEntity {
+    input request_id: string<128>
+    input experiment_id: u64
+    input model_id: string<64>
+    idempotency_key request_id
+    mutate LoggedModelEntity(experiment_id, model_id) as model else LoggedModelMissing {}
+    overwrite model.lifecycle_stage = LifecycleStage.Deleted
+    return LoggedModelDeleted { model: model }
   }
 }

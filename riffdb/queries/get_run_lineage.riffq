@@ -1,0 +1,16 @@
+query GetRunLineage(
+    $experiment_id: RunLineage.experiment_id,
+    $run_id: RunLineage.run_id,
+) {
+    one lineage from RunLineage
+        where experiment_id == $experiment_id
+          && run_id == $run_id
+        else Missing
+
+    return Found {
+        lineage: lineage {
+            experiment_id run_id packed_datasets packed_model_inputs packed_model_outputs
+        }
+    }
+    outcomes Found | Missing
+}

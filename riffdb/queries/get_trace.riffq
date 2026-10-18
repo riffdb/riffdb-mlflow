@@ -1,0 +1,49 @@
+query GetTrace(
+    $experiment_id: Trace.experiment_id,
+    $trace_id: Trace.trace_id,
+) {
+    one trace from Trace
+        where experiment_id == $experiment_id
+          && trace_id == $trace_id
+        else Missing
+
+    many spans from TraceSpan
+        where experiment_id == $experiment_id
+          && trace_id == $trace_id
+        order by start_time_ns asc, span_id asc
+        take 64
+
+    many assessments from TraceAssessment
+        where experiment_id == $experiment_id
+          && trace_id == $trace_id
+        order by created_timestamp_ms asc, assessment_id asc
+        take 64
+
+    return Found {
+        trace: trace {
+            experiment_id trace_id request_time_ms execution_duration_ms
+            state status_code trace_name client_request_id
+            request_preview response_preview source_run_id
+            span_count error_span_count
+            total_input_tokens total_output_tokens total_tokens
+            cache_read_input_tokens cache_creation_input_tokens
+            total_cost_micros session_id
+            packed_trace_metadata packed_tags packed_run_ids packed_prompt_versions
+            requested_at initialized
+        }
+        spans: spans {
+            experiment_id trace_id span_id parent_id name span_type status
+            start_time_ns end_time_ns duration_ms model_name model_provider
+            input_tokens output_tokens total_tokens
+            input_cost_micros output_cost_micros total_cost_micros
+            started_at packed_span_json
+        }
+        assessments: assessments {
+            experiment_id trace_id assessment_id name assessment_type
+            value_text numeric_value_milli
+            created_timestamp_ms last_updated_timestamp_ms
+            span_id packed_assessment_json
+        }
+    }
+    outcomes Found | Missing
+}

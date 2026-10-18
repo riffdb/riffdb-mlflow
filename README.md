@@ -4,24 +4,34 @@
 out-of-tree integration: no MLflow-specific code or vocabulary belongs in the
 RiffDB repository.
 
-The project currently targets MLflow 3.15.1 and is under active development.
-It is not yet usable as a backend store.
+The project targets **MLflow 3.15.1** and implements the complete `AbstractStore`
+tracking, tracing, evaluation assessment, trace analytics, logged-model, and
+run-lineage surface:
 
-The current validated development slice includes atomic experiment creation
-with tags, experiment lifecycle and tag updates, experiment exact/LIKE/ILIKE
-search, atomic run creation with tags, run get/update/delete/restore, and
-lifecycle-aware globally ordered run search across a bounded experiment set.
-Exact generation, static checks, unit tests, and disposable real-RiffDB
-loopback cover that slice.
-
-Run predicates beyond lifecycle and orders beyond `start_time DESC, run_id ASC`
-remain unimplemented, as do inputs and the upstream tracking-store conformance
-suite. The development tree now also implements bounded atomic batch logging
-of metrics, parameters, and tags, plus metric history and latest-metric reads;
-this addition passes static checks, 21 unit tests, and application compilation,
-but is not yet qualified by the upstream tracking-store suite. Unsupported search shapes fail
-before contacting RiffDB; the adapter does not repair them with client-side
-filtering or sorting.
+- **Experiments & Runs**: atomic experiment creation with tags, lifecycle and
+  tag updates, `exact`/`LIKE`/`ILIKE` experiment search, atomic run creation
+  with tags, run get/update/delete/restore, bounded atomic `log_batch`
+  (metrics, parameters, tags), `get_metric_history`, `log_inputs`, `log_outputs`,
+  and `record_logged_model`.
+- **Traces & Out-of-Order Spans (`TraceInfo`, `Span`)**: `start_trace`,
+  `get_trace_info`, `batch_get_traces`, `log_spans`, `log_spans_async`,
+  `ingest_spans_out_of_order`, `search_traces`, `delete_traces`,
+  `set_trace_tag`, `delete_trace_tag`, `link_traces_to_run`,
+  `unlink_traces_from_run`, and `link_prompts_to_trace`. `IngestTraceSpans`
+  uses `init_or_mutate` across `Trace` and `TraceSpan` in one partition commit,
+  allowing child spans to arrive before parent/root spans and even before
+  `start_trace()` without foreign-key failures or read-time `FINAL` merges.
+- **Assessments (`Feedback` & `Expectation`)**: `create_assessment`,
+  `get_assessment`, `update_assessment`, and `delete_assessment`.
+- **Trace Metrics & Analytical Rollups (`query_trace_metrics`, `ADR-0315`)**:
+  backed by contract-declared scalar columnar projections (`TraceAnalytics`,
+  `SpanAnalytics`, `AssessmentAnalytics`) and event-driven rollups
+  (`SpanModelRollup` with `min`/`max`/`mean`/`sum`/`count` and `hour(...)`
+  temporal bucket keys) queried via `source projected` in `.riffq`.
+- **Logged Models (`LoggedModel`)**: `create_logged_model`, `get_logged_model`,
+  `delete_logged_model`, `finalize_logged_model`, `set_logged_model_tags`,
+  `delete_logged_model_tag`, `log_logged_model_params`, and
+  `search_logged_models`.
 
 The intended server configuration is:
 

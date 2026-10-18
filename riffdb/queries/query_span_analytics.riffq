@@ -1,0 +1,23 @@
+query QuerySpanAnalytics(
+    $experiment_id: TraceSpan.experiment_id,
+    $limit: Limit<500> = 500,
+    $after: Cursor?,
+) {
+    source projected SpanAnalytics
+    freshness causal inherit_session_commit true max_wait_ms 5000
+    many spans from TraceSpan
+        where experiment_id == $experiment_id
+        order by trace_id asc, span_id asc
+        take $limit after $after
+        else IntegrityFailure
+
+    return Found {
+        spans: spans {
+            experiment_id trace_id span_id name span_type status
+            start_time_ns end_time_ns duration_ms model_name model_provider
+            input_tokens output_tokens total_tokens
+            input_cost_micros output_cost_micros total_cost_micros started_at
+        }
+    }
+    outcomes Found | IntegrityFailure
+}

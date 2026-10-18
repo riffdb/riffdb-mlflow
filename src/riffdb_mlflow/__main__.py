@@ -8,7 +8,7 @@ import os
 import struct
 import sys
 from hashlib import sha256
-from typing import cast
+from typing import Any, cast
 
 from mlflow.entities import (
     ExperimentTag as MLflowExperimentTag,
@@ -757,6 +757,370 @@ def _verify_tracking_store(transport: SyncApplicationTransport, database: str) -
     all_runs = store.search_runs([exp_id], "", ViewType.ALL)  # type: ignore[no-untyped-call]
     if [item.info.run_id for item in all_runs] != [run_two.info.run_id, run_one.info.run_id]:
         raise RuntimeError("store search_runs ALL did not return restored runs in start_time DESC")
+
+    _verify_extended_tracking_store(store, exp_id, run_one.info.run_id)
+
+
+def _verify_extended_tracking_store(store: object, exp_id: str, run_id: str) -> None:
+    import asyncio
+
+    from mlflow.entities import (
+        AssessmentError,
+        AssessmentSource,
+        AssessmentSourceType,
+        Dataset,
+        DatasetInput,
+        Expectation,
+        Feedback,
+        InputTag,
+        LoggedModelInput,
+        LoggedModelOutput,
+        LoggedModelParameter,
+        LoggedModelStatus,
+        LoggedModelTag,
+        Span,
+        SpanType,
+        TraceInfo,
+        TraceLocation,
+        TraceState,
+    )
+    from mlflow.entities.model_registry import PromptVersion
+    from mlflow.entities.trace_metrics import AggregationType, MetricAggregation, MetricViewType
+    from mlflow.tracing.constant import AssessmentMetricKey, SpanMetricKey, TraceMetricKey
+
+    from riffdb_mlflow.store import RiffDBTrackingStore
+
+    s = cast(RiffDBTrackingStore, store)
+
+    # 1. Run lineage: log_inputs, log_outputs, record_logged_model
+    ds = Dataset(
+        name="eval-ds",
+        digest="d1234567",
+        source_type="local",
+        source='{"uri":"file:///tmp/eval.parquet"}',
+        schema='{"col":"text"}',
+        profile='{"rows":100}',
+    )
+    ds_in = DatasetInput(
+        dataset=ds,
+        tags=[InputTag(key="mlflow.data.context", value="eval")],
+    )
+    s.log_inputs(
+        run_id,
+        datasets=[ds_in],
+        models=[LoggedModelInput(model_id="m-input-1")],
+    )
+    s.log_outputs(
+        run_id,
+        models=[LoggedModelOutput(model_id="m-output-1", step=3)],
+    )
+    s.record_logged_model(run_id, {"artifact_path": "model", "flavors": {"python_function": {}}})
+    run_with_lineage = s.get_run(run_id)
+    if len(run_with_lineage.inputs.dataset_inputs) != 1:
+        raise RuntimeError("store log_inputs did not persist dataset_inputs")
+    if len(run_with_lineage.inputs.model_inputs) != 1:
+        raise RuntimeError("store log_inputs did not persist model_inputs")
+    if len(run_with_lineage.outputs.model_outputs) != 1:
+        raise RuntimeError("store log_outputs did not persist model_outputs")
+
+    # 2. Out-of-order span ingestion: ingest child and root spans BEFORE start_trace!
+    ooo_trace_id = f"tr-{int(exp_id):016x}0000000000000001"
+
+    def _make_span(
+        trace_id: str,
+        span_id_int: int,
+        name: str,
+        parent_id_int: int | None,
+        start_ns: int,
+        end_ns: int,
+        span_type: str = SpanType.LLM,
+        model_name: str = "gpt-4o",
+        input_tokens: int = 100,
+        output_tokens: int = 50,
+        cost_usd: float = 0.0025,
+    ) -> Span:
+        attrs: dict[str, Any] = {
+            "mlflow.traceRequestId": trace_id,
+            "mlflow.spanType": span_type,
+            "mlflow.spanInputs": {"prompt": "hello"},
+            "mlflow.spanOutputs": {"response": "world"},
+            "mlflow.chat.model": model_name,
+            "mlflow.chat.tokenUsage": {
+                "input_tokens": input_tokens,
+                "output_tokens": output_tokens,
+                "total_tokens": input_tokens + output_tokens,
+            },
+            "mlflow.llm.cost": {
+                "input_cost": cost_usd * 0.5,
+                "output_cost": cost_usd * 0.5,
+                "total_cost": cost_usd,
+            },
+        }
+        return Span.from_dict(
+            {
+                "trace_id": trace_id,
+                "span_id": f"{span_id_int:016x}",
+                "parent_span_id": f"{parent_id_int:016x}" if parent_id_int is not None else None,
+                "name": name,
+                "start_time_unix_nano": start_ns,
+                "end_time_unix_nano": end_ns,
+                "status": {"code": "STATUS_CODE_OK", "message": ""},
+                "attributes": attrs,
+                "events": [],
+            }
+        )
+
+    # Child span arrives first, before parent span and before start_trace!
+    child_span = _make_span(
+        ooo_trace_id,
+        0x2222222222222222,
+        "llm_call_child",
+        0x1111111111111111,
+        1_700_000_000_100_000_000,
+        1_700_000_000_400_000_000,
+        SpanType.LLM,
+        "gpt-4o",
+        120,
+        80,
+        0.004,
+    )
+    logged_child = s.log_spans(exp_id, [child_span])
+    if len(logged_child) != 1:
+        raise RuntimeError("out-of-order child log_spans before start_trace failed")
+
+    # Root span arrives second (async)
+    root_span = _make_span(
+        ooo_trace_id,
+        0x1111111111111111,
+        "agent_root",
+        None,
+        1_700_000_000_000_000_000,
+        1_700_000_000_500_000_000,
+        SpanType.AGENT,
+        "gpt-4o",
+        40,
+        20,
+        0.001,
+    )
+    asyncio.run(s.log_spans_async(exp_id, [root_span]))
+
+    # Now start_trace arrives after spans were already ingested!
+    ti = TraceInfo(
+        trace_id=ooo_trace_id,
+        trace_location=TraceLocation.from_experiment_id(exp_id),
+        request_time=1_700_000_000_000,
+        state=TraceState.OK,
+        request_preview='{"prompt":"hello"}',
+        response_preview='{"response":"world"}',
+        client_request_id="req-ooo-1",
+        execution_duration=500,
+        trace_metadata={"mlflow.traceInputs": '{"prompt":"hello"}'},
+        tags={"env": "prod"},
+    )
+    started_ti = s.start_trace(ti)
+    if started_ti.trace_id != ooo_trace_id or started_ti.state != TraceState.OK:
+        raise RuntimeError("start_trace after out-of-order spans did not finalize TraceInfo")
+
+    # Verify batch_get_traces reconstructs parent-before-child ordering and trace info
+    full_traces = s.batch_get_traces([ooo_trace_id], location=exp_id)
+    if len(full_traces) != 1 or len(full_traces[0].data.spans) != 2:
+        raise RuntimeError("batch_get_traces did not return both out-of-order spans")
+    if full_traces[0].data.spans[0].name != "agent_root":
+        raise RuntimeError("batch_get_traces did not order root span before child span")
+
+    # Verify trace tag and lineage operations
+    s.set_trace_tag(ooo_trace_id, "custom_tag", "v1")
+    if s.get_trace_info(ooo_trace_id).tags.get("custom_tag") != "v1":
+        raise RuntimeError("set_trace_tag did not persist tag")
+    s.delete_trace_tag(ooo_trace_id, "custom_tag")
+    if "custom_tag" in s.get_trace_info(ooo_trace_id).tags:
+        raise RuntimeError("delete_trace_tag did not remove tag")
+
+    s.link_traces_to_run([ooo_trace_id], run_id)
+    if s.get_trace_info(ooo_trace_id).trace_metadata.get("mlflow.sourceRun") != run_id:
+        raise RuntimeError("link_traces_to_run did not set sourceRun")
+    s.link_prompts_to_trace(
+        [PromptVersion(name="qa-prompt", version=2, template="Answer: {{q}}")],  # type: ignore[abstract]
+        ooo_trace_id,
+    )
+    # Re-link run for search_traces by run_id test
+    s.link_traces_to_run([ooo_trace_id], run_id)
+
+    # 3. Assessments (Feedback and Expectation)
+    fb = s.create_assessment(
+        Feedback(
+            name="relevance",
+            source=AssessmentSource(
+                source_type=AssessmentSourceType.LLM_JUDGE,
+                source_id="judge-1",
+            ),
+            trace_id=ooo_trace_id,
+            value=0.9,
+            rationale="Highly relevant",
+            span_id=root_span.span_id,
+            metadata={"judge_model": "gpt-4o"},
+        )
+    )
+    if fb.assessment_id is None:
+        raise RuntimeError("create_assessment did not assign assessment_id")
+    fetched_fb = s.get_assessment(ooo_trace_id, fb.assessment_id)
+    if fetched_fb.name != "relevance":
+        raise RuntimeError("get_assessment did not return created Feedback")
+    updated_fb = s.update_assessment(
+        trace_id=ooo_trace_id,
+        assessment_id=fb.assessment_id,
+        name="relevance_v2",
+        feedback=Feedback(
+            name="relevance_v2",
+            source=AssessmentSource(
+                source_type=AssessmentSourceType.LLM_JUDGE,
+                source_id="judge-1",
+            ),
+            value=1.0,
+            error=AssessmentError(error_code="NONE", error_message="ok"),
+        ),
+        rationale="Updated rationale",
+        metadata={"judge_model": "gpt-4o", "updated": "true"},
+    )
+    if updated_fb.name != "relevance_v2" or updated_fb.rationale != "Updated rationale":
+        raise RuntimeError("update_assessment did not update Feedback")
+
+    exp_ass = s.create_assessment(
+        Expectation(
+            name="expected_answer",
+            source=AssessmentSource(
+                source_type=AssessmentSourceType.HUMAN,
+                source_id="annotator-1",
+            ),
+            trace_id=ooo_trace_id,
+            value="world",
+        )
+    )
+    if exp_ass.assessment_id is None:
+        raise RuntimeError("create_assessment did not assign assessment_id to Expectation")
+    ti_with_assessments = s.get_trace_info(ooo_trace_id)
+    if len(ti_with_assessments.assessments) != 2:
+        raise RuntimeError("get_trace_info did not attach assessments")
+
+    # 4. Trace Metrics & Analytical Rollups (ADR-0315 projections)
+    trace_count_points = s.query_trace_metrics(
+        experiment_ids=[exp_id],
+        view_type=MetricViewType.TRACES,
+        metric_name=TraceMetricKey.TRACE_COUNT,
+        aggregations=[
+            MetricAggregation(AggregationType.COUNT),
+        ],
+        dimensions=["trace_status"],
+    )
+    if len(trace_count_points) != 1 or trace_count_points[0].values["COUNT"] != 1.0:
+        raise RuntimeError(f"unexpected TRACES metric points: {trace_count_points}")
+
+    token_points = s.query_trace_metrics(
+        experiment_ids=[exp_id],
+        view_type=MetricViewType.TRACES,
+        metric_name=TraceMetricKey.TOTAL_TOKENS,
+        aggregations=[
+            MetricAggregation(AggregationType.SUM),
+            MetricAggregation(AggregationType.AVG),
+        ],
+    )
+    if len(token_points) != 1 or token_points[0].values["SUM"] != 260.0:
+        raise RuntimeError(f"unexpected TOTAL_TOKENS metric points: {token_points}")
+
+    span_cost_points = s.query_trace_metrics(
+        experiment_ids=[exp_id],
+        view_type=MetricViewType.SPANS,
+        metric_name=SpanMetricKey.TOTAL_COST,
+        aggregations=[
+            MetricAggregation(AggregationType.SUM),
+            MetricAggregation(AggregationType.PERCENTILE, percentile_value=50.0),
+            MetricAggregation(AggregationType.PERCENTILE, percentile_value=95.0),
+        ],
+        dimensions=["span_model_name"],
+    )
+    if len(span_cost_points) != 1 or abs(span_cost_points[0].values["SUM"] - 0.005) > 1e-6:
+        raise RuntimeError(f"unexpected SPANS cost metric points: {span_cost_points}")
+
+    assessment_points = s.query_trace_metrics(
+        experiment_ids=[exp_id],
+        view_type=MetricViewType.ASSESSMENTS,
+        metric_name=AssessmentMetricKey.ASSESSMENT_VALUE,
+        aggregations=[
+            MetricAggregation(AggregationType.AVG),
+            MetricAggregation(AggregationType.MAX),
+        ],
+        dimensions=["assessment_name"],
+    )
+    if len(assessment_points) < 1:
+        raise RuntimeError("ASSESSMENTS query_trace_metrics returned no points")
+
+    # Verify ADR-0315 event projection SpanModelRollup and columnar aggregate SpanAnalytics
+    event_rollups_llm = s.get_span_model_rollups(exp_id, "LLM", "gpt-4o")
+    event_rollups_agent = s.get_span_model_rollups(exp_id, "AGENT", "gpt-4o")
+    if len(event_rollups_llm) != 1 or len(event_rollups_agent) != 1:
+        raise RuntimeError(
+            f"expected 1 LLM and 1 AGENT SpanModelRollup row, "
+            f"got {event_rollups_llm}, {event_rollups_agent}"
+        )
+    columnar_rollups = s.get_columnar_span_model_rollups(exp_id)
+    if len(columnar_rollups) != 2:
+        raise RuntimeError(f"expected 2 columnar SpanAnalytics rollup rows, got {columnar_rollups}")
+
+    # Search traces with filter
+    found_traces, _token = s.search_traces(
+        experiment_ids=[exp_id],
+        filter_string="status = 'OK' AND tag.env = 'prod'",
+        run_id=run_id,
+    )
+    if [t.trace_id for t in found_traces] != [ooo_trace_id]:
+        raise RuntimeError("search_traces did not match expected trace")
+
+    s.unlink_traces_from_run([ooo_trace_id], run_id)
+    s.delete_assessment(ooo_trace_id, exp_ass.assessment_id)
+    deleted_count = s.delete_traces(exp_id, trace_ids=[ooo_trace_id])
+    if deleted_count != 1:
+        raise RuntimeError("delete_traces did not delete the trace")
+
+    # 5. Logged Models (MLflow 3.x)
+    created_model = s.create_logged_model(
+        experiment_id=exp_id,
+        name="rag-assistant",
+        source_run_id=run_id,
+        tags=[LoggedModelTag("framework", "langchain")],  # type: ignore[no-untyped-call]
+        params=[LoggedModelParameter("temperature", "0.2")],  # type: ignore[no-untyped-call]
+        model_type="agent",
+    )
+    fetched_model = s.get_logged_model(created_model.model_id)
+    if fetched_model.name != "rag-assistant" or fetched_model.status != LoggedModelStatus.PENDING:
+        raise RuntimeError("create_logged_model/get_logged_model failed")
+
+    finalized_model = s.finalize_logged_model(created_model.model_id, LoggedModelStatus.READY)
+    if finalized_model.status != LoggedModelStatus.READY:
+        raise RuntimeError("finalize_logged_model did not update status to READY")
+
+    s.set_logged_model_tags(
+        created_model.model_id,
+        [LoggedModelTag("stage", "staging")],  # type: ignore[no-untyped-call]
+    )
+    s.log_logged_model_params(
+        created_model.model_id,
+        [LoggedModelParameter("top_k", "5")],  # type: ignore[no-untyped-call]
+    )
+    s.delete_logged_model_tag(created_model.model_id, "framework")
+    updated_model = s.get_logged_model(created_model.model_id)
+    if updated_model.tags.get("stage") != "staging" or "framework" in updated_model.tags:
+        raise RuntimeError("logged model tag operations failed")
+    if updated_model.params.get("top_k") != "5":
+        raise RuntimeError("log_logged_model_params failed")
+
+    searched_models = s.search_logged_models(
+        experiment_ids=[exp_id],
+        filter_string="name = 'rag-assistant' AND status = 'READY'",
+    )
+    if [m.model_id for m in searched_models] != [created_model.model_id]:
+        raise RuntimeError("search_logged_models did not return matching model")
+
+    s.delete_logged_model(created_model.model_id)
 
 
 def main() -> None:

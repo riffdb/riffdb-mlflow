@@ -1,0 +1,21 @@
+query SearchLoggedModels(
+    $experiment_id: LoggedModelEntity.experiment_id,
+    $limit: Limit<50> = 50,
+    $after: Cursor?,
+) {
+    many models from LoggedModelEntity
+        where experiment_id == $experiment_id
+        order by creation_timestamp_ms desc, model_id asc
+        take $limit after $after
+        else IntegrityFailure
+
+    return Found {
+        models: models {
+            experiment_id model_id name artifact_location
+            creation_timestamp_ms last_updated_timestamp_ms
+            status lifecycle_stage status_message source_run_id model_type
+            packed_tags packed_params packed_metrics
+        }
+    }
+    outcomes Found | IntegrityFailure
+}

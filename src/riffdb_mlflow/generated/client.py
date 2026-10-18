@@ -22,8 +22,8 @@ def _compact_tag(value: object, tag: str, keys: frozenset[str]) -> dict[str, obj
 
 CONTRACT_LINEAGE: Final[str] = "RiffDBMLflow"
 CONTRACT_VERSION: Final[int] = 1
-CONTRACT_BUNDLE_HASH: Final[str] = "c878f504a797df9792a16c6b763483520337accd882f4aead9d0220611b89398"
-QUERY_MODULE_HASH: Final[str] = "5ef4b74ab0a621cc7f3bae8f644d82d536607d9136918d06839d2b77088d88dd"
+CONTRACT_BUNDLE_HASH: Final[str] = "647ddd1f2cc0ea540bcf5f1ce3031fc99f5c3e9e4ee3486b14a56f3cfb88b578"
+QUERY_MODULE_HASH: Final[str] = "6cbd92bb36f753ddb51da134e9c8ca21b2e62e49e3ade08c9ee4d68723b4e4ae"
 
 COLLECTION_COUNT: Final[str] = "collection_count"
 INDIVIDUAL_VALUE_BYTES: Final[str] = "individual_value_bytes"
@@ -88,6 +88,35 @@ class Run:
     packed_latest_metrics: bytes
 
 @dataclass(frozen=True, slots=True, kw_only=True)
+class Trace:
+    state: str
+    trace_id: str
+    session_id: str | None
+    span_count: Annotated[int, "i64"]
+    trace_name: str
+    initialized: bool
+    packed_tags: bytes
+    status_code: str
+    requested_at: Timestamp
+    total_tokens: Annotated[int, "i64"]
+    experiment_id: Annotated[int, "u64"]
+    source_run_id: str | None
+    packed_run_ids: bytes
+    request_preview: str | None
+    request_time_ms: Annotated[int, "i64"]
+    error_span_count: Annotated[int, "i64"]
+    response_preview: str | None
+    client_request_id: str | None
+    total_cost_micros: Annotated[int, "i64"]
+    total_input_tokens: Annotated[int, "i64"]
+    total_output_tokens: Annotated[int, "i64"]
+    execution_duration_ms: Annotated[int, "i64"]
+    packed_trace_metadata: bytes
+    packed_prompt_versions: bytes
+    cache_read_input_tokens: Annotated[int, "i64"]
+    cache_creation_input_tokens: Annotated[int, "i64"]
+
+@dataclass(frozen=True, slots=True, kw_only=True)
 class RunDatum:
     kind: RunDataKind
     is_nan: bool
@@ -109,6 +138,29 @@ class RunDatum:
     metric_timestamp: Annotated[int, "i64"]
 
 @dataclass(frozen=True, slots=True, kw_only=True)
+class TraceSpan:
+    name: str
+    status: str
+    span_id: str
+    trace_id: str
+    parent_id: str | None
+    span_type: str
+    model_name: str
+    started_at: Timestamp
+    duration_ms: Annotated[int, "i64"]
+    end_time_ns: Annotated[int, "i64"]
+    input_tokens: Annotated[int, "i64"]
+    total_tokens: Annotated[int, "i64"]
+    experiment_id: Annotated[int, "u64"]
+    output_tokens: Annotated[int, "i64"]
+    start_time_ns: Annotated[int, "i64"]
+    model_provider: str
+    packed_span_json: bytes
+    input_cost_micros: Annotated[int, "i64"]
+    total_cost_micros: Annotated[int, "i64"]
+    output_cost_micros: Annotated[int, "i64"]
+
+@dataclass(frozen=True, slots=True, kw_only=True)
 class Experiment:
     name: str
     scope: str
@@ -122,6 +174,14 @@ class Experiment:
     artifact_location: str | None
 
 @dataclass(frozen=True, slots=True, kw_only=True)
+class RunLineage:
+    run_id: str
+    experiment_id: Annotated[int, "u64"]
+    packed_datasets: bytes
+    packed_model_inputs: bytes
+    packed_model_outputs: bytes
+
+@dataclass(frozen=True, slots=True, kw_only=True)
 class ExperimentTag:
     scope: str
     value: str
@@ -129,7 +189,75 @@ class ExperimentTag:
     value_digest: bytes
     experiment_id: Annotated[int, "u64"]
 
-GET_EXPERIMENT_QUERY_PLAN_HASH: Final[str] = "4de1772155456beeb7a1590dc11fade45561447b92ca237393b71115ddb2284a"
+@dataclass(frozen=True, slots=True, kw_only=True)
+class TraceAssessment:
+    name: str
+    span_id: str | None
+    trace_id: str
+    value_text: str
+    assessment_id: str
+    experiment_id: Annotated[int, "u64"]
+    assessment_type: str
+    numeric_value_milli: Annotated[int, "i64"] | None
+    created_timestamp_ms: Annotated[int, "i64"]
+    packed_assessment_json: bytes
+    last_updated_timestamp_ms: Annotated[int, "i64"]
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class LoggedModelEntity:
+    name: str
+    status: str
+    model_id: str
+    model_type: str | None
+    packed_tags: bytes
+    experiment_id: Annotated[int, "u64"]
+    packed_params: bytes
+    source_run_id: str | None
+    packed_metrics: bytes
+    status_message: str | None
+    lifecycle_stage: LifecycleStage
+    artifact_location: str
+    creation_timestamp_ms: Annotated[int, "i64"]
+    last_updated_timestamp_ms: Annotated[int, "i64"]
+
+AGGREGATE_SPAN_ANALYTICS_BY_MODEL_QUERY_PLAN_HASH: Final[str] = "9773dc458373f630ca49ac46065e98db199767b5db7624921b5ff8a2efc1fbe3"
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class AggregateSpanAnalyticsByModelParams:
+    experiment_id: Annotated[int, "u64"]
+    start_at: Timestamp
+    end_at: Timestamp
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class AggregateSpanAnalyticsByModelFoundByModel:
+    model_name: str
+    span_type: str
+    status: str
+    hour_bucket: Timestamp
+    span_count: Annotated[int, "u64"]
+    sum_duration_ms: Decimal
+    min_duration_ms: Annotated[int, "i64"] | None
+    max_duration_ms: Annotated[int, "i64"] | None
+    p50_duration_ms: Annotated[int, "i64"] | None
+    p95_duration_ms: Annotated[int, "i64"] | None
+    p99_duration_ms: Annotated[int, "i64"] | None
+    sum_total_tokens: Decimal
+    sum_total_cost_micros: Decimal
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class AggregateSpanAnalyticsByModelFound:
+    by_model: tuple[AggregateSpanAnalyticsByModelFoundByModel, ...]
+    outcome: Literal["Found"] = field(default="Found", init=False)
+
+    def is_found(self) -> bool:
+        return True
+
+    def unwrap_found(self) -> AggregateSpanAnalyticsByModelFound:
+        return self
+
+AggregateSpanAnalyticsByModelResult: TypeAlias = AggregateSpanAnalyticsByModelFound
+
+GET_EXPERIMENT_QUERY_PLAN_HASH: Final[str] = "506fcda6debe03fafe9959c29f668eee7dffbe27e76841594e6ca0d768650f37"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class GetExperimentParams:
@@ -176,7 +304,7 @@ class GetExperimentMissing:
 
 GetExperimentResult: TypeAlias = GetExperimentFound | GetExperimentMissing
 
-GET_EXPERIMENT_BY_NAME_QUERY_PLAN_HASH: Final[str] = "0514081283c2ccfef2e2b8bde847bcbf86ffc4b9812b3deec22b0b4c558f865a"
+GET_EXPERIMENT_BY_NAME_QUERY_PLAN_HASH: Final[str] = "e36bb2e7a9a484445be03eba30b696e77390eabc10d2c45a9d693b97de78ff90"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class GetExperimentByNameParams:
@@ -223,7 +351,60 @@ class GetExperimentByNameMissing:
 
 GetExperimentByNameResult: TypeAlias = GetExperimentByNameFound | GetExperimentByNameMissing
 
-GET_METRIC_HISTORY_QUERY_PLAN_HASH: Final[str] = "565094eef0c3aa7fbd4f2c40332c11fcf00928a9a345c1961a5cdab4bf59bde9"
+GET_LOGGED_MODEL_QUERY_PLAN_HASH: Final[str] = "ba4d4db334ba91dd6e694e5c5289dfa73e0b2644dd92295a8e62fd360c71437d"
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class GetLoggedModelParams:
+    experiment_id: Annotated[int, "u64"]
+    model_id: str
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class GetLoggedModelFoundModel:
+    experiment_id: Annotated[int, "u64"]
+    model_id: str
+    name: str
+    artifact_location: str
+    creation_timestamp_ms: Annotated[int, "i64"]
+    last_updated_timestamp_ms: Annotated[int, "i64"]
+    status: str
+    lifecycle_stage: LifecycleStage
+    status_message: str | None
+    source_run_id: str | None
+    model_type: str | None
+    packed_tags: bytes
+    packed_params: bytes
+    packed_metrics: bytes
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class GetLoggedModelFound:
+    model: GetLoggedModelFoundModel
+    outcome: Literal["Found"] = field(default="Found", init=False)
+
+    def is_found(self) -> bool:
+        return True
+
+    def is_missing(self) -> bool:
+        return False
+
+    def unwrap_found(self) -> GetLoggedModelFound:
+        return self
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class GetLoggedModelMissing:
+    outcome: Literal["Missing"] = field(default="Missing", init=False)
+
+    def is_found(self) -> bool:
+        return False
+
+    def is_missing(self) -> bool:
+        return True
+
+    def unwrap_found(self) -> GetLoggedModelFound:
+        raise ValueError("expected GetLoggedModel outcome found")
+
+GetLoggedModelResult: TypeAlias = GetLoggedModelFound | GetLoggedModelMissing
+
+GET_METRIC_HISTORY_QUERY_PLAN_HASH: Final[str] = "f4ebb1d4f2d7f4dd195dbb797c4be026f2da34f99a105c6e69a714a85044ba8d"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class GetMetricHistoryParams:
@@ -271,7 +452,7 @@ class GetMetricHistoryIntegrityFailure:
 
 GetMetricHistoryResult: TypeAlias = GetMetricHistoryFound | GetMetricHistoryIntegrityFailure
 
-GET_RUN_QUERY_PLAN_HASH: Final[str] = "66554838eb97a2d89af869772897d3110a9f7ff74c27ecb0a8a68ca38eca18d6"
+GET_RUN_QUERY_PLAN_HASH: Final[str] = "51e4c6980c3543ddf05dd766349a7425d55fad42f56592bf68233aab94a19a68"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class GetRunParams:
@@ -324,7 +505,375 @@ class GetRunMissing:
 
 GetRunResult: TypeAlias = GetRunFound | GetRunMissing
 
-SEARCH_EXPERIMENTS_QUERY_PLAN_HASH: Final[str] = "cdaf57f54039684553f954007bc441cd3bdec41c09d1d7811f6cb24247ec5c8b"
+GET_RUN_LINEAGE_QUERY_PLAN_HASH: Final[str] = "e7c892708d17f8f702613eb2591801714c54085c69aa9ef02fb8594cb350481d"
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class GetRunLineageParams:
+    experiment_id: Annotated[int, "u64"]
+    run_id: str
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class GetRunLineageFoundLineage:
+    experiment_id: Annotated[int, "u64"]
+    run_id: str
+    packed_datasets: bytes
+    packed_model_inputs: bytes
+    packed_model_outputs: bytes
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class GetRunLineageFound:
+    lineage: GetRunLineageFoundLineage
+    outcome: Literal["Found"] = field(default="Found", init=False)
+
+    def is_found(self) -> bool:
+        return True
+
+    def is_missing(self) -> bool:
+        return False
+
+    def unwrap_found(self) -> GetRunLineageFound:
+        return self
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class GetRunLineageMissing:
+    outcome: Literal["Missing"] = field(default="Missing", init=False)
+
+    def is_found(self) -> bool:
+        return False
+
+    def is_missing(self) -> bool:
+        return True
+
+    def unwrap_found(self) -> GetRunLineageFound:
+        raise ValueError("expected GetRunLineage outcome found")
+
+GetRunLineageResult: TypeAlias = GetRunLineageFound | GetRunLineageMissing
+
+GET_TRACE_QUERY_PLAN_HASH: Final[str] = "3770f73dee36692e4d482610833ce9c3f84edcfd6eda834bbd6e970a651290e5"
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class GetTraceParams:
+    experiment_id: Annotated[int, "u64"]
+    trace_id: str
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class GetTraceFoundTrace:
+    experiment_id: Annotated[int, "u64"]
+    trace_id: str
+    request_time_ms: Annotated[int, "i64"]
+    execution_duration_ms: Annotated[int, "i64"]
+    state: str
+    status_code: str
+    trace_name: str
+    client_request_id: str | None
+    request_preview: str | None
+    response_preview: str | None
+    source_run_id: str | None
+    span_count: Annotated[int, "i64"]
+    error_span_count: Annotated[int, "i64"]
+    total_input_tokens: Annotated[int, "i64"]
+    total_output_tokens: Annotated[int, "i64"]
+    total_tokens: Annotated[int, "i64"]
+    cache_read_input_tokens: Annotated[int, "i64"]
+    cache_creation_input_tokens: Annotated[int, "i64"]
+    total_cost_micros: Annotated[int, "i64"]
+    session_id: str | None
+    packed_trace_metadata: bytes
+    packed_tags: bytes
+    packed_run_ids: bytes
+    packed_prompt_versions: bytes
+    requested_at: Timestamp
+    initialized: bool
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class GetTraceFoundSpans:
+    experiment_id: Annotated[int, "u64"]
+    trace_id: str
+    span_id: str
+    parent_id: str | None
+    name: str
+    span_type: str
+    status: str
+    start_time_ns: Annotated[int, "i64"]
+    end_time_ns: Annotated[int, "i64"]
+    duration_ms: Annotated[int, "i64"]
+    model_name: str
+    model_provider: str
+    input_tokens: Annotated[int, "i64"]
+    output_tokens: Annotated[int, "i64"]
+    total_tokens: Annotated[int, "i64"]
+    input_cost_micros: Annotated[int, "i64"]
+    output_cost_micros: Annotated[int, "i64"]
+    total_cost_micros: Annotated[int, "i64"]
+    started_at: Timestamp
+    packed_span_json: bytes
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class GetTraceFoundAssessments:
+    experiment_id: Annotated[int, "u64"]
+    trace_id: str
+    assessment_id: str
+    name: str
+    assessment_type: str
+    value_text: str
+    numeric_value_milli: Annotated[int, "i64"] | None
+    created_timestamp_ms: Annotated[int, "i64"]
+    last_updated_timestamp_ms: Annotated[int, "i64"]
+    span_id: str | None
+    packed_assessment_json: bytes
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class GetTraceFound:
+    trace: GetTraceFoundTrace
+    spans: tuple[GetTraceFoundSpans, ...]
+    assessments: tuple[GetTraceFoundAssessments, ...]
+    outcome: Literal["Found"] = field(default="Found", init=False)
+
+    def is_found(self) -> bool:
+        return True
+
+    def is_missing(self) -> bool:
+        return False
+
+    def unwrap_found(self) -> GetTraceFound:
+        return self
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class GetTraceMissing:
+    outcome: Literal["Missing"] = field(default="Missing", init=False)
+
+    def is_found(self) -> bool:
+        return False
+
+    def is_missing(self) -> bool:
+        return True
+
+    def unwrap_found(self) -> GetTraceFound:
+        raise ValueError("expected GetTrace outcome found")
+
+GetTraceResult: TypeAlias = GetTraceFound | GetTraceMissing
+
+QUERY_ASSESSMENT_ANALYTICS_QUERY_PLAN_HASH: Final[str] = "ed3c0cfcab0ceb1003e207a0747122dc633219a75a9952550b989921dae698c5"
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class QueryAssessmentAnalyticsParams:
+    experiment_id: Annotated[int, "u64"]
+    limit: Annotated[int, "u64"] | None = None
+    after: str | None = None
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class QueryAssessmentAnalyticsFoundAssessments:
+    experiment_id: Annotated[int, "u64"]
+    trace_id: str
+    assessment_id: str
+    name: str
+    assessment_type: str
+    value_text: str
+    numeric_value_milli: Annotated[int, "i64"] | None
+    created_timestamp_ms: Annotated[int, "i64"]
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class QueryAssessmentAnalyticsFound:
+    assessments: tuple[QueryAssessmentAnalyticsFoundAssessments, ...]
+    outcome: Literal["Found"] = field(default="Found", init=False)
+
+    def is_found(self) -> bool:
+        return True
+
+    def is_integrity_failure(self) -> bool:
+        return False
+
+    def unwrap_found(self) -> QueryAssessmentAnalyticsFound:
+        return self
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class QueryAssessmentAnalyticsIntegrityFailure:
+    outcome: Literal["IntegrityFailure"] = field(default="IntegrityFailure", init=False)
+
+    def is_found(self) -> bool:
+        return False
+
+    def is_integrity_failure(self) -> bool:
+        return True
+
+    def unwrap_found(self) -> QueryAssessmentAnalyticsFound:
+        raise ValueError("expected QueryAssessmentAnalytics outcome found")
+
+QueryAssessmentAnalyticsResult: TypeAlias = QueryAssessmentAnalyticsFound | QueryAssessmentAnalyticsIntegrityFailure
+
+QUERY_SPAN_ANALYTICS_QUERY_PLAN_HASH: Final[str] = "bcfb168a022d3ef2e03b1ce995a98651950af75a28fc4bfb2dc496eabd747c66"
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class QuerySpanAnalyticsParams:
+    experiment_id: Annotated[int, "u64"]
+    limit: Annotated[int, "u64"] | None = None
+    after: str | None = None
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class QuerySpanAnalyticsFoundSpans:
+    experiment_id: Annotated[int, "u64"]
+    trace_id: str
+    span_id: str
+    name: str
+    span_type: str
+    status: str
+    start_time_ns: Annotated[int, "i64"]
+    end_time_ns: Annotated[int, "i64"]
+    duration_ms: Annotated[int, "i64"]
+    model_name: str
+    model_provider: str
+    input_tokens: Annotated[int, "i64"]
+    output_tokens: Annotated[int, "i64"]
+    total_tokens: Annotated[int, "i64"]
+    input_cost_micros: Annotated[int, "i64"]
+    output_cost_micros: Annotated[int, "i64"]
+    total_cost_micros: Annotated[int, "i64"]
+    started_at: Timestamp
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class QuerySpanAnalyticsFound:
+    spans: tuple[QuerySpanAnalyticsFoundSpans, ...]
+    outcome: Literal["Found"] = field(default="Found", init=False)
+
+    def is_found(self) -> bool:
+        return True
+
+    def is_integrity_failure(self) -> bool:
+        return False
+
+    def unwrap_found(self) -> QuerySpanAnalyticsFound:
+        return self
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class QuerySpanAnalyticsIntegrityFailure:
+    outcome: Literal["IntegrityFailure"] = field(default="IntegrityFailure", init=False)
+
+    def is_found(self) -> bool:
+        return False
+
+    def is_integrity_failure(self) -> bool:
+        return True
+
+    def unwrap_found(self) -> QuerySpanAnalyticsFound:
+        raise ValueError("expected QuerySpanAnalytics outcome found")
+
+QuerySpanAnalyticsResult: TypeAlias = QuerySpanAnalyticsFound | QuerySpanAnalyticsIntegrityFailure
+
+QUERY_SPAN_MODEL_ROLLUP_QUERY_PLAN_HASH: Final[str] = "397cf0e4132a7dbbc46c899107cb82d9c0f5521dc824bbdcb57566c8246f4308"
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class QuerySpanModelRollupParams:
+    experiment_id: Annotated[int, "u64"]
+    span_type: str
+    model_name: str
+    status: str
+    start_bucket: Timestamp
+    end_bucket: Timestamp
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class QuerySpanModelRollupFoundRollups:
+    experiment_id: Annotated[int, "u64"]
+    span_type: str
+    model_name: str
+    status: str
+    observed_at: Timestamp
+    span_count: Annotated[int, "u64"]
+    total_duration_ms: Annotated[int, "i64"]
+    min_duration_ms: Annotated[int, "i64"]
+    max_duration_ms: Annotated[int, "i64"]
+    avg_duration_ms: Annotated[int, "i64"]
+    sum_input_tokens: Annotated[int, "i64"]
+    sum_output_tokens: Annotated[int, "i64"]
+    sum_total_tokens: Annotated[int, "i64"]
+    sum_cost_micros: Annotated[int, "i64"]
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class QuerySpanModelRollupFound:
+    rollups: tuple[QuerySpanModelRollupFoundRollups, ...]
+    outcome: Literal["Found"] = field(default="Found", init=False)
+
+    def is_found(self) -> bool:
+        return True
+
+    def is_integrity_failure(self) -> bool:
+        return False
+
+    def unwrap_found(self) -> QuerySpanModelRollupFound:
+        return self
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class QuerySpanModelRollupIntegrityFailure:
+    outcome: Literal["IntegrityFailure"] = field(default="IntegrityFailure", init=False)
+
+    def is_found(self) -> bool:
+        return False
+
+    def is_integrity_failure(self) -> bool:
+        return True
+
+    def unwrap_found(self) -> QuerySpanModelRollupFound:
+        raise ValueError("expected QuerySpanModelRollup outcome found")
+
+QuerySpanModelRollupResult: TypeAlias = QuerySpanModelRollupFound | QuerySpanModelRollupIntegrityFailure
+
+QUERY_TRACE_ANALYTICS_QUERY_PLAN_HASH: Final[str] = "b5d52599bbebcf2e39bdc0eee24fa1795264c5adb4e327b9d4a9a15815037782"
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class QueryTraceAnalyticsParams:
+    experiment_id: Annotated[int, "u64"]
+    limit: Annotated[int, "u64"] | None = None
+    after: str | None = None
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class QueryTraceAnalyticsFoundTraces:
+    experiment_id: Annotated[int, "u64"]
+    trace_id: str
+    request_time_ms: Annotated[int, "i64"]
+    execution_duration_ms: Annotated[int, "i64"]
+    state: str
+    status_code: str
+    trace_name: str
+    span_count: Annotated[int, "i64"]
+    error_span_count: Annotated[int, "i64"]
+    total_input_tokens: Annotated[int, "i64"]
+    total_output_tokens: Annotated[int, "i64"]
+    total_tokens: Annotated[int, "i64"]
+    cache_read_input_tokens: Annotated[int, "i64"]
+    cache_creation_input_tokens: Annotated[int, "i64"]
+    total_cost_micros: Annotated[int, "i64"]
+    session_id: str | None
+    requested_at: Timestamp
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class QueryTraceAnalyticsFound:
+    traces: tuple[QueryTraceAnalyticsFoundTraces, ...]
+    outcome: Literal["Found"] = field(default="Found", init=False)
+
+    def is_found(self) -> bool:
+        return True
+
+    def is_integrity_failure(self) -> bool:
+        return False
+
+    def unwrap_found(self) -> QueryTraceAnalyticsFound:
+        return self
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class QueryTraceAnalyticsIntegrityFailure:
+    outcome: Literal["IntegrityFailure"] = field(default="IntegrityFailure", init=False)
+
+    def is_found(self) -> bool:
+        return False
+
+    def is_integrity_failure(self) -> bool:
+        return True
+
+    def unwrap_found(self) -> QueryTraceAnalyticsFound:
+        raise ValueError("expected QueryTraceAnalytics outcome found")
+
+QueryTraceAnalyticsResult: TypeAlias = QueryTraceAnalyticsFound | QueryTraceAnalyticsIntegrityFailure
+
+SEARCH_EXPERIMENTS_QUERY_PLAN_HASH: Final[str] = "2111f06ff1d809e530b8aae611033c19dc01f5424a034e243eb346063f840036"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsParams:
@@ -374,7 +923,7 @@ class SearchExperimentsIntegrityFailure:
 
 SearchExperimentsResult: TypeAlias = SearchExperimentsFound | SearchExperimentsIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_NAME_QUERY_PLAN_HASH: Final[str] = "648c9026f428a47dd064d4c751fa7072b38e0897037ade49266445527df40029"
+SEARCH_EXPERIMENTS_BY_NAME_QUERY_PLAN_HASH: Final[str] = "12c2a9fbb3ecd5bed20e5a7574a69d74be7c0ab92d7ad94eee6c427a32e20104"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByNameParams:
@@ -425,7 +974,7 @@ class SearchExperimentsByNameIntegrityFailure:
 
 SearchExperimentsByNameResult: TypeAlias = SearchExperimentsByNameFound | SearchExperimentsByNameIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_NAME_ILIKE_QUERY_PLAN_HASH: Final[str] = "0c0abe72542ae23caeb13a024867982a71456accf97934aba87c58015495cb7c"
+SEARCH_EXPERIMENTS_BY_NAME_ILIKE_QUERY_PLAN_HASH: Final[str] = "4c07eeef2bdb9ebed680be98041b31b1cecb0bbb7f3c6ce5926c5d7addc2db1b"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByNameILikeParams:
@@ -476,7 +1025,7 @@ class SearchExperimentsByNameILikeIntegrityFailure:
 
 SearchExperimentsByNameILikeResult: TypeAlias = SearchExperimentsByNameILikeFound | SearchExperimentsByNameILikeIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_NAME_LIKE_QUERY_PLAN_HASH: Final[str] = "c9fd0ecc34efb04908e4a4fbe16b8ed6d754a71b5bfd825531b915ce0c9c460a"
+SEARCH_EXPERIMENTS_BY_NAME_LIKE_QUERY_PLAN_HASH: Final[str] = "fa02c70967062b217eabd844cbd1ed70c7f8be644f835f2e92c36d21f3c1828c"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByNameLikeParams:
@@ -527,7 +1076,7 @@ class SearchExperimentsByNameLikeIntegrityFailure:
 
 SearchExperimentsByNameLikeResult: TypeAlias = SearchExperimentsByNameLikeFound | SearchExperimentsByNameLikeIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_TAG_QUERY_PLAN_HASH: Final[str] = "bffbb6b54c2be817e0d41134be8d924cbf7f998aa4017c3de71c277d19c06701"
+SEARCH_EXPERIMENTS_BY_TAG_QUERY_PLAN_HASH: Final[str] = "788088ca07bfa152109a1d6e60384ced8ea53fde1bfb2c9c7dd698b833cfc1bf"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByTagParams:
@@ -579,7 +1128,7 @@ class SearchExperimentsByTagIntegrityFailure:
 
 SearchExperimentsByTagResult: TypeAlias = SearchExperimentsByTagFound | SearchExperimentsByTagIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_TAG_ILIKE_QUERY_PLAN_HASH: Final[str] = "f90fc0b0b74ad0da9d785f72130c6603f50957757f1b8a71fb1f7f72c0763bc2"
+SEARCH_EXPERIMENTS_BY_TAG_ILIKE_QUERY_PLAN_HASH: Final[str] = "c2662cd77bbd9819efce434f3792913d37850614c0bedd14bd3cc42dfaafe88b"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByTagILikeParams:
@@ -631,7 +1180,7 @@ class SearchExperimentsByTagILikeIntegrityFailure:
 
 SearchExperimentsByTagILikeResult: TypeAlias = SearchExperimentsByTagILikeFound | SearchExperimentsByTagILikeIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_TAG_LIKE_QUERY_PLAN_HASH: Final[str] = "d10348a6cd0145f275be01142f3a78aedf8967ff3190d699cfaddb81c2f92116"
+SEARCH_EXPERIMENTS_BY_TAG_LIKE_QUERY_PLAN_HASH: Final[str] = "715a2d002b39a6c12e41e1e674a9f730902425a5746387d5fe036604fe386a5b"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByTagLikeParams:
@@ -683,7 +1232,7 @@ class SearchExperimentsByTagLikeIntegrityFailure:
 
 SearchExperimentsByTagLikeResult: TypeAlias = SearchExperimentsByTagLikeFound | SearchExperimentsByTagLikeIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_TWO_TAGS_QUERY_PLAN_HASH: Final[str] = "80fa989a3c66566fb2c24e7adbd10ecb57cacc97612b1885bfe1eb03a7027063"
+SEARCH_EXPERIMENTS_BY_TWO_TAGS_QUERY_PLAN_HASH: Final[str] = "bb7dd813a96173ea75fcf60fdc4b329ac45e4c43953a731dc8e15eb7b11e930c"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByTwoTagsParams:
@@ -737,7 +1286,61 @@ class SearchExperimentsByTwoTagsIntegrityFailure:
 
 SearchExperimentsByTwoTagsResult: TypeAlias = SearchExperimentsByTwoTagsFound | SearchExperimentsByTwoTagsIntegrityFailure
 
-SEARCH_RUNS_QUERY_PLAN_HASH: Final[str] = "3e8a049fca1760572f77f410e21b9ed9089d3cdbf76cbe162450e9ef1ba1e968"
+SEARCH_LOGGED_MODELS_QUERY_PLAN_HASH: Final[str] = "2fc18ef957235bfb6ecb88239ddb67d1dadb307d991479f85a3b2306888b73ad"
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchLoggedModelsParams:
+    experiment_id: Annotated[int, "u64"]
+    limit: Annotated[int, "u64"] | None = None
+    after: str | None = None
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchLoggedModelsFoundModels:
+    experiment_id: Annotated[int, "u64"]
+    model_id: str
+    name: str
+    artifact_location: str
+    creation_timestamp_ms: Annotated[int, "i64"]
+    last_updated_timestamp_ms: Annotated[int, "i64"]
+    status: str
+    lifecycle_stage: LifecycleStage
+    status_message: str | None
+    source_run_id: str | None
+    model_type: str | None
+    packed_tags: bytes
+    packed_params: bytes
+    packed_metrics: bytes
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchLoggedModelsFound:
+    models: tuple[SearchLoggedModelsFoundModels, ...]
+    outcome: Literal["Found"] = field(default="Found", init=False)
+
+    def is_found(self) -> bool:
+        return True
+
+    def is_integrity_failure(self) -> bool:
+        return False
+
+    def unwrap_found(self) -> SearchLoggedModelsFound:
+        return self
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchLoggedModelsIntegrityFailure:
+    outcome: Literal["IntegrityFailure"] = field(default="IntegrityFailure", init=False)
+
+    def is_found(self) -> bool:
+        return False
+
+    def is_integrity_failure(self) -> bool:
+        return True
+
+    def unwrap_found(self) -> SearchLoggedModelsFound:
+        raise ValueError("expected SearchLoggedModels outcome found")
+
+SearchLoggedModelsResult: TypeAlias = SearchLoggedModelsFound | SearchLoggedModelsIntegrityFailure
+
+SEARCH_RUNS_QUERY_PLAN_HASH: Final[str] = "75114afb2dbc12c9f0253fcad8079da534fa43748a11dd5169f71a29cabeff0a"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchRunsParams:
@@ -791,7 +1394,7 @@ class SearchRunsIntegrityFailure:
 
 SearchRunsResult: TypeAlias = SearchRunsFound | SearchRunsIntegrityFailure
 
-SEARCH_RUNS_BY_LIFECYCLE_QUERY_PLAN_HASH: Final[str] = "8e806c25b5e5154329f4b674b38b71c080cf461d3ef13b3cb9adb64acdc0c2fd"
+SEARCH_RUNS_BY_LIFECYCLE_QUERY_PLAN_HASH: Final[str] = "8f13ad8fe80becf03cd9c8f319ce1d7db00426326b4039e6cb203caefe6f0df4"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchRunsByLifecycleParams:
@@ -846,6 +1449,72 @@ class SearchRunsByLifecycleIntegrityFailure:
 
 SearchRunsByLifecycleResult: TypeAlias = SearchRunsByLifecycleFound | SearchRunsByLifecycleIntegrityFailure
 
+SEARCH_TRACES_QUERY_PLAN_HASH: Final[str] = "78f5019e5fe974ec5540f649c58d2ef1305023b23b401de16dda13f6a73fe620"
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchTracesParams:
+    experiment_id: Annotated[int, "u64"]
+    limit: Annotated[int, "u64"] | None = None
+    after: str | None = None
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchTracesFoundTraces:
+    experiment_id: Annotated[int, "u64"]
+    trace_id: str
+    request_time_ms: Annotated[int, "i64"]
+    execution_duration_ms: Annotated[int, "i64"]
+    state: str
+    status_code: str
+    trace_name: str
+    client_request_id: str | None
+    request_preview: str | None
+    response_preview: str | None
+    source_run_id: str | None
+    span_count: Annotated[int, "i64"]
+    error_span_count: Annotated[int, "i64"]
+    total_input_tokens: Annotated[int, "i64"]
+    total_output_tokens: Annotated[int, "i64"]
+    total_tokens: Annotated[int, "i64"]
+    cache_read_input_tokens: Annotated[int, "i64"]
+    cache_creation_input_tokens: Annotated[int, "i64"]
+    total_cost_micros: Annotated[int, "i64"]
+    session_id: str | None
+    packed_trace_metadata: bytes
+    packed_tags: bytes
+    packed_run_ids: bytes
+    packed_prompt_versions: bytes
+    requested_at: Timestamp
+    initialized: bool
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchTracesFound:
+    traces: tuple[SearchTracesFoundTraces, ...]
+    outcome: Literal["Found"] = field(default="Found", init=False)
+
+    def is_found(self) -> bool:
+        return True
+
+    def is_integrity_failure(self) -> bool:
+        return False
+
+    def unwrap_found(self) -> SearchTracesFound:
+        return self
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchTracesIntegrityFailure:
+    outcome: Literal["IntegrityFailure"] = field(default="IntegrityFailure", init=False)
+
+    def is_found(self) -> bool:
+        return False
+
+    def is_integrity_failure(self) -> bool:
+        return True
+
+    def unwrap_found(self) -> SearchTracesFound:
+        raise ValueError("expected SearchTraces outcome found")
+
+SearchTracesResult: TypeAlias = SearchTracesFound | SearchTracesIntegrityFailure
+
 @dataclass(frozen=True, slots=True, kw_only=True)
 class CreateExperimentInput:
     name: str
@@ -855,7 +1524,7 @@ class CreateExperimentInput:
     experiment_id: Annotated[int, "u64"]
     artifact_location: str | None
 
-CREATE_EXPERIMENT_PLAN_HASH: Final[str] = "d2536a64cfca299a78e132e32168706fad33c934fb4bc7eaa139461afebcf1f1"
+CREATE_EXPERIMENT_PLAN_HASH: Final[str] = "999393c8f63f6093fc13dbdc1af1d905c05551d4b5cf906ef725418d62c04309"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class CreateExperimentExperimentExists:
     outcome: Literal["ExperimentExists"] = field(default="ExperimentExists", init=False)
@@ -889,7 +1558,7 @@ class CreateExperimentWithTagsInput:
     experiment_id: Annotated[int, "u64"]
     artifact_location: str | None
 
-CREATE_EXPERIMENT_WITH_TAGS_PLAN_HASH: Final[str] = "e96d7f41593a9d7f2524468482eff562620d56abc07b7be8ddfc2868325c907d"
+CREATE_EXPERIMENT_WITH_TAGS_PLAN_HASH: Final[str] = "4b52cb095e7903aaa55e960e12cdd25832d451399e332b26dac66a0ef12a959d"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class CreateExperimentWithTagsExperimentExists:
     outcome: Literal["ExperimentExists"] = field(default="ExperimentExists", init=False)
@@ -945,7 +1614,7 @@ class CreateRunInput:
     packed_params: bytes
     packed_latest_metrics: bytes
 
-CREATE_RUN_PLAN_HASH: Final[str] = "d009d4a9b4b622941f6c56874add0e0dcbed15b4adeea76c1e4fba9e26cdd9c1"
+CREATE_RUN_PLAN_HASH: Final[str] = "e7e4e70bec70f027124189452a50fe48c0206a009c28e7dfa5809b56374169a1"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class CreateRunRunExists:
     outcome: Literal["RunExists"] = field(default="RunExists", init=False)
@@ -983,7 +1652,7 @@ class CreateRunWithTagsInput:
     packed_params: bytes
     packed_latest_metrics: bytes
 
-CREATE_RUN_WITH_TAGS_PLAN_HASH: Final[str] = "6872c066682bdbed36fafcc451775e016c259bcffd171f8f15e262b6f926e3bf"
+CREATE_RUN_WITH_TAGS_PLAN_HASH: Final[str] = "dd91024bce877795defeb77824867a7e5b4699b7d993edafe7486366fc698aee"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class CreateRunWithTagsRunExists:
     outcome: Literal["RunExists"] = field(default="RunExists", init=False)
@@ -1031,7 +1700,7 @@ class DeleteExperimentInput:
     request_id: str = field(default_factory=lambda: str(__import__("uuid").uuid4()))
     experiment_id: Annotated[int, "u64"]
 
-DELETE_EXPERIMENT_PLAN_HASH: Final[str] = "5ddfcefa2316be8c5cc14fdf133b6414a0fbfafe1487758909614c46adf590fa"
+DELETE_EXPERIMENT_PLAN_HASH: Final[str] = "367fe9c6a437183f65e9affe60f6c4476ff295ac395f4856d04402d42c64dc65"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class DeleteExperimentExperimentDeleted:
     experiment: Experiment
@@ -1063,7 +1732,7 @@ class DeleteExperimentTagInput:
     experiment_id: Annotated[int, "u64"]
     expected_revision: Annotated[int, "u64"]
 
-DELETE_EXPERIMENT_TAG_PLAN_HASH: Final[str] = "368432aba0339100abe069b8a0e1d94aa751e486a35057fcbad93cde50a02306"
+DELETE_EXPERIMENT_TAG_PLAN_HASH: Final[str] = "62c5e7310286a07167ad3c80f19a977eaa8203d1e0b24ab7d1954b4a852dab66"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class DeleteExperimentTagExperimentStale:
     outcome: Literal["ExperimentStale"] = field(default="ExperimentStale", init=False)
@@ -1163,12 +1832,42 @@ class DeleteExperimentTagExperimentTagMissing:
 DeleteExperimentTagOutcome: TypeAlias = DeleteExperimentTagExperimentStale | DeleteExperimentTagExperimentMissing | DeleteExperimentTagExperimentInactive | DeleteExperimentTagExperimentTagDeleted | DeleteExperimentTagExperimentTagMissing
 
 @dataclass(frozen=True, slots=True, kw_only=True)
+class DeleteLoggedModelEntityInput:
+    model_id: str
+    request_id: str = field(default_factory=lambda: str(__import__("uuid").uuid4()))
+    experiment_id: Annotated[int, "u64"]
+
+DELETE_LOGGED_MODEL_ENTITY_PLAN_HASH: Final[str] = "beed5c6c6cd7b36d22b7fe1dc6108adf6a1a3e6b74fc0b8e15322e1a1bb29d49"
+@dataclass(frozen=True, slots=True, kw_only=True)
+class DeleteLoggedModelEntityLoggedModelDeleted:
+    model: LoggedModelEntity
+    outcome: Literal["LoggedModelDeleted"] = field(default="LoggedModelDeleted", init=False)
+
+    def is_logged_model_deleted(self) -> bool:
+        return True
+
+    def is_logged_model_missing(self) -> bool:
+        return False
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class DeleteLoggedModelEntityLoggedModelMissing:
+    outcome: Literal["LoggedModelMissing"] = field(default="LoggedModelMissing", init=False)
+
+    def is_logged_model_deleted(self) -> bool:
+        return False
+
+    def is_logged_model_missing(self) -> bool:
+        return True
+
+DeleteLoggedModelEntityOutcome: TypeAlias = DeleteLoggedModelEntityLoggedModelDeleted | DeleteLoggedModelEntityLoggedModelMissing
+
+@dataclass(frozen=True, slots=True, kw_only=True)
 class DeleteRunInput:
     run_id: str
     request_id: str = field(default_factory=lambda: str(__import__("uuid").uuid4()))
     experiment_id: Annotated[int, "u64"]
 
-DELETE_RUN_PLAN_HASH: Final[str] = "8f33a426c7ae564a6ce67e1405f224078371126d6e2af54e6ffbf2ba85cf8c84"
+DELETE_RUN_PLAN_HASH: Final[str] = "11ae09670b542d321d3510c96153683e303a9c9cc5a7d0f00947875615211496"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class DeleteRunRunDeleted:
     run: Run
@@ -1193,6 +1892,140 @@ class DeleteRunRunMissing:
 DeleteRunOutcome: TypeAlias = DeleteRunRunDeleted | DeleteRunRunMissing
 
 @dataclass(frozen=True, slots=True, kw_only=True)
+class DeleteTraceInput:
+    trace_id: str
+    request_id: str = field(default_factory=lambda: str(__import__("uuid").uuid4()))
+    experiment_id: Annotated[int, "u64"]
+
+DELETE_TRACE_PLAN_HASH: Final[str] = "1417d016d56c8da983c75382313bbb77c8fbe2e6cd0f379195d71cf0c44320c0"
+@dataclass(frozen=True, slots=True, kw_only=True)
+class DeleteTraceTraceDeleted:
+    trace: Trace
+    outcome: Literal["TraceDeleted"] = field(default="TraceDeleted", init=False)
+
+    def is_trace_deleted(self) -> bool:
+        return True
+
+    def is_trace_missing(self) -> bool:
+        return False
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class DeleteTraceTraceMissing:
+    outcome: Literal["TraceMissing"] = field(default="TraceMissing", init=False)
+
+    def is_trace_deleted(self) -> bool:
+        return False
+
+    def is_trace_missing(self) -> bool:
+        return True
+
+DeleteTraceOutcome: TypeAlias = DeleteTraceTraceDeleted | DeleteTraceTraceMissing
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class DeleteTraceAssessmentInput:
+    trace_id: str
+    request_id: str = field(default_factory=lambda: str(__import__("uuid").uuid4()))
+    assessment_id: str
+    experiment_id: Annotated[int, "u64"]
+
+DELETE_TRACE_ASSESSMENT_PLAN_HASH: Final[str] = "1f3854440c3e30308bb4d2245bf9c70b84ab745243e6ab762d7343db1f311339"
+@dataclass(frozen=True, slots=True, kw_only=True)
+class DeleteTraceAssessmentTraceAssessmentDeleted:
+    assessment: TraceAssessment
+    outcome: Literal["TraceAssessmentDeleted"] = field(default="TraceAssessmentDeleted", init=False)
+
+    def is_trace_assessment_deleted(self) -> bool:
+        return True
+
+    def is_trace_assessment_missing(self) -> bool:
+        return False
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class DeleteTraceAssessmentTraceAssessmentMissing:
+    outcome: Literal["TraceAssessmentMissing"] = field(default="TraceAssessmentMissing", init=False)
+
+    def is_trace_assessment_deleted(self) -> bool:
+        return False
+
+    def is_trace_assessment_missing(self) -> bool:
+        return True
+
+DeleteTraceAssessmentOutcome: TypeAlias = DeleteTraceAssessmentTraceAssessmentDeleted | DeleteTraceAssessmentTraceAssessmentMissing
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class DeleteTraceSpanInput:
+    span_id: str
+    trace_id: str
+    request_id: str = field(default_factory=lambda: str(__import__("uuid").uuid4()))
+    experiment_id: Annotated[int, "u64"]
+
+DELETE_TRACE_SPAN_PLAN_HASH: Final[str] = "11c797eaeaeb7c2e29657c907b501bdc394398f691522b8a63cb9a26232f1c49"
+@dataclass(frozen=True, slots=True, kw_only=True)
+class DeleteTraceSpanTraceSpanDeleted:
+    span: TraceSpan
+    outcome: Literal["TraceSpanDeleted"] = field(default="TraceSpanDeleted", init=False)
+
+    def is_trace_span_deleted(self) -> bool:
+        return True
+
+    def is_trace_span_missing(self) -> bool:
+        return False
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class DeleteTraceSpanTraceSpanMissing:
+    outcome: Literal["TraceSpanMissing"] = field(default="TraceSpanMissing", init=False)
+
+    def is_trace_span_deleted(self) -> bool:
+        return False
+
+    def is_trace_span_missing(self) -> bool:
+        return True
+
+DeleteTraceSpanOutcome: TypeAlias = DeleteTraceSpanTraceSpanDeleted | DeleteTraceSpanTraceSpanMissing
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class IngestTraceSpansInput:
+    spans: tuple[TraceSpan, ...]
+    state: str
+    trace_id: str
+    request_id: str = field(default_factory=lambda: str(__import__("uuid").uuid4()))
+    session_id: str | None
+    span_count: Annotated[int, "i64"]
+    trace_name: str
+    initialized: bool
+    packed_tags: bytes
+    status_code: str
+    requested_at: Timestamp
+    total_tokens: Annotated[int, "i64"]
+    experiment_id: Annotated[int, "u64"]
+    source_run_id: str | None
+    packed_run_ids: bytes
+    request_preview: str | None
+    request_time_ms: Annotated[int, "i64"]
+    error_span_count: Annotated[int, "i64"]
+    response_preview: str | None
+    client_request_id: str | None
+    total_cost_micros: Annotated[int, "i64"]
+    total_input_tokens: Annotated[int, "i64"]
+    total_output_tokens: Annotated[int, "i64"]
+    execution_duration_ms: Annotated[int, "i64"]
+    packed_trace_metadata: bytes
+    packed_prompt_versions: bytes
+    cache_read_input_tokens: Annotated[int, "i64"]
+    cache_creation_input_tokens: Annotated[int, "i64"]
+
+INGEST_TRACE_SPANS_PLAN_HASH: Final[str] = "901ee45eae9b3e218ba8853caa00326da720e25a97e84c15e103bba3a5b57171"
+@dataclass(frozen=True, slots=True, kw_only=True)
+class IngestTraceSpansTraceSpansIngested:
+    trace: Trace
+    outcome: Literal["TraceSpansIngested"] = field(default="TraceSpansIngested", init=False)
+
+    def is_trace_spans_ingested(self) -> bool:
+        return True
+
+IngestTraceSpansOutcome: TypeAlias = IngestTraceSpansTraceSpansIngested
+
+@dataclass(frozen=True, slots=True, kw_only=True)
 class LogBatchInput:
     items: tuple[RunDatum, ...]
     run_id: str
@@ -1203,7 +2036,7 @@ class LogBatchInput:
     expected_revision: Annotated[int, "u64"]
     packed_latest_metrics: bytes
 
-LOG_BATCH_PLAN_HASH: Final[str] = "b3b592da5d7a13f4b68f7d63e965b38f526198662ac5407c1361ca4419b8b613"
+LOG_BATCH_PLAN_HASH: Final[str] = "860775f66c1cc1ec16fbba3ac5aa63b58e38818f9e3ed48986ea042686be5758"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class LogBatchRunStale:
     outcome: Literal["RunStale"] = field(default="RunStale", init=False)
@@ -1310,7 +2143,7 @@ class RenameExperimentInput:
     name_digest: bytes
     experiment_id: Annotated[int, "u64"]
 
-RENAME_EXPERIMENT_PLAN_HASH: Final[str] = "aaebf9ffcd2b3b7bca412876d75bed26668f17a8bb6c49bdc7ba2aff272346b2"
+RENAME_EXPERIMENT_PLAN_HASH: Final[str] = "2056cc6693fc9ac1fb6dad45b1674283159597ca41feecf21b7f3b40d3004bf3"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class RenameExperimentExperimentMissing:
     outcome: Literal["ExperimentMissing"] = field(default="ExperimentMissing", init=False)
@@ -1339,7 +2172,7 @@ class RestoreExperimentInput:
     request_id: str = field(default_factory=lambda: str(__import__("uuid").uuid4()))
     experiment_id: Annotated[int, "u64"]
 
-RESTORE_EXPERIMENT_PLAN_HASH: Final[str] = "f1b9c3170282e0c80ccc91c5705fcde89e969588b4966048140e596012f07f73"
+RESTORE_EXPERIMENT_PLAN_HASH: Final[str] = "f2509353eff5ec8207586e7924b495030a09914b57d01cb22091337c210a2aca"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class RestoreExperimentExperimentMissing:
     outcome: Literal["ExperimentMissing"] = field(default="ExperimentMissing", init=False)
@@ -1369,7 +2202,7 @@ class RestoreRunInput:
     request_id: str = field(default_factory=lambda: str(__import__("uuid").uuid4()))
     experiment_id: Annotated[int, "u64"]
 
-RESTORE_RUN_PLAN_HASH: Final[str] = "5f03cd8e89d3b9ef259b4b4cee485c4dc4849dc5f1b19102cd6809fee3201fb2"
+RESTORE_RUN_PLAN_HASH: Final[str] = "b7eed5b46e3c03de8cb963365671f49093934f1a0b5a0f15579323bddac98ea5"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class RestoreRunRunMissing:
     outcome: Literal["RunMissing"] = field(default="RunMissing", init=False)
@@ -1403,7 +2236,7 @@ class SetExperimentTagInput:
     experiment_id: Annotated[int, "u64"]
     expected_revision: Annotated[int, "u64"]
 
-SET_EXPERIMENT_TAG_PLAN_HASH: Final[str] = "152f92a240395feb14effe3f19cf6786ac070fc02b0491057826f7aba562f8e6"
+SET_EXPERIMENT_TAG_PLAN_HASH: Final[str] = "4383cb2b881afe157f220bca33a5c1c4b52ad4551304cb67d4242665e578fae8"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SetExperimentTagExperimentStale:
     outcome: Literal["ExperimentStale"] = field(default="ExperimentStale", init=False)
@@ -1484,7 +2317,7 @@ class UpdateRunInfoInput:
     expected_revision: Annotated[int, "u64"]
     run_name_tag_value: str
 
-UPDATE_RUN_INFO_PLAN_HASH: Final[str] = "b217c21392a67c6b6a10ebb49d68c67e203ed18feee89157bb621f2e03735e0d"
+UPDATE_RUN_INFO_PLAN_HASH: Final[str] = "fccd206832da7381f55bbf162622c408801d95e3a8c4836ef79fe3c319170513"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class UpdateRunInfoRunStale:
     outcome: Literal["RunStale"] = field(default="RunStale", init=False)
@@ -1553,12 +2386,173 @@ class UpdateRunInfoRunInactive:
 UpdateRunInfoOutcome: TypeAlias = UpdateRunInfoRunStale | UpdateRunInfoRunMissing | UpdateRunInfoRunUpdated | UpdateRunInfoRunInactive
 
 @dataclass(frozen=True, slots=True, kw_only=True)
+class UpsertLoggedModelInput:
+    name: str
+    status: str
+    model_id: str
+    model_type: str | None
+    request_id: str = field(default_factory=lambda: str(__import__("uuid").uuid4()))
+    packed_tags: bytes
+    experiment_id: Annotated[int, "u64"]
+    packed_params: bytes
+    source_run_id: str | None
+    packed_metrics: bytes
+    status_message: str | None
+    lifecycle_stage: LifecycleStage
+    artifact_location: str
+    creation_timestamp_ms: Annotated[int, "i64"]
+    last_updated_timestamp_ms: Annotated[int, "i64"]
+
+UPSERT_LOGGED_MODEL_PLAN_HASH: Final[str] = "5d711f5cefafa3108ecacbb97b319bdc5e94761d8cfc3146690e9c686870215d"
+@dataclass(frozen=True, slots=True, kw_only=True)
+class UpsertLoggedModelLoggedModelUpserted:
+    model: LoggedModelEntity
+    outcome: Literal["LoggedModelUpserted"] = field(default="LoggedModelUpserted", init=False)
+
+    def is_logged_model_upserted(self) -> bool:
+        return True
+
+UpsertLoggedModelOutcome: TypeAlias = UpsertLoggedModelLoggedModelUpserted
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class UpsertRunLineageInput:
+    run_id: str
+    request_id: str = field(default_factory=lambda: str(__import__("uuid").uuid4()))
+    experiment_id: Annotated[int, "u64"]
+    packed_datasets: bytes
+    packed_model_inputs: bytes
+    packed_model_outputs: bytes
+
+UPSERT_RUN_LINEAGE_PLAN_HASH: Final[str] = "2c6c19e6ab8b2fea31e387e97b19687a7668b269fe0636c32ec9ecdc1018bb4f"
+@dataclass(frozen=True, slots=True, kw_only=True)
+class UpsertRunLineageRunMissing:
+    outcome: Literal["RunMissing"] = field(default="RunMissing", init=False)
+
+    def is_run_missing(self) -> bool:
+        return True
+
+    def is_run_inactive(self) -> bool:
+        return False
+
+    def is_run_lineage_upserted(self) -> bool:
+        return False
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class UpsertRunLineageRunInactive:
+    outcome: Literal["RunInactive"] = field(default="RunInactive", init=False)
+
+    def is_run_missing(self) -> bool:
+        return False
+
+    def is_run_inactive(self) -> bool:
+        return True
+
+    def is_run_lineage_upserted(self) -> bool:
+        return False
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class UpsertRunLineageRunLineageUpserted:
+    lineage: RunLineage
+    outcome: Literal["RunLineageUpserted"] = field(default="RunLineageUpserted", init=False)
+
+    def is_run_missing(self) -> bool:
+        return False
+
+    def is_run_inactive(self) -> bool:
+        return False
+
+    def is_run_lineage_upserted(self) -> bool:
+        return True
+
+UpsertRunLineageOutcome: TypeAlias = UpsertRunLineageRunMissing | UpsertRunLineageRunInactive | UpsertRunLineageRunLineageUpserted
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class UpsertTraceInput:
+    state: str
+    trace_id: str
+    request_id: str = field(default_factory=lambda: str(__import__("uuid").uuid4()))
+    session_id: str | None
+    span_count: Annotated[int, "i64"]
+    trace_name: str
+    initialized: bool
+    packed_tags: bytes
+    status_code: str
+    requested_at: Timestamp
+    total_tokens: Annotated[int, "i64"]
+    experiment_id: Annotated[int, "u64"]
+    source_run_id: str | None
+    packed_run_ids: bytes
+    request_preview: str | None
+    request_time_ms: Annotated[int, "i64"]
+    error_span_count: Annotated[int, "i64"]
+    response_preview: str | None
+    client_request_id: str | None
+    total_cost_micros: Annotated[int, "i64"]
+    total_input_tokens: Annotated[int, "i64"]
+    total_output_tokens: Annotated[int, "i64"]
+    execution_duration_ms: Annotated[int, "i64"]
+    packed_trace_metadata: bytes
+    packed_prompt_versions: bytes
+    cache_read_input_tokens: Annotated[int, "i64"]
+    cache_creation_input_tokens: Annotated[int, "i64"]
+
+UPSERT_TRACE_PLAN_HASH: Final[str] = "7b5003fba8bade03fad8d8b0c3a19536f88529f3954a9caff51da077edb1d7df"
+@dataclass(frozen=True, slots=True, kw_only=True)
+class UpsertTraceTraceUpserted:
+    trace: Trace
+    outcome: Literal["TraceUpserted"] = field(default="TraceUpserted", init=False)
+
+    def is_trace_upserted(self) -> bool:
+        return True
+
+UpsertTraceOutcome: TypeAlias = UpsertTraceTraceUpserted
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class UpsertTraceAssessmentInput:
+    name: str
+    span_id: str | None
+    trace_id: str
+    request_id: str = field(default_factory=lambda: str(__import__("uuid").uuid4()))
+    value_text: str
+    assessment_id: str
+    experiment_id: Annotated[int, "u64"]
+    assessment_type: str
+    numeric_value_milli: Annotated[int, "i64"] | None
+    created_timestamp_ms: Annotated[int, "i64"]
+    packed_assessment_json: bytes
+    last_updated_timestamp_ms: Annotated[int, "i64"]
+
+UPSERT_TRACE_ASSESSMENT_PLAN_HASH: Final[str] = "71c601b6060eb6e285b4183b89796a875d461fde19635b383d548f285638f8b6"
+@dataclass(frozen=True, slots=True, kw_only=True)
+class UpsertTraceAssessmentTraceMissing:
+    outcome: Literal["TraceMissing"] = field(default="TraceMissing", init=False)
+
+    def is_trace_missing(self) -> bool:
+        return True
+
+    def is_trace_assessment_upserted(self) -> bool:
+        return False
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class UpsertTraceAssessmentTraceAssessmentUpserted:
+    assessment: TraceAssessment
+    outcome: Literal["TraceAssessmentUpserted"] = field(default="TraceAssessmentUpserted", init=False)
+
+    def is_trace_missing(self) -> bool:
+        return False
+
+    def is_trace_assessment_upserted(self) -> bool:
+        return True
+
+UpsertTraceAssessmentOutcome: TypeAlias = UpsertTraceAssessmentTraceMissing | UpsertTraceAssessmentTraceAssessmentUpserted
+
+@dataclass(frozen=True, slots=True, kw_only=True)
 class ValidateRunActiveInput:
     run_id: str
     request_id: str
     experiment_id: Annotated[int, "u64"]
 
-VALIDATE_RUN_ACTIVE_PLAN_HASH: Final[str] = "750505d7e9b31dd76486b7772f5e48f5e08f80e77bca724d48a31f42fb489233"
+VALIDATE_RUN_ACTIVE_PLAN_HASH: Final[str] = "948d5f1606cb48131c359d2f31c709d1cc0cb969de73034d53c94cc317fe0fd4"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class ValidateRunActiveRunActive:
     outcome: Literal["RunActive"] = field(default="RunActive", init=False)
@@ -1621,6 +2615,23 @@ class RiffDBMLflowClient:
     def last_commit_sequence(self) -> int | None:
         return self._read_after_commit
 
+    def aggregate_span_analytics_by_model(self, parameters: AggregateSpanAnalyticsByModelParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[AggregateSpanAnalyticsByModelResult]:
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="AggregateSpanAnalyticsByModel", plan_hash=AGGREGATE_SPAN_ANALYTICS_BY_MODEL_QUERY_PLAN_HASH,
+            parameters=encode_record(parameters), options=options,
+        )
+        outcomes = {
+            "Found": AggregateSpanAnalyticsByModelFound,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    def aggregate_span_analytics_by_model_after_commit(self, parameters: AggregateSpanAnalyticsByModelParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[AggregateSpanAnalyticsByModelResult]:
+        return self.aggregate_span_analytics_by_model(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
     def get_experiment(self, parameters: GetExperimentParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetExperimentResult]:
         if options.read_after_commit is None and self._read_after_commit is not None:
             options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
@@ -1656,6 +2667,24 @@ class RiffDBMLflowClient:
 
     def get_experiment_by_name_after_commit(self, parameters: GetExperimentByNameParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetExperimentByNameResult]:
         return self.get_experiment_by_name(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    def get_logged_model(self, parameters: GetLoggedModelParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetLoggedModelResult]:
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="GetLoggedModel", plan_hash=GET_LOGGED_MODEL_QUERY_PLAN_HASH,
+            parameters=encode_record(parameters), options=options,
+        )
+        outcomes = {
+            "Found": GetLoggedModelFound,
+            "Missing": GetLoggedModelMissing,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    def get_logged_model_after_commit(self, parameters: GetLoggedModelParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetLoggedModelResult]:
+        return self.get_logged_model(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
 
     def get_metric_history(self, parameters: GetMetricHistoryParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetMetricHistoryResult]:
         if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 499):
@@ -1717,6 +2746,189 @@ class RiffDBMLflowClient:
 
     def get_run_after_commit(self, parameters: GetRunParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetRunResult]:
         return self.get_run(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    def get_run_lineage(self, parameters: GetRunLineageParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetRunLineageResult]:
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="GetRunLineage", plan_hash=GET_RUN_LINEAGE_QUERY_PLAN_HASH,
+            parameters=encode_record(parameters), options=options,
+        )
+        outcomes = {
+            "Found": GetRunLineageFound,
+            "Missing": GetRunLineageMissing,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    def get_run_lineage_after_commit(self, parameters: GetRunLineageParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetRunLineageResult]:
+        return self.get_run_lineage(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    def get_trace(self, parameters: GetTraceParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetTraceResult]:
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="GetTrace", plan_hash=GET_TRACE_QUERY_PLAN_HASH,
+            parameters=encode_record(parameters), options=options,
+        )
+        outcomes = {
+            "Found": GetTraceFound,
+            "Missing": GetTraceMissing,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    def get_trace_after_commit(self, parameters: GetTraceParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetTraceResult]:
+        return self.get_trace(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    def query_assessment_analytics(self, parameters: QueryAssessmentAnalyticsParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[QueryAssessmentAnalyticsResult]:
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 500):
+            raise ValueError("limit must be an integer from 1 through 500")
+        encoded_parameters = encode_record(parameters)
+        generated_cursor = parameters.after
+        if generated_cursor is not None:
+            if options.cursor is not None:
+                raise ValueError("generated cursor conflicts with query options")
+            options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
+        encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="QueryAssessmentAnalytics", plan_hash=QUERY_ASSESSMENT_ANALYTICS_QUERY_PLAN_HASH,
+            parameters=encoded_parameters, options=options,
+        )
+        outcomes = {
+            "Found": QueryAssessmentAnalyticsFound,
+            "IntegrityFailure": QueryAssessmentAnalyticsIntegrityFailure,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    def query_assessment_analytics_after_commit(self, parameters: QueryAssessmentAnalyticsParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[QueryAssessmentAnalyticsResult]:
+        return self.query_assessment_analytics(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    def query_assessment_analytics_pages(self, parameters: QueryAssessmentAnalyticsParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[QueryAssessmentAnalyticsResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[QueryAssessmentAnalyticsResult]] = []
+        for _ in range(max_pages):
+            page_parameters = QueryAssessmentAnalyticsParams(experiment_id=parameters.experiment_id, limit=parameters.limit, after=None)
+            page = self.query_assessment_analytics(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
+
+    def query_span_analytics(self, parameters: QuerySpanAnalyticsParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[QuerySpanAnalyticsResult]:
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 500):
+            raise ValueError("limit must be an integer from 1 through 500")
+        encoded_parameters = encode_record(parameters)
+        generated_cursor = parameters.after
+        if generated_cursor is not None:
+            if options.cursor is not None:
+                raise ValueError("generated cursor conflicts with query options")
+            options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
+        encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="QuerySpanAnalytics", plan_hash=QUERY_SPAN_ANALYTICS_QUERY_PLAN_HASH,
+            parameters=encoded_parameters, options=options,
+        )
+        outcomes = {
+            "Found": QuerySpanAnalyticsFound,
+            "IntegrityFailure": QuerySpanAnalyticsIntegrityFailure,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    def query_span_analytics_after_commit(self, parameters: QuerySpanAnalyticsParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[QuerySpanAnalyticsResult]:
+        return self.query_span_analytics(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    def query_span_analytics_pages(self, parameters: QuerySpanAnalyticsParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[QuerySpanAnalyticsResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[QuerySpanAnalyticsResult]] = []
+        for _ in range(max_pages):
+            page_parameters = QuerySpanAnalyticsParams(experiment_id=parameters.experiment_id, limit=parameters.limit, after=None)
+            page = self.query_span_analytics(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
+
+    def query_span_model_rollup(self, parameters: QuerySpanModelRollupParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[QuerySpanModelRollupResult]:
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="QuerySpanModelRollup", plan_hash=QUERY_SPAN_MODEL_ROLLUP_QUERY_PLAN_HASH,
+            parameters=encode_record(parameters), options=options,
+        )
+        outcomes = {
+            "Found": QuerySpanModelRollupFound,
+            "IntegrityFailure": QuerySpanModelRollupIntegrityFailure,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    def query_span_model_rollup_after_commit(self, parameters: QuerySpanModelRollupParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[QuerySpanModelRollupResult]:
+        return self.query_span_model_rollup(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    def query_trace_analytics(self, parameters: QueryTraceAnalyticsParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[QueryTraceAnalyticsResult]:
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 500):
+            raise ValueError("limit must be an integer from 1 through 500")
+        encoded_parameters = encode_record(parameters)
+        generated_cursor = parameters.after
+        if generated_cursor is not None:
+            if options.cursor is not None:
+                raise ValueError("generated cursor conflicts with query options")
+            options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
+        encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="QueryTraceAnalytics", plan_hash=QUERY_TRACE_ANALYTICS_QUERY_PLAN_HASH,
+            parameters=encoded_parameters, options=options,
+        )
+        outcomes = {
+            "Found": QueryTraceAnalyticsFound,
+            "IntegrityFailure": QueryTraceAnalyticsIntegrityFailure,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    def query_trace_analytics_after_commit(self, parameters: QueryTraceAnalyticsParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[QueryTraceAnalyticsResult]:
+        return self.query_trace_analytics(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    def query_trace_analytics_pages(self, parameters: QueryTraceAnalyticsParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[QueryTraceAnalyticsResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[QueryTraceAnalyticsResult]] = []
+        for _ in range(max_pages):
+            page_parameters = QueryTraceAnalyticsParams(experiment_id=parameters.experiment_id, limit=parameters.limit, after=None)
+            page = self.query_trace_analytics(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
 
     def search_experiments(self, parameters: SearchExperimentsParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsResult]:
         if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
@@ -2062,6 +3274,49 @@ class RiffDBMLflowClient:
             cursor = page.next_cursor
         return pages
 
+    def search_logged_models(self, parameters: SearchLoggedModelsParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchLoggedModelsResult]:
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 50):
+            raise ValueError("limit must be an integer from 1 through 50")
+        encoded_parameters = encode_record(parameters)
+        generated_cursor = parameters.after
+        if generated_cursor is not None:
+            if options.cursor is not None:
+                raise ValueError("generated cursor conflicts with query options")
+            options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
+        encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="SearchLoggedModels", plan_hash=SEARCH_LOGGED_MODELS_QUERY_PLAN_HASH,
+            parameters=encoded_parameters, options=options,
+        )
+        outcomes = {
+            "Found": SearchLoggedModelsFound,
+            "IntegrityFailure": SearchLoggedModelsIntegrityFailure,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    def search_logged_models_after_commit(self, parameters: SearchLoggedModelsParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchLoggedModelsResult]:
+        return self.search_logged_models(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    def search_logged_models_pages(self, parameters: SearchLoggedModelsParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[SearchLoggedModelsResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[SearchLoggedModelsResult]] = []
+        for _ in range(max_pages):
+            page_parameters = SearchLoggedModelsParams(experiment_id=parameters.experiment_id, limit=parameters.limit, after=None)
+            page = self.search_logged_models(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
+
     def search_runs(self, parameters: SearchRunsParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchRunsResult]:
         if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 2):
             raise ValueError("limit must be an integer from 1 through 2")
@@ -2142,6 +3397,49 @@ class RiffDBMLflowClient:
         for _ in range(max_pages):
             page_parameters = SearchRunsByLifecycleParams(experiment_ids=parameters.experiment_ids, lifecycle_stage=parameters.lifecycle_stage, limit=parameters.limit, after=None)
             page = self.search_runs_by_lifecycle(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
+
+    def search_traces(self, parameters: SearchTracesParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchTracesResult]:
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 50):
+            raise ValueError("limit must be an integer from 1 through 50")
+        encoded_parameters = encode_record(parameters)
+        generated_cursor = parameters.after
+        if generated_cursor is not None:
+            if options.cursor is not None:
+                raise ValueError("generated cursor conflicts with query options")
+            options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
+        encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="SearchTraces", plan_hash=SEARCH_TRACES_QUERY_PLAN_HASH,
+            parameters=encoded_parameters, options=options,
+        )
+        outcomes = {
+            "Found": SearchTracesFound,
+            "IntegrityFailure": SearchTracesIntegrityFailure,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    def search_traces_after_commit(self, parameters: SearchTracesParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchTracesResult]:
+        return self.search_traces(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    def search_traces_pages(self, parameters: SearchTracesParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[SearchTracesResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[SearchTracesResult]] = []
+        for _ in range(max_pages):
+            page_parameters = SearchTracesParams(experiment_id=parameters.experiment_id, limit=parameters.limit, after=None)
+            page = self.search_traces(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
             pages.append(page)
             if not page.next_cursor:
                 break
@@ -2359,6 +3657,27 @@ class RiffDBMLflowClient:
     ) -> CommandBatchResult[DeleteExperimentTagOutcome]:
         return self._transport._command_batch(inputs, options, self.delete_experiment_tag, progress)
 
+    def delete_logged_model_entity(self, input: DeleteLoggedModelEntityInput) -> TypedCommandResult[DeleteLoggedModelEntityOutcome]:
+        raw = self._transport._execute_command(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            command_name="DeleteLoggedModelEntity", plan_hash=DELETE_LOGGED_MODEL_ENTITY_PLAN_HASH,
+            input=encode_record(input), attempts=self._command_attempts,
+        )
+        outcomes = {
+            "LoggedModelDeleted": DeleteLoggedModelEntityLoggedModelDeleted,
+            "LoggedModelMissing": DeleteLoggedModelEntityLoggedModelMissing,
+        }
+        result: TypedCommandResult[DeleteLoggedModelEntityOutcome] = raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        if self._track_causal_writes and result.commit_sequence is not None and result.commit_sequence > 0:
+            self._read_after_commit = result.commit_sequence if self._read_after_commit is None or result.commit_sequence > self._read_after_commit else self._read_after_commit
+        return result
+
+    def delete_logged_model_entity_batch(
+        self, inputs: Sequence[DeleteLoggedModelEntityInput], options: CommandBatchOptions,
+        progress: Callable[[CommandBatchProgress], None] | None = None,
+    ) -> CommandBatchResult[DeleteLoggedModelEntityOutcome]:
+        return self._transport._command_batch(inputs, options, self.delete_logged_model_entity, progress)
+
     def delete_run(self, input: DeleteRunInput) -> TypedCommandResult[DeleteRunOutcome]:
         raw = self._transport._execute_command(
             contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
@@ -2379,6 +3698,139 @@ class RiffDBMLflowClient:
         progress: Callable[[CommandBatchProgress], None] | None = None,
     ) -> CommandBatchResult[DeleteRunOutcome]:
         return self._transport._command_batch(inputs, options, self.delete_run, progress)
+
+    def delete_trace(self, input: DeleteTraceInput) -> TypedCommandResult[DeleteTraceOutcome]:
+        raw = self._transport._execute_command(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            command_name="DeleteTrace", plan_hash=DELETE_TRACE_PLAN_HASH,
+            input=encode_record(input), attempts=self._command_attempts,
+        )
+        outcomes = {
+            "TraceDeleted": DeleteTraceTraceDeleted,
+            "TraceMissing": DeleteTraceTraceMissing,
+        }
+        result: TypedCommandResult[DeleteTraceOutcome] = raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        if self._track_causal_writes and result.commit_sequence is not None and result.commit_sequence > 0:
+            self._read_after_commit = result.commit_sequence if self._read_after_commit is None or result.commit_sequence > self._read_after_commit else self._read_after_commit
+        return result
+
+    def delete_trace_batch(
+        self, inputs: Sequence[DeleteTraceInput], options: CommandBatchOptions,
+        progress: Callable[[CommandBatchProgress], None] | None = None,
+    ) -> CommandBatchResult[DeleteTraceOutcome]:
+        return self._transport._command_batch(inputs, options, self.delete_trace, progress)
+
+    def delete_trace_assessment(self, input: DeleteTraceAssessmentInput) -> TypedCommandResult[DeleteTraceAssessmentOutcome]:
+        raw = self._transport._execute_command(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            command_name="DeleteTraceAssessment", plan_hash=DELETE_TRACE_ASSESSMENT_PLAN_HASH,
+            input=encode_record(input), attempts=self._command_attempts,
+        )
+        outcomes = {
+            "TraceAssessmentDeleted": DeleteTraceAssessmentTraceAssessmentDeleted,
+            "TraceAssessmentMissing": DeleteTraceAssessmentTraceAssessmentMissing,
+        }
+        result: TypedCommandResult[DeleteTraceAssessmentOutcome] = raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        if self._track_causal_writes and result.commit_sequence is not None and result.commit_sequence > 0:
+            self._read_after_commit = result.commit_sequence if self._read_after_commit is None or result.commit_sequence > self._read_after_commit else self._read_after_commit
+        return result
+
+    def delete_trace_assessment_batch(
+        self, inputs: Sequence[DeleteTraceAssessmentInput], options: CommandBatchOptions,
+        progress: Callable[[CommandBatchProgress], None] | None = None,
+    ) -> CommandBatchResult[DeleteTraceAssessmentOutcome]:
+        return self._transport._command_batch(inputs, options, self.delete_trace_assessment, progress)
+
+    def delete_trace_span(self, input: DeleteTraceSpanInput) -> TypedCommandResult[DeleteTraceSpanOutcome]:
+        raw = self._transport._execute_command(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            command_name="DeleteTraceSpan", plan_hash=DELETE_TRACE_SPAN_PLAN_HASH,
+            input=encode_record(input), attempts=self._command_attempts,
+        )
+        outcomes = {
+            "TraceSpanDeleted": DeleteTraceSpanTraceSpanDeleted,
+            "TraceSpanMissing": DeleteTraceSpanTraceSpanMissing,
+        }
+        result: TypedCommandResult[DeleteTraceSpanOutcome] = raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        if self._track_causal_writes and result.commit_sequence is not None and result.commit_sequence > 0:
+            self._read_after_commit = result.commit_sequence if self._read_after_commit is None or result.commit_sequence > self._read_after_commit else self._read_after_commit
+        return result
+
+    def delete_trace_span_batch(
+        self, inputs: Sequence[DeleteTraceSpanInput], options: CommandBatchOptions,
+        progress: Callable[[CommandBatchProgress], None] | None = None,
+    ) -> CommandBatchResult[DeleteTraceSpanOutcome]:
+        return self._transport._command_batch(inputs, options, self.delete_trace_span, progress)
+
+    def ingest_trace_spans(self, input: IngestTraceSpansInput) -> TypedCommandResult[IngestTraceSpansOutcome]:
+        if not 1 <= len(input.spans) <= 64:
+            raise InputBudgetError(COLLECTION_COUNT, "spans")
+        for index, item in enumerate(input.spans):
+            if len(item.name.encode("utf-8")) > 256:
+                raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "spans", index, "name")
+            if len(item.status.encode("utf-8")) > 32:
+                raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "spans", index, "status")
+            if len(item.span_id.encode("utf-8")) > 64:
+                raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "spans", index, "span_id")
+            if len(item.trace_id.encode("utf-8")) > 64:
+                raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "spans", index, "trace_id")
+            if item.parent_id is not None and len(item.parent_id.encode("utf-8")) > 64:
+                raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "spans", index, "parent_id")
+            if len(item.span_type.encode("utf-8")) > 64:
+                raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "spans", index, "span_type")
+            if len(item.model_name.encode("utf-8")) > 128:
+                raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "spans", index, "model_name")
+            if len(item.model_provider.encode("utf-8")) > 64:
+                raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "spans", index, "model_provider")
+            if len(item.packed_span_json) > 16384:
+                raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "spans", index, "packed_span_json")
+        aggregate_element_bytes = sum(canonical_value_encoded_length(encode_value(item, TraceSpan)) for item in input.spans)
+        if aggregate_element_bytes > 1000000:
+            raise InputBudgetError(AGGREGATE_CANONICAL_ELEMENT_BYTES, "spans")
+        raw = self._transport._execute_command(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            command_name="IngestTraceSpans", plan_hash=INGEST_TRACE_SPANS_PLAN_HASH,
+            input=encode_record(input), attempts=self._command_attempts,
+        )
+        outcomes = {
+            "TraceSpansIngested": IngestTraceSpansTraceSpansIngested,
+        }
+        result: TypedCommandResult[IngestTraceSpansOutcome] = raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        if self._track_causal_writes and result.commit_sequence is not None and result.commit_sequence > 0:
+            self._read_after_commit = result.commit_sequence if self._read_after_commit is None or result.commit_sequence > self._read_after_commit else self._read_after_commit
+        return result
+
+    def ingest_trace_spans_batch(
+        self, inputs: Sequence[IngestTraceSpansInput], options: CommandBatchOptions,
+        progress: Callable[[CommandBatchProgress], None] | None = None,
+    ) -> CommandBatchResult[IngestTraceSpansOutcome]:
+        for input in inputs:
+
+            if not 1 <= len(input.spans) <= 64:
+                raise InputBudgetError(COLLECTION_COUNT, "spans")
+            for index, item in enumerate(input.spans):
+                if len(item.name.encode("utf-8")) > 256:
+                    raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "spans", index, "name")
+                if len(item.status.encode("utf-8")) > 32:
+                    raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "spans", index, "status")
+                if len(item.span_id.encode("utf-8")) > 64:
+                    raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "spans", index, "span_id")
+                if len(item.trace_id.encode("utf-8")) > 64:
+                    raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "spans", index, "trace_id")
+                if item.parent_id is not None and len(item.parent_id.encode("utf-8")) > 64:
+                    raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "spans", index, "parent_id")
+                if len(item.span_type.encode("utf-8")) > 64:
+                    raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "spans", index, "span_type")
+                if len(item.model_name.encode("utf-8")) > 128:
+                    raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "spans", index, "model_name")
+                if len(item.model_provider.encode("utf-8")) > 64:
+                    raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "spans", index, "model_provider")
+                if len(item.packed_span_json) > 16384:
+                    raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "spans", index, "packed_span_json")
+            aggregate_element_bytes = sum(canonical_value_encoded_length(encode_value(item, TraceSpan)) for item in input.spans)
+            if aggregate_element_bytes > 1000000:
+                raise InputBudgetError(AGGREGATE_CANONICAL_ELEMENT_BYTES, "spans")
+        return self._transport._command_batch(inputs, options, self.ingest_trace_spans, progress)
 
     def log_batch(self, input: LogBatchInput) -> TypedCommandResult[LogBatchOutcome]:
         if not 1 <= len(input.items) <= 1000:
@@ -2563,6 +4015,89 @@ class RiffDBMLflowClient:
     ) -> CommandBatchResult[UpdateRunInfoOutcome]:
         return self._transport._command_batch(inputs, options, self.update_run_info, progress)
 
+    def upsert_logged_model(self, input: UpsertLoggedModelInput) -> TypedCommandResult[UpsertLoggedModelOutcome]:
+        raw = self._transport._execute_command(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            command_name="UpsertLoggedModel", plan_hash=UPSERT_LOGGED_MODEL_PLAN_HASH,
+            input=encode_record(input), attempts=self._command_attempts,
+        )
+        outcomes = {
+            "LoggedModelUpserted": UpsertLoggedModelLoggedModelUpserted,
+        }
+        result: TypedCommandResult[UpsertLoggedModelOutcome] = raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        if self._track_causal_writes and result.commit_sequence is not None and result.commit_sequence > 0:
+            self._read_after_commit = result.commit_sequence if self._read_after_commit is None or result.commit_sequence > self._read_after_commit else self._read_after_commit
+        return result
+
+    def upsert_logged_model_batch(
+        self, inputs: Sequence[UpsertLoggedModelInput], options: CommandBatchOptions,
+        progress: Callable[[CommandBatchProgress], None] | None = None,
+    ) -> CommandBatchResult[UpsertLoggedModelOutcome]:
+        return self._transport._command_batch(inputs, options, self.upsert_logged_model, progress)
+
+    def upsert_run_lineage(self, input: UpsertRunLineageInput) -> TypedCommandResult[UpsertRunLineageOutcome]:
+        raw = self._transport._execute_command(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            command_name="UpsertRunLineage", plan_hash=UPSERT_RUN_LINEAGE_PLAN_HASH,
+            input=encode_record(input), attempts=self._command_attempts,
+        )
+        outcomes = {
+            "RunMissing": UpsertRunLineageRunMissing,
+            "RunInactive": UpsertRunLineageRunInactive,
+            "RunLineageUpserted": UpsertRunLineageRunLineageUpserted,
+        }
+        result: TypedCommandResult[UpsertRunLineageOutcome] = raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        if self._track_causal_writes and result.commit_sequence is not None and result.commit_sequence > 0:
+            self._read_after_commit = result.commit_sequence if self._read_after_commit is None or result.commit_sequence > self._read_after_commit else self._read_after_commit
+        return result
+
+    def upsert_run_lineage_batch(
+        self, inputs: Sequence[UpsertRunLineageInput], options: CommandBatchOptions,
+        progress: Callable[[CommandBatchProgress], None] | None = None,
+    ) -> CommandBatchResult[UpsertRunLineageOutcome]:
+        return self._transport._command_batch(inputs, options, self.upsert_run_lineage, progress)
+
+    def upsert_trace(self, input: UpsertTraceInput) -> TypedCommandResult[UpsertTraceOutcome]:
+        raw = self._transport._execute_command(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            command_name="UpsertTrace", plan_hash=UPSERT_TRACE_PLAN_HASH,
+            input=encode_record(input), attempts=self._command_attempts,
+        )
+        outcomes = {
+            "TraceUpserted": UpsertTraceTraceUpserted,
+        }
+        result: TypedCommandResult[UpsertTraceOutcome] = raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        if self._track_causal_writes and result.commit_sequence is not None and result.commit_sequence > 0:
+            self._read_after_commit = result.commit_sequence if self._read_after_commit is None or result.commit_sequence > self._read_after_commit else self._read_after_commit
+        return result
+
+    def upsert_trace_batch(
+        self, inputs: Sequence[UpsertTraceInput], options: CommandBatchOptions,
+        progress: Callable[[CommandBatchProgress], None] | None = None,
+    ) -> CommandBatchResult[UpsertTraceOutcome]:
+        return self._transport._command_batch(inputs, options, self.upsert_trace, progress)
+
+    def upsert_trace_assessment(self, input: UpsertTraceAssessmentInput) -> TypedCommandResult[UpsertTraceAssessmentOutcome]:
+        raw = self._transport._execute_command(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            command_name="UpsertTraceAssessment", plan_hash=UPSERT_TRACE_ASSESSMENT_PLAN_HASH,
+            input=encode_record(input), attempts=self._command_attempts,
+        )
+        outcomes = {
+            "TraceMissing": UpsertTraceAssessmentTraceMissing,
+            "TraceAssessmentUpserted": UpsertTraceAssessmentTraceAssessmentUpserted,
+        }
+        result: TypedCommandResult[UpsertTraceAssessmentOutcome] = raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        if self._track_causal_writes and result.commit_sequence is not None and result.commit_sequence > 0:
+            self._read_after_commit = result.commit_sequence if self._read_after_commit is None or result.commit_sequence > self._read_after_commit else self._read_after_commit
+        return result
+
+    def upsert_trace_assessment_batch(
+        self, inputs: Sequence[UpsertTraceAssessmentInput], options: CommandBatchOptions,
+        progress: Callable[[CommandBatchProgress], None] | None = None,
+    ) -> CommandBatchResult[UpsertTraceAssessmentOutcome]:
+        return self._transport._command_batch(inputs, options, self.upsert_trace_assessment, progress)
+
     def validate_run_active(self, input: ValidateRunActiveInput) -> TypedCommandResult[ValidateRunActiveOutcome]:
         raw = self._transport._execute_command(
             contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
@@ -2606,6 +4141,23 @@ class AsyncRiffDBMLflowClient:
     def last_commit_sequence(self) -> int | None:
         return self._read_after_commit
 
+    async def aggregate_span_analytics_by_model(self, parameters: AggregateSpanAnalyticsByModelParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[AggregateSpanAnalyticsByModelResult]:
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = await self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="AggregateSpanAnalyticsByModel", plan_hash=AGGREGATE_SPAN_ANALYTICS_BY_MODEL_QUERY_PLAN_HASH,
+            parameters=encode_record(parameters), options=options,
+        )
+        outcomes = {
+            "Found": AggregateSpanAnalyticsByModelFound,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    async def aggregate_span_analytics_by_model_after_commit(self, parameters: AggregateSpanAnalyticsByModelParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[AggregateSpanAnalyticsByModelResult]:
+        return await self.aggregate_span_analytics_by_model(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
     async def get_experiment(self, parameters: GetExperimentParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetExperimentResult]:
         if options.read_after_commit is None and self._read_after_commit is not None:
             options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
@@ -2641,6 +4193,24 @@ class AsyncRiffDBMLflowClient:
 
     async def get_experiment_by_name_after_commit(self, parameters: GetExperimentByNameParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetExperimentByNameResult]:
         return await self.get_experiment_by_name(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    async def get_logged_model(self, parameters: GetLoggedModelParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetLoggedModelResult]:
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = await self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="GetLoggedModel", plan_hash=GET_LOGGED_MODEL_QUERY_PLAN_HASH,
+            parameters=encode_record(parameters), options=options,
+        )
+        outcomes = {
+            "Found": GetLoggedModelFound,
+            "Missing": GetLoggedModelMissing,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    async def get_logged_model_after_commit(self, parameters: GetLoggedModelParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetLoggedModelResult]:
+        return await self.get_logged_model(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
 
     async def get_metric_history(self, parameters: GetMetricHistoryParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetMetricHistoryResult]:
         if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 499):
@@ -2702,6 +4272,189 @@ class AsyncRiffDBMLflowClient:
 
     async def get_run_after_commit(self, parameters: GetRunParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetRunResult]:
         return await self.get_run(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    async def get_run_lineage(self, parameters: GetRunLineageParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetRunLineageResult]:
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = await self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="GetRunLineage", plan_hash=GET_RUN_LINEAGE_QUERY_PLAN_HASH,
+            parameters=encode_record(parameters), options=options,
+        )
+        outcomes = {
+            "Found": GetRunLineageFound,
+            "Missing": GetRunLineageMissing,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    async def get_run_lineage_after_commit(self, parameters: GetRunLineageParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetRunLineageResult]:
+        return await self.get_run_lineage(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    async def get_trace(self, parameters: GetTraceParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetTraceResult]:
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = await self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="GetTrace", plan_hash=GET_TRACE_QUERY_PLAN_HASH,
+            parameters=encode_record(parameters), options=options,
+        )
+        outcomes = {
+            "Found": GetTraceFound,
+            "Missing": GetTraceMissing,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    async def get_trace_after_commit(self, parameters: GetTraceParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetTraceResult]:
+        return await self.get_trace(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    async def query_assessment_analytics(self, parameters: QueryAssessmentAnalyticsParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[QueryAssessmentAnalyticsResult]:
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 500):
+            raise ValueError("limit must be an integer from 1 through 500")
+        encoded_parameters = encode_record(parameters)
+        generated_cursor = parameters.after
+        if generated_cursor is not None:
+            if options.cursor is not None:
+                raise ValueError("generated cursor conflicts with query options")
+            options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
+        encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = await self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="QueryAssessmentAnalytics", plan_hash=QUERY_ASSESSMENT_ANALYTICS_QUERY_PLAN_HASH,
+            parameters=encoded_parameters, options=options,
+        )
+        outcomes = {
+            "Found": QueryAssessmentAnalyticsFound,
+            "IntegrityFailure": QueryAssessmentAnalyticsIntegrityFailure,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    async def query_assessment_analytics_after_commit(self, parameters: QueryAssessmentAnalyticsParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[QueryAssessmentAnalyticsResult]:
+        return await self.query_assessment_analytics(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    async def query_assessment_analytics_pages(self, parameters: QueryAssessmentAnalyticsParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[QueryAssessmentAnalyticsResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[QueryAssessmentAnalyticsResult]] = []
+        for _ in range(max_pages):
+            page_parameters = QueryAssessmentAnalyticsParams(experiment_id=parameters.experiment_id, limit=parameters.limit, after=None)
+            page = await self.query_assessment_analytics(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
+
+    async def query_span_analytics(self, parameters: QuerySpanAnalyticsParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[QuerySpanAnalyticsResult]:
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 500):
+            raise ValueError("limit must be an integer from 1 through 500")
+        encoded_parameters = encode_record(parameters)
+        generated_cursor = parameters.after
+        if generated_cursor is not None:
+            if options.cursor is not None:
+                raise ValueError("generated cursor conflicts with query options")
+            options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
+        encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = await self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="QuerySpanAnalytics", plan_hash=QUERY_SPAN_ANALYTICS_QUERY_PLAN_HASH,
+            parameters=encoded_parameters, options=options,
+        )
+        outcomes = {
+            "Found": QuerySpanAnalyticsFound,
+            "IntegrityFailure": QuerySpanAnalyticsIntegrityFailure,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    async def query_span_analytics_after_commit(self, parameters: QuerySpanAnalyticsParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[QuerySpanAnalyticsResult]:
+        return await self.query_span_analytics(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    async def query_span_analytics_pages(self, parameters: QuerySpanAnalyticsParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[QuerySpanAnalyticsResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[QuerySpanAnalyticsResult]] = []
+        for _ in range(max_pages):
+            page_parameters = QuerySpanAnalyticsParams(experiment_id=parameters.experiment_id, limit=parameters.limit, after=None)
+            page = await self.query_span_analytics(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
+
+    async def query_span_model_rollup(self, parameters: QuerySpanModelRollupParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[QuerySpanModelRollupResult]:
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = await self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="QuerySpanModelRollup", plan_hash=QUERY_SPAN_MODEL_ROLLUP_QUERY_PLAN_HASH,
+            parameters=encode_record(parameters), options=options,
+        )
+        outcomes = {
+            "Found": QuerySpanModelRollupFound,
+            "IntegrityFailure": QuerySpanModelRollupIntegrityFailure,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    async def query_span_model_rollup_after_commit(self, parameters: QuerySpanModelRollupParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[QuerySpanModelRollupResult]:
+        return await self.query_span_model_rollup(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    async def query_trace_analytics(self, parameters: QueryTraceAnalyticsParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[QueryTraceAnalyticsResult]:
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 500):
+            raise ValueError("limit must be an integer from 1 through 500")
+        encoded_parameters = encode_record(parameters)
+        generated_cursor = parameters.after
+        if generated_cursor is not None:
+            if options.cursor is not None:
+                raise ValueError("generated cursor conflicts with query options")
+            options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
+        encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = await self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="QueryTraceAnalytics", plan_hash=QUERY_TRACE_ANALYTICS_QUERY_PLAN_HASH,
+            parameters=encoded_parameters, options=options,
+        )
+        outcomes = {
+            "Found": QueryTraceAnalyticsFound,
+            "IntegrityFailure": QueryTraceAnalyticsIntegrityFailure,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    async def query_trace_analytics_after_commit(self, parameters: QueryTraceAnalyticsParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[QueryTraceAnalyticsResult]:
+        return await self.query_trace_analytics(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    async def query_trace_analytics_pages(self, parameters: QueryTraceAnalyticsParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[QueryTraceAnalyticsResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[QueryTraceAnalyticsResult]] = []
+        for _ in range(max_pages):
+            page_parameters = QueryTraceAnalyticsParams(experiment_id=parameters.experiment_id, limit=parameters.limit, after=None)
+            page = await self.query_trace_analytics(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
 
     async def search_experiments(self, parameters: SearchExperimentsParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsResult]:
         if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
@@ -3047,6 +4800,49 @@ class AsyncRiffDBMLflowClient:
             cursor = page.next_cursor
         return pages
 
+    async def search_logged_models(self, parameters: SearchLoggedModelsParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchLoggedModelsResult]:
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 50):
+            raise ValueError("limit must be an integer from 1 through 50")
+        encoded_parameters = encode_record(parameters)
+        generated_cursor = parameters.after
+        if generated_cursor is not None:
+            if options.cursor is not None:
+                raise ValueError("generated cursor conflicts with query options")
+            options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
+        encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = await self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="SearchLoggedModels", plan_hash=SEARCH_LOGGED_MODELS_QUERY_PLAN_HASH,
+            parameters=encoded_parameters, options=options,
+        )
+        outcomes = {
+            "Found": SearchLoggedModelsFound,
+            "IntegrityFailure": SearchLoggedModelsIntegrityFailure,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    async def search_logged_models_after_commit(self, parameters: SearchLoggedModelsParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchLoggedModelsResult]:
+        return await self.search_logged_models(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    async def search_logged_models_pages(self, parameters: SearchLoggedModelsParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[SearchLoggedModelsResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[SearchLoggedModelsResult]] = []
+        for _ in range(max_pages):
+            page_parameters = SearchLoggedModelsParams(experiment_id=parameters.experiment_id, limit=parameters.limit, after=None)
+            page = await self.search_logged_models(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
+
     async def search_runs(self, parameters: SearchRunsParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchRunsResult]:
         if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 2):
             raise ValueError("limit must be an integer from 1 through 2")
@@ -3127,6 +4923,49 @@ class AsyncRiffDBMLflowClient:
         for _ in range(max_pages):
             page_parameters = SearchRunsByLifecycleParams(experiment_ids=parameters.experiment_ids, lifecycle_stage=parameters.lifecycle_stage, limit=parameters.limit, after=None)
             page = await self.search_runs_by_lifecycle(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
+
+    async def search_traces(self, parameters: SearchTracesParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchTracesResult]:
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 50):
+            raise ValueError("limit must be an integer from 1 through 50")
+        encoded_parameters = encode_record(parameters)
+        generated_cursor = parameters.after
+        if generated_cursor is not None:
+            if options.cursor is not None:
+                raise ValueError("generated cursor conflicts with query options")
+            options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
+        encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = await self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="SearchTraces", plan_hash=SEARCH_TRACES_QUERY_PLAN_HASH,
+            parameters=encoded_parameters, options=options,
+        )
+        outcomes = {
+            "Found": SearchTracesFound,
+            "IntegrityFailure": SearchTracesIntegrityFailure,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    async def search_traces_after_commit(self, parameters: SearchTracesParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchTracesResult]:
+        return await self.search_traces(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    async def search_traces_pages(self, parameters: SearchTracesParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[SearchTracesResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[SearchTracesResult]] = []
+        for _ in range(max_pages):
+            page_parameters = SearchTracesParams(experiment_id=parameters.experiment_id, limit=parameters.limit, after=None)
+            page = await self.search_traces(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
             pages.append(page)
             if not page.next_cursor:
                 break
@@ -3344,6 +5183,27 @@ class AsyncRiffDBMLflowClient:
     ) -> CommandBatchResult[DeleteExperimentTagOutcome]:
         return await self._transport._command_batch(inputs, options, self.delete_experiment_tag, progress)
 
+    async def delete_logged_model_entity(self, input: DeleteLoggedModelEntityInput) -> TypedCommandResult[DeleteLoggedModelEntityOutcome]:
+        raw = await self._transport._execute_command(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            command_name="DeleteLoggedModelEntity", plan_hash=DELETE_LOGGED_MODEL_ENTITY_PLAN_HASH,
+            input=encode_record(input), attempts=self._command_attempts,
+        )
+        outcomes = {
+            "LoggedModelDeleted": DeleteLoggedModelEntityLoggedModelDeleted,
+            "LoggedModelMissing": DeleteLoggedModelEntityLoggedModelMissing,
+        }
+        result: TypedCommandResult[DeleteLoggedModelEntityOutcome] = raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        if self._track_causal_writes and result.commit_sequence is not None and result.commit_sequence > 0:
+            self._read_after_commit = result.commit_sequence if self._read_after_commit is None or result.commit_sequence > self._read_after_commit else self._read_after_commit
+        return result
+
+    async def delete_logged_model_entity_batch(
+        self, inputs: Sequence[DeleteLoggedModelEntityInput], options: CommandBatchOptions,
+        progress: Callable[[CommandBatchProgress], None] | None = None,
+    ) -> CommandBatchResult[DeleteLoggedModelEntityOutcome]:
+        return await self._transport._command_batch(inputs, options, self.delete_logged_model_entity, progress)
+
     async def delete_run(self, input: DeleteRunInput) -> TypedCommandResult[DeleteRunOutcome]:
         raw = await self._transport._execute_command(
             contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
@@ -3364,6 +5224,139 @@ class AsyncRiffDBMLflowClient:
         progress: Callable[[CommandBatchProgress], None] | None = None,
     ) -> CommandBatchResult[DeleteRunOutcome]:
         return await self._transport._command_batch(inputs, options, self.delete_run, progress)
+
+    async def delete_trace(self, input: DeleteTraceInput) -> TypedCommandResult[DeleteTraceOutcome]:
+        raw = await self._transport._execute_command(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            command_name="DeleteTrace", plan_hash=DELETE_TRACE_PLAN_HASH,
+            input=encode_record(input), attempts=self._command_attempts,
+        )
+        outcomes = {
+            "TraceDeleted": DeleteTraceTraceDeleted,
+            "TraceMissing": DeleteTraceTraceMissing,
+        }
+        result: TypedCommandResult[DeleteTraceOutcome] = raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        if self._track_causal_writes and result.commit_sequence is not None and result.commit_sequence > 0:
+            self._read_after_commit = result.commit_sequence if self._read_after_commit is None or result.commit_sequence > self._read_after_commit else self._read_after_commit
+        return result
+
+    async def delete_trace_batch(
+        self, inputs: Sequence[DeleteTraceInput], options: CommandBatchOptions,
+        progress: Callable[[CommandBatchProgress], None] | None = None,
+    ) -> CommandBatchResult[DeleteTraceOutcome]:
+        return await self._transport._command_batch(inputs, options, self.delete_trace, progress)
+
+    async def delete_trace_assessment(self, input: DeleteTraceAssessmentInput) -> TypedCommandResult[DeleteTraceAssessmentOutcome]:
+        raw = await self._transport._execute_command(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            command_name="DeleteTraceAssessment", plan_hash=DELETE_TRACE_ASSESSMENT_PLAN_HASH,
+            input=encode_record(input), attempts=self._command_attempts,
+        )
+        outcomes = {
+            "TraceAssessmentDeleted": DeleteTraceAssessmentTraceAssessmentDeleted,
+            "TraceAssessmentMissing": DeleteTraceAssessmentTraceAssessmentMissing,
+        }
+        result: TypedCommandResult[DeleteTraceAssessmentOutcome] = raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        if self._track_causal_writes and result.commit_sequence is not None and result.commit_sequence > 0:
+            self._read_after_commit = result.commit_sequence if self._read_after_commit is None or result.commit_sequence > self._read_after_commit else self._read_after_commit
+        return result
+
+    async def delete_trace_assessment_batch(
+        self, inputs: Sequence[DeleteTraceAssessmentInput], options: CommandBatchOptions,
+        progress: Callable[[CommandBatchProgress], None] | None = None,
+    ) -> CommandBatchResult[DeleteTraceAssessmentOutcome]:
+        return await self._transport._command_batch(inputs, options, self.delete_trace_assessment, progress)
+
+    async def delete_trace_span(self, input: DeleteTraceSpanInput) -> TypedCommandResult[DeleteTraceSpanOutcome]:
+        raw = await self._transport._execute_command(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            command_name="DeleteTraceSpan", plan_hash=DELETE_TRACE_SPAN_PLAN_HASH,
+            input=encode_record(input), attempts=self._command_attempts,
+        )
+        outcomes = {
+            "TraceSpanDeleted": DeleteTraceSpanTraceSpanDeleted,
+            "TraceSpanMissing": DeleteTraceSpanTraceSpanMissing,
+        }
+        result: TypedCommandResult[DeleteTraceSpanOutcome] = raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        if self._track_causal_writes and result.commit_sequence is not None and result.commit_sequence > 0:
+            self._read_after_commit = result.commit_sequence if self._read_after_commit is None or result.commit_sequence > self._read_after_commit else self._read_after_commit
+        return result
+
+    async def delete_trace_span_batch(
+        self, inputs: Sequence[DeleteTraceSpanInput], options: CommandBatchOptions,
+        progress: Callable[[CommandBatchProgress], None] | None = None,
+    ) -> CommandBatchResult[DeleteTraceSpanOutcome]:
+        return await self._transport._command_batch(inputs, options, self.delete_trace_span, progress)
+
+    async def ingest_trace_spans(self, input: IngestTraceSpansInput) -> TypedCommandResult[IngestTraceSpansOutcome]:
+        if not 1 <= len(input.spans) <= 64:
+            raise InputBudgetError(COLLECTION_COUNT, "spans")
+        for index, item in enumerate(input.spans):
+            if len(item.name.encode("utf-8")) > 256:
+                raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "spans", index, "name")
+            if len(item.status.encode("utf-8")) > 32:
+                raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "spans", index, "status")
+            if len(item.span_id.encode("utf-8")) > 64:
+                raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "spans", index, "span_id")
+            if len(item.trace_id.encode("utf-8")) > 64:
+                raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "spans", index, "trace_id")
+            if item.parent_id is not None and len(item.parent_id.encode("utf-8")) > 64:
+                raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "spans", index, "parent_id")
+            if len(item.span_type.encode("utf-8")) > 64:
+                raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "spans", index, "span_type")
+            if len(item.model_name.encode("utf-8")) > 128:
+                raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "spans", index, "model_name")
+            if len(item.model_provider.encode("utf-8")) > 64:
+                raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "spans", index, "model_provider")
+            if len(item.packed_span_json) > 16384:
+                raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "spans", index, "packed_span_json")
+        aggregate_element_bytes = sum(canonical_value_encoded_length(encode_value(item, TraceSpan)) for item in input.spans)
+        if aggregate_element_bytes > 1000000:
+            raise InputBudgetError(AGGREGATE_CANONICAL_ELEMENT_BYTES, "spans")
+        raw = await self._transport._execute_command(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            command_name="IngestTraceSpans", plan_hash=INGEST_TRACE_SPANS_PLAN_HASH,
+            input=encode_record(input), attempts=self._command_attempts,
+        )
+        outcomes = {
+            "TraceSpansIngested": IngestTraceSpansTraceSpansIngested,
+        }
+        result: TypedCommandResult[IngestTraceSpansOutcome] = raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        if self._track_causal_writes and result.commit_sequence is not None and result.commit_sequence > 0:
+            self._read_after_commit = result.commit_sequence if self._read_after_commit is None or result.commit_sequence > self._read_after_commit else self._read_after_commit
+        return result
+
+    async def ingest_trace_spans_batch(
+        self, inputs: Sequence[IngestTraceSpansInput], options: CommandBatchOptions,
+        progress: Callable[[CommandBatchProgress], None] | None = None,
+    ) -> CommandBatchResult[IngestTraceSpansOutcome]:
+        for input in inputs:
+
+            if not 1 <= len(input.spans) <= 64:
+                raise InputBudgetError(COLLECTION_COUNT, "spans")
+            for index, item in enumerate(input.spans):
+                if len(item.name.encode("utf-8")) > 256:
+                    raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "spans", index, "name")
+                if len(item.status.encode("utf-8")) > 32:
+                    raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "spans", index, "status")
+                if len(item.span_id.encode("utf-8")) > 64:
+                    raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "spans", index, "span_id")
+                if len(item.trace_id.encode("utf-8")) > 64:
+                    raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "spans", index, "trace_id")
+                if item.parent_id is not None and len(item.parent_id.encode("utf-8")) > 64:
+                    raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "spans", index, "parent_id")
+                if len(item.span_type.encode("utf-8")) > 64:
+                    raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "spans", index, "span_type")
+                if len(item.model_name.encode("utf-8")) > 128:
+                    raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "spans", index, "model_name")
+                if len(item.model_provider.encode("utf-8")) > 64:
+                    raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "spans", index, "model_provider")
+                if len(item.packed_span_json) > 16384:
+                    raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "spans", index, "packed_span_json")
+            aggregate_element_bytes = sum(canonical_value_encoded_length(encode_value(item, TraceSpan)) for item in input.spans)
+            if aggregate_element_bytes > 1000000:
+                raise InputBudgetError(AGGREGATE_CANONICAL_ELEMENT_BYTES, "spans")
+        return await self._transport._command_batch(inputs, options, self.ingest_trace_spans, progress)
 
     async def log_batch(self, input: LogBatchInput) -> TypedCommandResult[LogBatchOutcome]:
         if not 1 <= len(input.items) <= 1000:
@@ -3547,6 +5540,89 @@ class AsyncRiffDBMLflowClient:
         progress: Callable[[CommandBatchProgress], None] | None = None,
     ) -> CommandBatchResult[UpdateRunInfoOutcome]:
         return await self._transport._command_batch(inputs, options, self.update_run_info, progress)
+
+    async def upsert_logged_model(self, input: UpsertLoggedModelInput) -> TypedCommandResult[UpsertLoggedModelOutcome]:
+        raw = await self._transport._execute_command(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            command_name="UpsertLoggedModel", plan_hash=UPSERT_LOGGED_MODEL_PLAN_HASH,
+            input=encode_record(input), attempts=self._command_attempts,
+        )
+        outcomes = {
+            "LoggedModelUpserted": UpsertLoggedModelLoggedModelUpserted,
+        }
+        result: TypedCommandResult[UpsertLoggedModelOutcome] = raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        if self._track_causal_writes and result.commit_sequence is not None and result.commit_sequence > 0:
+            self._read_after_commit = result.commit_sequence if self._read_after_commit is None or result.commit_sequence > self._read_after_commit else self._read_after_commit
+        return result
+
+    async def upsert_logged_model_batch(
+        self, inputs: Sequence[UpsertLoggedModelInput], options: CommandBatchOptions,
+        progress: Callable[[CommandBatchProgress], None] | None = None,
+    ) -> CommandBatchResult[UpsertLoggedModelOutcome]:
+        return await self._transport._command_batch(inputs, options, self.upsert_logged_model, progress)
+
+    async def upsert_run_lineage(self, input: UpsertRunLineageInput) -> TypedCommandResult[UpsertRunLineageOutcome]:
+        raw = await self._transport._execute_command(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            command_name="UpsertRunLineage", plan_hash=UPSERT_RUN_LINEAGE_PLAN_HASH,
+            input=encode_record(input), attempts=self._command_attempts,
+        )
+        outcomes = {
+            "RunMissing": UpsertRunLineageRunMissing,
+            "RunInactive": UpsertRunLineageRunInactive,
+            "RunLineageUpserted": UpsertRunLineageRunLineageUpserted,
+        }
+        result: TypedCommandResult[UpsertRunLineageOutcome] = raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        if self._track_causal_writes and result.commit_sequence is not None and result.commit_sequence > 0:
+            self._read_after_commit = result.commit_sequence if self._read_after_commit is None or result.commit_sequence > self._read_after_commit else self._read_after_commit
+        return result
+
+    async def upsert_run_lineage_batch(
+        self, inputs: Sequence[UpsertRunLineageInput], options: CommandBatchOptions,
+        progress: Callable[[CommandBatchProgress], None] | None = None,
+    ) -> CommandBatchResult[UpsertRunLineageOutcome]:
+        return await self._transport._command_batch(inputs, options, self.upsert_run_lineage, progress)
+
+    async def upsert_trace(self, input: UpsertTraceInput) -> TypedCommandResult[UpsertTraceOutcome]:
+        raw = await self._transport._execute_command(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            command_name="UpsertTrace", plan_hash=UPSERT_TRACE_PLAN_HASH,
+            input=encode_record(input), attempts=self._command_attempts,
+        )
+        outcomes = {
+            "TraceUpserted": UpsertTraceTraceUpserted,
+        }
+        result: TypedCommandResult[UpsertTraceOutcome] = raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        if self._track_causal_writes and result.commit_sequence is not None and result.commit_sequence > 0:
+            self._read_after_commit = result.commit_sequence if self._read_after_commit is None or result.commit_sequence > self._read_after_commit else self._read_after_commit
+        return result
+
+    async def upsert_trace_batch(
+        self, inputs: Sequence[UpsertTraceInput], options: CommandBatchOptions,
+        progress: Callable[[CommandBatchProgress], None] | None = None,
+    ) -> CommandBatchResult[UpsertTraceOutcome]:
+        return await self._transport._command_batch(inputs, options, self.upsert_trace, progress)
+
+    async def upsert_trace_assessment(self, input: UpsertTraceAssessmentInput) -> TypedCommandResult[UpsertTraceAssessmentOutcome]:
+        raw = await self._transport._execute_command(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            command_name="UpsertTraceAssessment", plan_hash=UPSERT_TRACE_ASSESSMENT_PLAN_HASH,
+            input=encode_record(input), attempts=self._command_attempts,
+        )
+        outcomes = {
+            "TraceMissing": UpsertTraceAssessmentTraceMissing,
+            "TraceAssessmentUpserted": UpsertTraceAssessmentTraceAssessmentUpserted,
+        }
+        result: TypedCommandResult[UpsertTraceAssessmentOutcome] = raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        if self._track_causal_writes and result.commit_sequence is not None and result.commit_sequence > 0:
+            self._read_after_commit = result.commit_sequence if self._read_after_commit is None or result.commit_sequence > self._read_after_commit else self._read_after_commit
+        return result
+
+    async def upsert_trace_assessment_batch(
+        self, inputs: Sequence[UpsertTraceAssessmentInput], options: CommandBatchOptions,
+        progress: Callable[[CommandBatchProgress], None] | None = None,
+    ) -> CommandBatchResult[UpsertTraceAssessmentOutcome]:
+        return await self._transport._command_batch(inputs, options, self.upsert_trace_assessment, progress)
 
     async def validate_run_active(self, input: ValidateRunActiveInput) -> TypedCommandResult[ValidateRunActiveOutcome]:
         raw = await self._transport._execute_command(

@@ -1,0 +1,19 @@
+query GetLoggedModel(
+    $experiment_id: LoggedModelEntity.experiment_id,
+    $model_id: LoggedModelEntity.model_id,
+) {
+    one model from LoggedModelEntity
+        where experiment_id == $experiment_id
+          && model_id == $model_id
+        else Missing
+
+    return Found {
+        model: model {
+            experiment_id model_id name artifact_location
+            creation_timestamp_ms last_updated_timestamp_ms
+            status lifecycle_stage status_message source_run_id model_type
+            packed_tags packed_params packed_metrics
+        }
+    }
+    outcomes Found | Missing
+}

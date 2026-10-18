@@ -1,0 +1,30 @@
+query QuerySpanModelRollup(
+    $experiment_id: TraceSpan.experiment_id,
+    $span_type: TraceSpan.span_type,
+    $model_name: TraceSpan.model_name,
+    $status: TraceSpan.status,
+    $start_bucket: TraceSpan.started_at,
+    $end_bucket: TraceSpan.started_at,
+) {
+    source projected SpanModelRollup
+    freshness causal inherit_session_commit true max_wait_ms 5000
+    many rollups from SpanModelRollup
+        where experiment_id == $experiment_id
+          && span_type == $span_type
+          && model_name == $model_name
+          && status == $status
+          && observed_at >= $start_bucket
+          && observed_at < $end_bucket
+        order by observed_at asc
+        take 100
+        else IntegrityFailure
+
+    return Found {
+        rollups: rollups {
+            experiment_id span_type model_name status observed_at
+            span_count total_duration_ms min_duration_ms max_duration_ms avg_duration_ms
+            sum_input_tokens sum_output_tokens sum_total_tokens sum_cost_micros
+        }
+    }
+    outcomes Found | IntegrityFailure
+}

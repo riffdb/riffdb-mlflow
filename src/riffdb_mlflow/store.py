@@ -37,7 +37,6 @@ from mlflow.protos.databricks_pb2 import (
 )
 from mlflow.store.entities.paged_list import PagedList
 from mlflow.store.tracking import SEARCH_MAX_RESULTS_DEFAULT, SEARCH_MAX_RESULTS_THRESHOLD
-from mlflow.store.tracking.abstract_store import AbstractStore
 from mlflow.utils.mlflow_tags import MLFLOW_RUN_NAME
 from mlflow.utils.name_utils import _generate_random_name
 from mlflow.utils.search_utils import SearchExperimentsUtils, SearchUtils
@@ -63,6 +62,7 @@ from riffdb_application import (
     VerifiedTlsConfig,
 )
 
+from riffdb_mlflow._extended_store import RiffDBExtendedStoreMixin
 from riffdb_mlflow.config import StoreConfig
 from riffdb_mlflow.generated.client import (
     CreateExperimentExperimentCreated,
@@ -166,7 +166,7 @@ _MIN_RANDOM_EXPERIMENT_ID = 100_000_000_000_000_000
 _RANDOM_EXPERIMENT_ID_SPAN = 900_000_000_000_000_000
 
 
-class RiffDBTrackingStore(AbstractStore):
+class RiffDBTrackingStore(RiffDBExtendedStoreMixin):
     """Pinned MLflow tracking store backed by one compiled application profile."""
 
     DEFAULT_EXPERIMENT_ID = "0"
@@ -178,6 +178,8 @@ class RiffDBTrackingStore(AbstractStore):
         self._transport: SyncApplicationTransport | None = None
         self._client: Any | None = None
         self._default_ready = False
+        self._trace_experiment_map: dict[str, int] = {}
+        self._model_experiment_map: dict[str, int] = {}
 
     @property
     def database(self) -> str:
@@ -549,7 +551,12 @@ class RiffDBTrackingStore(AbstractStore):
             ) from error
 
     @classmethod
-    def _to_mlflow_run(cls, row: Any) -> MLflowRun:
+    def _to_mlflow_run(
+        cls,
+        row: Any,
+        inputs: RunInputs | None = None,
+        outputs: RunOutputs | None = None,
+    ) -> MLflowRun:
         lifecycle = (
             MLflowLifecycleStage.ACTIVE
             if row.lifecycle_stage == LifecycleStage.ACTIVE
@@ -587,7 +594,12 @@ class RiffDBTrackingStore(AbstractStore):
                 for key, value in cls._decode_tags(row.packed_tags).items()
             ],
         )
-        return MLflowRun(info, data, RunInputs(dataset_inputs=[]), RunOutputs(model_outputs=[]))
+        return MLflowRun(
+            info,
+            data,
+            inputs if inputs is not None else RunInputs(dataset_inputs=[]),
+            outputs if outputs is not None else RunOutputs(model_outputs=[]),
+        )
 
     @staticmethod
     def _numeric_experiment_id(experiment_id: Any) -> int:
@@ -1060,14 +1072,14 @@ class RiffDBTrackingStore(AbstractStore):
 
     def get_run(self, run_id: Any) -> MLflowRun:
         normalized_id, experiment_id = self._run_experiment_id(run_id)
-        result = self._application().get_run(
-            GetRunParams(experiment_id=experiment_id, run_id=normalized_id)
-        )
+        client = self._application()
+        result = client.get_run(GetRunParams(experiment_id=experiment_id, run_id=normalized_id))
         if isinstance(result.value, GetRunMissing):
             self._missing_run(run_id)
         if not isinstance(result.value, GetRunFound):
             raise MlflowException("Invalid GetRun response from RiffDB")
-        return self._to_mlflow_run(result.value.run)
+        inputs, outputs = self._load_run_lineage(client, experiment_id, normalized_id)
+        return self._to_mlflow_run(result.value.run, inputs=inputs, outputs=outputs)
 
     def update_run_info(
         self, run_id: Any, run_status: Any, end_time: Any, run_name: Any
@@ -1618,9 +1630,3 @@ class RiffDBTrackingStore(AbstractStore):
                 )
             raise MlflowException("Invalid LogBatch response from RiffDB")
         raise MlflowException("Run batch conflicted with another write", error_code=ABORTED)
-
-    def log_inputs(self, run_id: Any, datasets: Any = None, models: Any = None) -> NoReturn:
-        self._pending("log_inputs")
-
-    def link_traces_to_run(self, trace_ids: Any, run_id: Any) -> NoReturn:
-        self._pending("link_traces_to_run")
