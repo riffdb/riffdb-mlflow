@@ -22,8 +22,8 @@ def _compact_tag(value: object, tag: str, keys: frozenset[str]) -> dict[str, obj
 
 CONTRACT_LINEAGE: Final[str] = "RiffDBMLflow"
 CONTRACT_VERSION: Final[int] = 1
-CONTRACT_BUNDLE_HASH: Final[str] = "647ddd1f2cc0ea540bcf5f1ce3031fc99f5c3e9e4ee3486b14a56f3cfb88b578"
-QUERY_MODULE_HASH: Final[str] = "6cbd92bb36f753ddb51da134e9c8ca21b2e62e49e3ade08c9ee4d68723b4e4ae"
+CONTRACT_BUNDLE_HASH: Final[str] = "e8a6318db28d855d0105f3bc80140c812d91bc6a548e81a9831f34c0389f1ed0"
+QUERY_MODULE_HASH: Final[str] = "dea8579684952a0687d5f74054f692163ff3479d405942ba1947e2c41ac0e9e8"
 
 COLLECTION_COUNT: Final[str] = "collection_count"
 INDIVIDUAL_VALUE_BYTES: Final[str] = "individual_value_bytes"
@@ -220,7 +220,7 @@ class LoggedModelEntity:
     creation_timestamp_ms: Annotated[int, "i64"]
     last_updated_timestamp_ms: Annotated[int, "i64"]
 
-AGGREGATE_SPAN_ANALYTICS_BY_MODEL_QUERY_PLAN_HASH: Final[str] = "9773dc458373f630ca49ac46065e98db199767b5db7624921b5ff8a2efc1fbe3"
+AGGREGATE_SPAN_ANALYTICS_BY_MODEL_QUERY_PLAN_HASH: Final[str] = "24cb8ff8c13a166a95e3f14ca9549e3e84ea9d1fbed8e9bfadf6958e8f4118c2"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class AggregateSpanAnalyticsByModelParams:
@@ -257,7 +257,290 @@ class AggregateSpanAnalyticsByModelFound:
 
 AggregateSpanAnalyticsByModelResult: TypeAlias = AggregateSpanAnalyticsByModelFound
 
-GET_EXPERIMENT_QUERY_PLAN_HASH: Final[str] = "506fcda6debe03fafe9959c29f668eee7dffbe27e76841594e6ca0d768650f37"
+AGGREGATE_SPAN_ANALYTICS_BY_NAME_STATUS_QUERY_PLAN_HASH: Final[str] = "c95e82bdcddcf8a98599aaedc41dd4ab5c124aab66dabef21fae0eba8f85adc1"
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class AggregateSpanAnalyticsByNameStatusParams:
+    experiment_id: Annotated[int, "u64"]
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class AggregateSpanAnalyticsByNameStatusFoundByNameStatus:
+    name: str
+    status: str
+    span_count: Annotated[int, "u64"]
+    sum_duration_ms: Decimal
+    min_duration_ms: Annotated[int, "i64"] | None
+    max_duration_ms: Annotated[int, "i64"] | None
+    p50_duration_ms: Annotated[int, "i64"] | None
+    p90_duration_ms: Annotated[int, "i64"] | None
+    p95_duration_ms: Annotated[int, "i64"] | None
+    p99_duration_ms: Annotated[int, "i64"] | None
+    sum_input_cost_micros: Decimal
+    sum_output_cost_micros: Decimal
+    sum_total_cost_micros: Decimal
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class AggregateSpanAnalyticsByNameStatusFound:
+    by_name_status: tuple[AggregateSpanAnalyticsByNameStatusFoundByNameStatus, ...]
+    outcome: Literal["Found"] = field(default="Found", init=False)
+
+    def is_found(self) -> bool:
+        return True
+
+    def unwrap_found(self) -> AggregateSpanAnalyticsByNameStatusFound:
+        return self
+
+AggregateSpanAnalyticsByNameStatusResult: TypeAlias = AggregateSpanAnalyticsByNameStatusFound
+
+AGGREGATE_TRACE_ANALYTICS_BY_NAME_QUERY_PLAN_HASH: Final[str] = "d59c5e394403fd94d0fc88c03fadc0380ac856d77159ae666508559a72615918"
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class AggregateTraceAnalyticsByNameParams:
+    experiment_id: Annotated[int, "u64"]
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class AggregateTraceAnalyticsByNameFoundByName:
+    trace_name: str
+    trace_count: Annotated[int, "u64"]
+    sum_duration_ms: Decimal
+    min_duration_ms: Annotated[int, "i64"] | None
+    max_duration_ms: Annotated[int, "i64"] | None
+    p50_duration_ms: Annotated[int, "i64"] | None
+    p90_duration_ms: Annotated[int, "i64"] | None
+    p95_duration_ms: Annotated[int, "i64"] | None
+    p99_duration_ms: Annotated[int, "i64"] | None
+    sum_input_tokens: Decimal
+    sum_output_tokens: Decimal
+    sum_total_tokens: Decimal
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class AggregateTraceAnalyticsByNameFound:
+    by_name: tuple[AggregateTraceAnalyticsByNameFoundByName, ...]
+    outcome: Literal["Found"] = field(default="Found", init=False)
+
+    def is_found(self) -> bool:
+        return True
+
+    def unwrap_found(self) -> AggregateTraceAnalyticsByNameFound:
+        return self
+
+AggregateTraceAnalyticsByNameResult: TypeAlias = AggregateTraceAnalyticsByNameFound
+
+AGGREGATE_TRACE_ANALYTICS_BY_STATUS_QUERY_PLAN_HASH: Final[str] = "4c18431b53214830284f1b125a4f343d6ab8ebdfe8b0d3ef1fbc02a79d036285"
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class AggregateTraceAnalyticsByStatusParams:
+    experiment_id: Annotated[int, "u64"]
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class AggregateTraceAnalyticsByStatusFoundByStatus:
+    state: str
+    trace_count: Annotated[int, "u64"]
+    sum_duration_ms: Decimal
+    min_duration_ms: Annotated[int, "i64"] | None
+    max_duration_ms: Annotated[int, "i64"] | None
+    p50_duration_ms: Annotated[int, "i64"] | None
+    p90_duration_ms: Annotated[int, "i64"] | None
+    p95_duration_ms: Annotated[int, "i64"] | None
+    p99_duration_ms: Annotated[int, "i64"] | None
+    sum_input_tokens: Decimal
+    sum_output_tokens: Decimal
+    sum_total_tokens: Decimal
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class AggregateTraceAnalyticsByStatusFound:
+    by_status: tuple[AggregateTraceAnalyticsByStatusFoundByStatus, ...]
+    outcome: Literal["Found"] = field(default="Found", init=False)
+
+    def is_found(self) -> bool:
+        return True
+
+    def unwrap_found(self) -> AggregateTraceAnalyticsByStatusFound:
+        return self
+
+AggregateTraceAnalyticsByStatusResult: TypeAlias = AggregateTraceAnalyticsByStatusFound
+
+BATCH_GET_TRACE_ASSESSMENTS_QUERY_PLAN_HASH: Final[str] = "21a4957d44ae78f99ba6930e8ce224f3c47013a02da351f2233674778b2cb9e8"
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class BatchGetTraceAssessmentsParams:
+    experiment_id: Annotated[int, "u64"]
+    trace_ids: tuple[str, ...]
+    limit: Annotated[int, "u64"] | None = None
+    after: str | None = None
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class BatchGetTraceAssessmentsFoundAssessments:
+    experiment_id: Annotated[int, "u64"]
+    trace_id: str
+    assessment_id: str
+    name: str
+    assessment_type: str
+    value_text: str
+    numeric_value_milli: Annotated[int, "i64"] | None
+    created_timestamp_ms: Annotated[int, "i64"]
+    last_updated_timestamp_ms: Annotated[int, "i64"]
+    span_id: str | None
+    packed_assessment_json: bytes
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class BatchGetTraceAssessmentsFound:
+    assessments: tuple[BatchGetTraceAssessmentsFoundAssessments, ...]
+    outcome: Literal["Found"] = field(default="Found", init=False)
+
+    def is_found(self) -> bool:
+        return True
+
+    def is_integrity_failure(self) -> bool:
+        return False
+
+    def unwrap_found(self) -> BatchGetTraceAssessmentsFound:
+        return self
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class BatchGetTraceAssessmentsIntegrityFailure:
+    outcome: Literal["IntegrityFailure"] = field(default="IntegrityFailure", init=False)
+
+    def is_found(self) -> bool:
+        return False
+
+    def is_integrity_failure(self) -> bool:
+        return True
+
+    def unwrap_found(self) -> BatchGetTraceAssessmentsFound:
+        raise ValueError("expected BatchGetTraceAssessments outcome found")
+
+BatchGetTraceAssessmentsResult: TypeAlias = BatchGetTraceAssessmentsFound | BatchGetTraceAssessmentsIntegrityFailure
+
+BATCH_GET_TRACE_SPANS_QUERY_PLAN_HASH: Final[str] = "2e5103de0479bfc94c4b0f254ea87974c067f1bc08b6d58e3361f5378774f208"
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class BatchGetTraceSpansParams:
+    experiment_id: Annotated[int, "u64"]
+    trace_ids: tuple[str, ...]
+    limit: Annotated[int, "u64"] | None = None
+    after: str | None = None
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class BatchGetTraceSpansFoundSpans:
+    experiment_id: Annotated[int, "u64"]
+    trace_id: str
+    span_id: str
+    parent_id: str | None
+    name: str
+    span_type: str
+    status: str
+    start_time_ns: Annotated[int, "i64"]
+    end_time_ns: Annotated[int, "i64"]
+    duration_ms: Annotated[int, "i64"]
+    model_name: str
+    model_provider: str
+    input_tokens: Annotated[int, "i64"]
+    output_tokens: Annotated[int, "i64"]
+    total_tokens: Annotated[int, "i64"]
+    input_cost_micros: Annotated[int, "i64"]
+    output_cost_micros: Annotated[int, "i64"]
+    total_cost_micros: Annotated[int, "i64"]
+    started_at: Timestamp
+    packed_span_json: bytes
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class BatchGetTraceSpansFound:
+    spans: tuple[BatchGetTraceSpansFoundSpans, ...]
+    outcome: Literal["Found"] = field(default="Found", init=False)
+
+    def is_found(self) -> bool:
+        return True
+
+    def is_integrity_failure(self) -> bool:
+        return False
+
+    def unwrap_found(self) -> BatchGetTraceSpansFound:
+        return self
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class BatchGetTraceSpansIntegrityFailure:
+    outcome: Literal["IntegrityFailure"] = field(default="IntegrityFailure", init=False)
+
+    def is_found(self) -> bool:
+        return False
+
+    def is_integrity_failure(self) -> bool:
+        return True
+
+    def unwrap_found(self) -> BatchGetTraceSpansFound:
+        raise ValueError("expected BatchGetTraceSpans outcome found")
+
+BatchGetTraceSpansResult: TypeAlias = BatchGetTraceSpansFound | BatchGetTraceSpansIntegrityFailure
+
+BATCH_GET_TRACES_QUERY_PLAN_HASH: Final[str] = "0e3435dc664d57223490e2f265c6c0b8c61bee6b8314a2a6f3252477a4093b72"
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class BatchGetTracesParams:
+    experiment_id: Annotated[int, "u64"]
+    trace_ids: tuple[str, ...]
+    limit: Annotated[int, "u64"] | None = None
+    after: str | None = None
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class BatchGetTracesFoundTraces:
+    experiment_id: Annotated[int, "u64"]
+    trace_id: str
+    request_time_ms: Annotated[int, "i64"]
+    execution_duration_ms: Annotated[int, "i64"]
+    state: str
+    status_code: str
+    trace_name: str
+    client_request_id: str | None
+    request_preview: str | None
+    response_preview: str | None
+    source_run_id: str | None
+    span_count: Annotated[int, "i64"]
+    error_span_count: Annotated[int, "i64"]
+    total_input_tokens: Annotated[int, "i64"]
+    total_output_tokens: Annotated[int, "i64"]
+    total_tokens: Annotated[int, "i64"]
+    cache_read_input_tokens: Annotated[int, "i64"]
+    cache_creation_input_tokens: Annotated[int, "i64"]
+    total_cost_micros: Annotated[int, "i64"]
+    session_id: str | None
+    packed_trace_metadata: bytes
+    packed_tags: bytes
+    packed_run_ids: bytes
+    packed_prompt_versions: bytes
+    requested_at: Timestamp
+    initialized: bool
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class BatchGetTracesFound:
+    traces: tuple[BatchGetTracesFoundTraces, ...]
+    outcome: Literal["Found"] = field(default="Found", init=False)
+
+    def is_found(self) -> bool:
+        return True
+
+    def is_integrity_failure(self) -> bool:
+        return False
+
+    def unwrap_found(self) -> BatchGetTracesFound:
+        return self
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class BatchGetTracesIntegrityFailure:
+    outcome: Literal["IntegrityFailure"] = field(default="IntegrityFailure", init=False)
+
+    def is_found(self) -> bool:
+        return False
+
+    def is_integrity_failure(self) -> bool:
+        return True
+
+    def unwrap_found(self) -> BatchGetTracesFound:
+        raise ValueError("expected BatchGetTraces outcome found")
+
+BatchGetTracesResult: TypeAlias = BatchGetTracesFound | BatchGetTracesIntegrityFailure
+
+GET_EXPERIMENT_QUERY_PLAN_HASH: Final[str] = "9effa41d70dd7d4335daab10b09b5985364fa6ec7865e4542dedc1bd622a55fb"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class GetExperimentParams:
@@ -304,7 +587,7 @@ class GetExperimentMissing:
 
 GetExperimentResult: TypeAlias = GetExperimentFound | GetExperimentMissing
 
-GET_EXPERIMENT_BY_NAME_QUERY_PLAN_HASH: Final[str] = "e36bb2e7a9a484445be03eba30b696e77390eabc10d2c45a9d693b97de78ff90"
+GET_EXPERIMENT_BY_NAME_QUERY_PLAN_HASH: Final[str] = "b7307651ac47f21a2ff68e34c8474936d8e7715e1ca1eee9eee1c3e59abfff4d"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class GetExperimentByNameParams:
@@ -351,7 +634,7 @@ class GetExperimentByNameMissing:
 
 GetExperimentByNameResult: TypeAlias = GetExperimentByNameFound | GetExperimentByNameMissing
 
-GET_LOGGED_MODEL_QUERY_PLAN_HASH: Final[str] = "ba4d4db334ba91dd6e694e5c5289dfa73e0b2644dd92295a8e62fd360c71437d"
+GET_LOGGED_MODEL_QUERY_PLAN_HASH: Final[str] = "28c8969c2d8dc6e65198a7d6c362cf3916e141ebeeade54a5c5ea800386c7247"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class GetLoggedModelParams:
@@ -404,7 +687,7 @@ class GetLoggedModelMissing:
 
 GetLoggedModelResult: TypeAlias = GetLoggedModelFound | GetLoggedModelMissing
 
-GET_METRIC_HISTORY_QUERY_PLAN_HASH: Final[str] = "f4ebb1d4f2d7f4dd195dbb797c4be026f2da34f99a105c6e69a714a85044ba8d"
+GET_METRIC_HISTORY_QUERY_PLAN_HASH: Final[str] = "7839a954395fb5587281eacfc46b219f8731c4fc5fa02d3247bcf6c3c3b4bb53"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class GetMetricHistoryParams:
@@ -452,7 +735,7 @@ class GetMetricHistoryIntegrityFailure:
 
 GetMetricHistoryResult: TypeAlias = GetMetricHistoryFound | GetMetricHistoryIntegrityFailure
 
-GET_RUN_QUERY_PLAN_HASH: Final[str] = "51e4c6980c3543ddf05dd766349a7425d55fad42f56592bf68233aab94a19a68"
+GET_RUN_QUERY_PLAN_HASH: Final[str] = "c1b091684b009a23f6a154c3128e8110c0485e628664a07c912618aea6e21ed9"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class GetRunParams:
@@ -505,7 +788,7 @@ class GetRunMissing:
 
 GetRunResult: TypeAlias = GetRunFound | GetRunMissing
 
-GET_RUN_LINEAGE_QUERY_PLAN_HASH: Final[str] = "e7c892708d17f8f702613eb2591801714c54085c69aa9ef02fb8594cb350481d"
+GET_RUN_LINEAGE_QUERY_PLAN_HASH: Final[str] = "0d0389df2b63a10544624d84dd48cfa6f247007319bf984b4897e32994ba74d9"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class GetRunLineageParams:
@@ -549,7 +832,7 @@ class GetRunLineageMissing:
 
 GetRunLineageResult: TypeAlias = GetRunLineageFound | GetRunLineageMissing
 
-GET_TRACE_QUERY_PLAN_HASH: Final[str] = "3770f73dee36692e4d482610833ce9c3f84edcfd6eda834bbd6e970a651290e5"
+GET_TRACE_QUERY_PLAN_HASH: Final[str] = "6b9ebdb9c2014978bab392ccb554440ff8e7f44aacf04ae7c8649b1e72ddf262"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class GetTraceParams:
@@ -653,7 +936,7 @@ class GetTraceMissing:
 
 GetTraceResult: TypeAlias = GetTraceFound | GetTraceMissing
 
-QUERY_ASSESSMENT_ANALYTICS_QUERY_PLAN_HASH: Final[str] = "ed3c0cfcab0ceb1003e207a0747122dc633219a75a9952550b989921dae698c5"
+QUERY_ASSESSMENT_ANALYTICS_QUERY_PLAN_HASH: Final[str] = "1697f3f4b419ec5ab24fd5d14cb64f8193b45faa51b39bdd4f548898573dad3e"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class QueryAssessmentAnalyticsParams:
@@ -701,7 +984,7 @@ class QueryAssessmentAnalyticsIntegrityFailure:
 
 QueryAssessmentAnalyticsResult: TypeAlias = QueryAssessmentAnalyticsFound | QueryAssessmentAnalyticsIntegrityFailure
 
-QUERY_SPAN_ANALYTICS_QUERY_PLAN_HASH: Final[str] = "bcfb168a022d3ef2e03b1ce995a98651950af75a28fc4bfb2dc496eabd747c66"
+QUERY_SPAN_ANALYTICS_QUERY_PLAN_HASH: Final[str] = "ad1c297015035f56de1956994281e73898d9924d503af4042856e27693860b8c"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class QuerySpanAnalyticsParams:
@@ -759,7 +1042,7 @@ class QuerySpanAnalyticsIntegrityFailure:
 
 QuerySpanAnalyticsResult: TypeAlias = QuerySpanAnalyticsFound | QuerySpanAnalyticsIntegrityFailure
 
-QUERY_SPAN_MODEL_ROLLUP_QUERY_PLAN_HASH: Final[str] = "397cf0e4132a7dbbc46c899107cb82d9c0f5521dc824bbdcb57566c8246f4308"
+QUERY_SPAN_MODEL_ROLLUP_QUERY_PLAN_HASH: Final[str] = "ae23fb99f303ba81c5f057085dd5b8ec1c19224ec7184d110a076f2c088b64fb"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class QuerySpanModelRollupParams:
@@ -816,7 +1099,7 @@ class QuerySpanModelRollupIntegrityFailure:
 
 QuerySpanModelRollupResult: TypeAlias = QuerySpanModelRollupFound | QuerySpanModelRollupIntegrityFailure
 
-QUERY_TRACE_ANALYTICS_QUERY_PLAN_HASH: Final[str] = "b5d52599bbebcf2e39bdc0eee24fa1795264c5adb4e327b9d4a9a15815037782"
+QUERY_TRACE_ANALYTICS_QUERY_PLAN_HASH: Final[str] = "10f71fe68f18342c0df49f8ecd1532706f9fbce3a4b137dd04969cdaaaed3e51"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class QueryTraceAnalyticsParams:
@@ -873,7 +1156,7 @@ class QueryTraceAnalyticsIntegrityFailure:
 
 QueryTraceAnalyticsResult: TypeAlias = QueryTraceAnalyticsFound | QueryTraceAnalyticsIntegrityFailure
 
-SEARCH_EXPERIMENTS_QUERY_PLAN_HASH: Final[str] = "2111f06ff1d809e530b8aae611033c19dc01f5424a034e243eb346063f840036"
+SEARCH_EXPERIMENTS_QUERY_PLAN_HASH: Final[str] = "152037660e9a6ecf036547db7257ff02ba5039cf132f4d87d06fb36b99b00674"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsParams:
@@ -923,7 +1206,7 @@ class SearchExperimentsIntegrityFailure:
 
 SearchExperimentsResult: TypeAlias = SearchExperimentsFound | SearchExperimentsIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_NAME_QUERY_PLAN_HASH: Final[str] = "12c2a9fbb3ecd5bed20e5a7574a69d74be7c0ab92d7ad94eee6c427a32e20104"
+SEARCH_EXPERIMENTS_BY_NAME_QUERY_PLAN_HASH: Final[str] = "2018af68f71acf37df6f8627b6117e93adf83e54fb1db7fb6db51b642ca53180"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByNameParams:
@@ -974,7 +1257,7 @@ class SearchExperimentsByNameIntegrityFailure:
 
 SearchExperimentsByNameResult: TypeAlias = SearchExperimentsByNameFound | SearchExperimentsByNameIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_NAME_ILIKE_QUERY_PLAN_HASH: Final[str] = "4c07eeef2bdb9ebed680be98041b31b1cecb0bbb7f3c6ce5926c5d7addc2db1b"
+SEARCH_EXPERIMENTS_BY_NAME_ILIKE_QUERY_PLAN_HASH: Final[str] = "7a757ae1f9cbaff512e6ad650e84c02e770690bd5ad59879c5663515275d9dcf"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByNameILikeParams:
@@ -1025,7 +1308,7 @@ class SearchExperimentsByNameILikeIntegrityFailure:
 
 SearchExperimentsByNameILikeResult: TypeAlias = SearchExperimentsByNameILikeFound | SearchExperimentsByNameILikeIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_NAME_LIKE_QUERY_PLAN_HASH: Final[str] = "fa02c70967062b217eabd844cbd1ed70c7f8be644f835f2e92c36d21f3c1828c"
+SEARCH_EXPERIMENTS_BY_NAME_LIKE_QUERY_PLAN_HASH: Final[str] = "a7cb22e64c85db759f4601d056bbbb14516c83cf2fa87257bdcd2823fccd5a71"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByNameLikeParams:
@@ -1076,7 +1359,7 @@ class SearchExperimentsByNameLikeIntegrityFailure:
 
 SearchExperimentsByNameLikeResult: TypeAlias = SearchExperimentsByNameLikeFound | SearchExperimentsByNameLikeIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_TAG_QUERY_PLAN_HASH: Final[str] = "788088ca07bfa152109a1d6e60384ced8ea53fde1bfb2c9c7dd698b833cfc1bf"
+SEARCH_EXPERIMENTS_BY_TAG_QUERY_PLAN_HASH: Final[str] = "0109a0806488180191e592dd05d00aa312fa460d0671e4583c5469ee432e5517"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByTagParams:
@@ -1128,7 +1411,7 @@ class SearchExperimentsByTagIntegrityFailure:
 
 SearchExperimentsByTagResult: TypeAlias = SearchExperimentsByTagFound | SearchExperimentsByTagIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_TAG_ILIKE_QUERY_PLAN_HASH: Final[str] = "c2662cd77bbd9819efce434f3792913d37850614c0bedd14bd3cc42dfaafe88b"
+SEARCH_EXPERIMENTS_BY_TAG_ILIKE_QUERY_PLAN_HASH: Final[str] = "4a979d4c89873dc960978105cc494970b6e456535048fe73ad5330844e45c964"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByTagILikeParams:
@@ -1180,7 +1463,7 @@ class SearchExperimentsByTagILikeIntegrityFailure:
 
 SearchExperimentsByTagILikeResult: TypeAlias = SearchExperimentsByTagILikeFound | SearchExperimentsByTagILikeIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_TAG_LIKE_QUERY_PLAN_HASH: Final[str] = "715a2d002b39a6c12e41e1e674a9f730902425a5746387d5fe036604fe386a5b"
+SEARCH_EXPERIMENTS_BY_TAG_LIKE_QUERY_PLAN_HASH: Final[str] = "5fc591f8905c10f967ba5e58d77060510df3237a698b16fa21104f95882f59ec"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByTagLikeParams:
@@ -1232,7 +1515,7 @@ class SearchExperimentsByTagLikeIntegrityFailure:
 
 SearchExperimentsByTagLikeResult: TypeAlias = SearchExperimentsByTagLikeFound | SearchExperimentsByTagLikeIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_TWO_TAGS_QUERY_PLAN_HASH: Final[str] = "bb7dd813a96173ea75fcf60fdc4b329ac45e4c43953a731dc8e15eb7b11e930c"
+SEARCH_EXPERIMENTS_BY_TWO_TAGS_QUERY_PLAN_HASH: Final[str] = "fb361e6b7d551c419cf90a08f6a75052ddd651041d8aa10fe09844e4a420df1b"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByTwoTagsParams:
@@ -1286,7 +1569,7 @@ class SearchExperimentsByTwoTagsIntegrityFailure:
 
 SearchExperimentsByTwoTagsResult: TypeAlias = SearchExperimentsByTwoTagsFound | SearchExperimentsByTwoTagsIntegrityFailure
 
-SEARCH_LOGGED_MODELS_QUERY_PLAN_HASH: Final[str] = "2fc18ef957235bfb6ecb88239ddb67d1dadb307d991479f85a3b2306888b73ad"
+SEARCH_LOGGED_MODELS_QUERY_PLAN_HASH: Final[str] = "3d8f29b1e3410b2d81bde3655c1c9ff3e48040941eee53dccd46d71ab4becd03"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchLoggedModelsParams:
@@ -1340,7 +1623,7 @@ class SearchLoggedModelsIntegrityFailure:
 
 SearchLoggedModelsResult: TypeAlias = SearchLoggedModelsFound | SearchLoggedModelsIntegrityFailure
 
-SEARCH_RUNS_QUERY_PLAN_HASH: Final[str] = "75114afb2dbc12c9f0253fcad8079da534fa43748a11dd5169f71a29cabeff0a"
+SEARCH_RUNS_QUERY_PLAN_HASH: Final[str] = "a3533986d9fd02356459b500c592d7cb7075492249ff710446cc643d6b9a38ff"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchRunsParams:
@@ -1394,7 +1677,7 @@ class SearchRunsIntegrityFailure:
 
 SearchRunsResult: TypeAlias = SearchRunsFound | SearchRunsIntegrityFailure
 
-SEARCH_RUNS_BY_LIFECYCLE_QUERY_PLAN_HASH: Final[str] = "8f13ad8fe80becf03cd9c8f319ce1d7db00426326b4039e6cb203caefe6f0df4"
+SEARCH_RUNS_BY_LIFECYCLE_QUERY_PLAN_HASH: Final[str] = "d6dcf9b48561f27803608a0be649baa55123a6c89565b769faa77236237fd96e"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchRunsByLifecycleParams:
@@ -1449,7 +1732,7 @@ class SearchRunsByLifecycleIntegrityFailure:
 
 SearchRunsByLifecycleResult: TypeAlias = SearchRunsByLifecycleFound | SearchRunsByLifecycleIntegrityFailure
 
-SEARCH_TRACES_QUERY_PLAN_HASH: Final[str] = "78f5019e5fe974ec5540f649c58d2ef1305023b23b401de16dda13f6a73fe620"
+SEARCH_TRACES_QUERY_PLAN_HASH: Final[str] = "4b7f096680844b52d61caaf5625ef1a79a67a5dfabaeaa3883dae358e6f4db4e"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchTracesParams:
@@ -1524,7 +1807,7 @@ class CreateExperimentInput:
     experiment_id: Annotated[int, "u64"]
     artifact_location: str | None
 
-CREATE_EXPERIMENT_PLAN_HASH: Final[str] = "999393c8f63f6093fc13dbdc1af1d905c05551d4b5cf906ef725418d62c04309"
+CREATE_EXPERIMENT_PLAN_HASH: Final[str] = "a3e1881b2eaeb6ab99c82f1332e12f32f0f4371b7d5c1dab57480fabed8b58c8"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class CreateExperimentExperimentExists:
     outcome: Literal["ExperimentExists"] = field(default="ExperimentExists", init=False)
@@ -1558,7 +1841,7 @@ class CreateExperimentWithTagsInput:
     experiment_id: Annotated[int, "u64"]
     artifact_location: str | None
 
-CREATE_EXPERIMENT_WITH_TAGS_PLAN_HASH: Final[str] = "4b52cb095e7903aaa55e960e12cdd25832d451399e332b26dac66a0ef12a959d"
+CREATE_EXPERIMENT_WITH_TAGS_PLAN_HASH: Final[str] = "0088ec9f0d38c96405d7c2905526a7e05f21f69ecdc64e963dba1c13e552e1f5"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class CreateExperimentWithTagsExperimentExists:
     outcome: Literal["ExperimentExists"] = field(default="ExperimentExists", init=False)
@@ -1652,7 +1935,7 @@ class CreateRunWithTagsInput:
     packed_params: bytes
     packed_latest_metrics: bytes
 
-CREATE_RUN_WITH_TAGS_PLAN_HASH: Final[str] = "dd91024bce877795defeb77824867a7e5b4699b7d993edafe7486366fc698aee"
+CREATE_RUN_WITH_TAGS_PLAN_HASH: Final[str] = "259b85bb4882ff7ac699109cd20d048004c7475ec2d7f352a236f3a70150d1a4"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class CreateRunWithTagsRunExists:
     outcome: Literal["RunExists"] = field(default="RunExists", init=False)
@@ -1700,7 +1983,7 @@ class DeleteExperimentInput:
     request_id: str = field(default_factory=lambda: str(__import__("uuid").uuid4()))
     experiment_id: Annotated[int, "u64"]
 
-DELETE_EXPERIMENT_PLAN_HASH: Final[str] = "367fe9c6a437183f65e9affe60f6c4476ff295ac395f4856d04402d42c64dc65"
+DELETE_EXPERIMENT_PLAN_HASH: Final[str] = "4e8afed836bf25a721ec5057d11f9c417b7bec0cbeb29a54c12756c1216611a4"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class DeleteExperimentExperimentDeleted:
     experiment: Experiment
@@ -1732,7 +2015,7 @@ class DeleteExperimentTagInput:
     experiment_id: Annotated[int, "u64"]
     expected_revision: Annotated[int, "u64"]
 
-DELETE_EXPERIMENT_TAG_PLAN_HASH: Final[str] = "62c5e7310286a07167ad3c80f19a977eaa8203d1e0b24ab7d1954b4a852dab66"
+DELETE_EXPERIMENT_TAG_PLAN_HASH: Final[str] = "ab3c175086edddfc994ede4a8eea499e79080a34477e3e54dfecab36c82239a0"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class DeleteExperimentTagExperimentStale:
     outcome: Literal["ExperimentStale"] = field(default="ExperimentStale", init=False)
@@ -1837,7 +2120,7 @@ class DeleteLoggedModelEntityInput:
     request_id: str = field(default_factory=lambda: str(__import__("uuid").uuid4()))
     experiment_id: Annotated[int, "u64"]
 
-DELETE_LOGGED_MODEL_ENTITY_PLAN_HASH: Final[str] = "beed5c6c6cd7b36d22b7fe1dc6108adf6a1a3e6b74fc0b8e15322e1a1bb29d49"
+DELETE_LOGGED_MODEL_ENTITY_PLAN_HASH: Final[str] = "ca10515d274e60a0a3feeaa0f47fc8926055cb1b3119294a94749ac385eae0a4"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class DeleteLoggedModelEntityLoggedModelDeleted:
     model: LoggedModelEntity
@@ -1897,7 +2180,7 @@ class DeleteTraceInput:
     request_id: str = field(default_factory=lambda: str(__import__("uuid").uuid4()))
     experiment_id: Annotated[int, "u64"]
 
-DELETE_TRACE_PLAN_HASH: Final[str] = "1417d016d56c8da983c75382313bbb77c8fbe2e6cd0f379195d71cf0c44320c0"
+DELETE_TRACE_PLAN_HASH: Final[str] = "f76b6f616c7047ba06ad25ba03c14cf5352647818f642d0270201b91e11aee65"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class DeleteTraceTraceDeleted:
     trace: Trace
@@ -1928,7 +2211,7 @@ class DeleteTraceAssessmentInput:
     assessment_id: str
     experiment_id: Annotated[int, "u64"]
 
-DELETE_TRACE_ASSESSMENT_PLAN_HASH: Final[str] = "1f3854440c3e30308bb4d2245bf9c70b84ab745243e6ab762d7343db1f311339"
+DELETE_TRACE_ASSESSMENT_PLAN_HASH: Final[str] = "36cc1137c865f588c995caa1b7bf54580d34b3bf34f1cfd51da02ba63328053f"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class DeleteTraceAssessmentTraceAssessmentDeleted:
     assessment: TraceAssessment
@@ -1959,7 +2242,7 @@ class DeleteTraceSpanInput:
     request_id: str = field(default_factory=lambda: str(__import__("uuid").uuid4()))
     experiment_id: Annotated[int, "u64"]
 
-DELETE_TRACE_SPAN_PLAN_HASH: Final[str] = "11c797eaeaeb7c2e29657c907b501bdc394398f691522b8a63cb9a26232f1c49"
+DELETE_TRACE_SPAN_PLAN_HASH: Final[str] = "6769d8ac280a53ab0ed04cd764e06ccd2b404c50217ef17a5160053f77e5e2aa"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class DeleteTraceSpanTraceSpanDeleted:
     span: TraceSpan
@@ -2014,7 +2297,7 @@ class IngestTraceSpansInput:
     cache_read_input_tokens: Annotated[int, "i64"]
     cache_creation_input_tokens: Annotated[int, "i64"]
 
-INGEST_TRACE_SPANS_PLAN_HASH: Final[str] = "901ee45eae9b3e218ba8853caa00326da720e25a97e84c15e103bba3a5b57171"
+INGEST_TRACE_SPANS_PLAN_HASH: Final[str] = "4f400efbed02bd0afffcdcdd27e601483f5a2fda1870ec857a9a6b2e1cd7107f"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class IngestTraceSpansTraceSpansIngested:
     trace: Trace
@@ -2036,7 +2319,7 @@ class LogBatchInput:
     expected_revision: Annotated[int, "u64"]
     packed_latest_metrics: bytes
 
-LOG_BATCH_PLAN_HASH: Final[str] = "860775f66c1cc1ec16fbba3ac5aa63b58e38818f9e3ed48986ea042686be5758"
+LOG_BATCH_PLAN_HASH: Final[str] = "74b44518644f2b432a28dc7a995e23552443988c648057146233aad7945c8b9d"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class LogBatchRunStale:
     outcome: Literal["RunStale"] = field(default="RunStale", init=False)
@@ -2143,7 +2426,7 @@ class RenameExperimentInput:
     name_digest: bytes
     experiment_id: Annotated[int, "u64"]
 
-RENAME_EXPERIMENT_PLAN_HASH: Final[str] = "2056cc6693fc9ac1fb6dad45b1674283159597ca41feecf21b7f3b40d3004bf3"
+RENAME_EXPERIMENT_PLAN_HASH: Final[str] = "c2f8b261326c48930b4207a8e70ddf05c6e5fe59cb6c97e0914e63ec7f9a642b"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class RenameExperimentExperimentMissing:
     outcome: Literal["ExperimentMissing"] = field(default="ExperimentMissing", init=False)
@@ -2172,7 +2455,7 @@ class RestoreExperimentInput:
     request_id: str = field(default_factory=lambda: str(__import__("uuid").uuid4()))
     experiment_id: Annotated[int, "u64"]
 
-RESTORE_EXPERIMENT_PLAN_HASH: Final[str] = "f2509353eff5ec8207586e7924b495030a09914b57d01cb22091337c210a2aca"
+RESTORE_EXPERIMENT_PLAN_HASH: Final[str] = "b8c871db3df995184d78e5d0803cec199ba263f0300d14e170084a95768a0f9a"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class RestoreExperimentExperimentMissing:
     outcome: Literal["ExperimentMissing"] = field(default="ExperimentMissing", init=False)
@@ -2236,7 +2519,7 @@ class SetExperimentTagInput:
     experiment_id: Annotated[int, "u64"]
     expected_revision: Annotated[int, "u64"]
 
-SET_EXPERIMENT_TAG_PLAN_HASH: Final[str] = "4383cb2b881afe157f220bca33a5c1c4b52ad4551304cb67d4242665e578fae8"
+SET_EXPERIMENT_TAG_PLAN_HASH: Final[str] = "feb472e5f443945d55f38f36b1dfc94f3d77ec22d74a5caa76c77c90838b498b"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SetExperimentTagExperimentStale:
     outcome: Literal["ExperimentStale"] = field(default="ExperimentStale", init=False)
@@ -2317,7 +2600,7 @@ class UpdateRunInfoInput:
     expected_revision: Annotated[int, "u64"]
     run_name_tag_value: str
 
-UPDATE_RUN_INFO_PLAN_HASH: Final[str] = "fccd206832da7381f55bbf162622c408801d95e3a8c4836ef79fe3c319170513"
+UPDATE_RUN_INFO_PLAN_HASH: Final[str] = "b81ca793cba8da12b1ed42fe600919507db7c32b9864350c2e1ebe3e7ceeb35b"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class UpdateRunInfoRunStale:
     outcome: Literal["RunStale"] = field(default="RunStale", init=False)
@@ -2403,7 +2686,7 @@ class UpsertLoggedModelInput:
     creation_timestamp_ms: Annotated[int, "i64"]
     last_updated_timestamp_ms: Annotated[int, "i64"]
 
-UPSERT_LOGGED_MODEL_PLAN_HASH: Final[str] = "5d711f5cefafa3108ecacbb97b319bdc5e94761d8cfc3146690e9c686870215d"
+UPSERT_LOGGED_MODEL_PLAN_HASH: Final[str] = "7e5b053af6e929ed0a26e0817ac22fa6a3ad6973eb711d43373f457580d59f56"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class UpsertLoggedModelLoggedModelUpserted:
     model: LoggedModelEntity
@@ -2496,7 +2779,7 @@ class UpsertTraceInput:
     cache_read_input_tokens: Annotated[int, "i64"]
     cache_creation_input_tokens: Annotated[int, "i64"]
 
-UPSERT_TRACE_PLAN_HASH: Final[str] = "7b5003fba8bade03fad8d8b0c3a19536f88529f3954a9caff51da077edb1d7df"
+UPSERT_TRACE_PLAN_HASH: Final[str] = "963e8279130c32e0046769401156601da9ec3bcc58d38059e9bb2f562e2ff2fd"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class UpsertTraceTraceUpserted:
     trace: Trace
@@ -2522,7 +2805,7 @@ class UpsertTraceAssessmentInput:
     packed_assessment_json: bytes
     last_updated_timestamp_ms: Annotated[int, "i64"]
 
-UPSERT_TRACE_ASSESSMENT_PLAN_HASH: Final[str] = "71c601b6060eb6e285b4183b89796a875d461fde19635b383d548f285638f8b6"
+UPSERT_TRACE_ASSESSMENT_PLAN_HASH: Final[str] = "0e98ae93cca8bc18e8db0ef0283b81e8286de3a3ad43e63f755c693fa1bc58be"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class UpsertTraceAssessmentTraceMissing:
     outcome: Literal["TraceMissing"] = field(default="TraceMissing", init=False)
@@ -2631,6 +2914,186 @@ class RiffDBMLflowClient:
 
     def aggregate_span_analytics_by_model_after_commit(self, parameters: AggregateSpanAnalyticsByModelParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[AggregateSpanAnalyticsByModelResult]:
         return self.aggregate_span_analytics_by_model(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    def aggregate_span_analytics_by_name_status(self, parameters: AggregateSpanAnalyticsByNameStatusParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[AggregateSpanAnalyticsByNameStatusResult]:
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="AggregateSpanAnalyticsByNameStatus", plan_hash=AGGREGATE_SPAN_ANALYTICS_BY_NAME_STATUS_QUERY_PLAN_HASH,
+            parameters=encode_record(parameters), options=options,
+        )
+        outcomes = {
+            "Found": AggregateSpanAnalyticsByNameStatusFound,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    def aggregate_span_analytics_by_name_status_after_commit(self, parameters: AggregateSpanAnalyticsByNameStatusParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[AggregateSpanAnalyticsByNameStatusResult]:
+        return self.aggregate_span_analytics_by_name_status(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    def aggregate_trace_analytics_by_name(self, parameters: AggregateTraceAnalyticsByNameParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[AggregateTraceAnalyticsByNameResult]:
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="AggregateTraceAnalyticsByName", plan_hash=AGGREGATE_TRACE_ANALYTICS_BY_NAME_QUERY_PLAN_HASH,
+            parameters=encode_record(parameters), options=options,
+        )
+        outcomes = {
+            "Found": AggregateTraceAnalyticsByNameFound,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    def aggregate_trace_analytics_by_name_after_commit(self, parameters: AggregateTraceAnalyticsByNameParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[AggregateTraceAnalyticsByNameResult]:
+        return self.aggregate_trace_analytics_by_name(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    def aggregate_trace_analytics_by_status(self, parameters: AggregateTraceAnalyticsByStatusParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[AggregateTraceAnalyticsByStatusResult]:
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="AggregateTraceAnalyticsByStatus", plan_hash=AGGREGATE_TRACE_ANALYTICS_BY_STATUS_QUERY_PLAN_HASH,
+            parameters=encode_record(parameters), options=options,
+        )
+        outcomes = {
+            "Found": AggregateTraceAnalyticsByStatusFound,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    def aggregate_trace_analytics_by_status_after_commit(self, parameters: AggregateTraceAnalyticsByStatusParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[AggregateTraceAnalyticsByStatusResult]:
+        return self.aggregate_trace_analytics_by_status(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    def batch_get_trace_assessments(self, parameters: BatchGetTraceAssessmentsParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[BatchGetTraceAssessmentsResult]:
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 200):
+            raise ValueError("limit must be an integer from 1 through 200")
+        encoded_parameters = encode_record(parameters)
+        generated_cursor = parameters.after
+        if generated_cursor is not None:
+            if options.cursor is not None:
+                raise ValueError("generated cursor conflicts with query options")
+            options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
+        encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="BatchGetTraceAssessments", plan_hash=BATCH_GET_TRACE_ASSESSMENTS_QUERY_PLAN_HASH,
+            parameters=encoded_parameters, options=options,
+        )
+        outcomes = {
+            "Found": BatchGetTraceAssessmentsFound,
+            "IntegrityFailure": BatchGetTraceAssessmentsIntegrityFailure,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    def batch_get_trace_assessments_after_commit(self, parameters: BatchGetTraceAssessmentsParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[BatchGetTraceAssessmentsResult]:
+        return self.batch_get_trace_assessments(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    def batch_get_trace_assessments_pages(self, parameters: BatchGetTraceAssessmentsParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[BatchGetTraceAssessmentsResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[BatchGetTraceAssessmentsResult]] = []
+        for _ in range(max_pages):
+            page_parameters = BatchGetTraceAssessmentsParams(experiment_id=parameters.experiment_id, trace_ids=parameters.trace_ids, limit=parameters.limit, after=None)
+            page = self.batch_get_trace_assessments(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
+
+    def batch_get_trace_spans(self, parameters: BatchGetTraceSpansParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[BatchGetTraceSpansResult]:
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 200):
+            raise ValueError("limit must be an integer from 1 through 200")
+        encoded_parameters = encode_record(parameters)
+        generated_cursor = parameters.after
+        if generated_cursor is not None:
+            if options.cursor is not None:
+                raise ValueError("generated cursor conflicts with query options")
+            options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
+        encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="BatchGetTraceSpans", plan_hash=BATCH_GET_TRACE_SPANS_QUERY_PLAN_HASH,
+            parameters=encoded_parameters, options=options,
+        )
+        outcomes = {
+            "Found": BatchGetTraceSpansFound,
+            "IntegrityFailure": BatchGetTraceSpansIntegrityFailure,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    def batch_get_trace_spans_after_commit(self, parameters: BatchGetTraceSpansParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[BatchGetTraceSpansResult]:
+        return self.batch_get_trace_spans(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    def batch_get_trace_spans_pages(self, parameters: BatchGetTraceSpansParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[BatchGetTraceSpansResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[BatchGetTraceSpansResult]] = []
+        for _ in range(max_pages):
+            page_parameters = BatchGetTraceSpansParams(experiment_id=parameters.experiment_id, trace_ids=parameters.trace_ids, limit=parameters.limit, after=None)
+            page = self.batch_get_trace_spans(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
+
+    def batch_get_traces(self, parameters: BatchGetTracesParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[BatchGetTracesResult]:
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 50):
+            raise ValueError("limit must be an integer from 1 through 50")
+        encoded_parameters = encode_record(parameters)
+        generated_cursor = parameters.after
+        if generated_cursor is not None:
+            if options.cursor is not None:
+                raise ValueError("generated cursor conflicts with query options")
+            options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
+        encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="BatchGetTraces", plan_hash=BATCH_GET_TRACES_QUERY_PLAN_HASH,
+            parameters=encoded_parameters, options=options,
+        )
+        outcomes = {
+            "Found": BatchGetTracesFound,
+            "IntegrityFailure": BatchGetTracesIntegrityFailure,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    def batch_get_traces_after_commit(self, parameters: BatchGetTracesParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[BatchGetTracesResult]:
+        return self.batch_get_traces(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    def batch_get_traces_pages(self, parameters: BatchGetTracesParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[BatchGetTracesResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[BatchGetTracesResult]] = []
+        for _ in range(max_pages):
+            page_parameters = BatchGetTracesParams(experiment_id=parameters.experiment_id, trace_ids=parameters.trace_ids, limit=parameters.limit, after=None)
+            page = self.batch_get_traces(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
 
     def get_experiment(self, parameters: GetExperimentParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetExperimentResult]:
         if options.read_after_commit is None and self._read_after_commit is not None:
@@ -4157,6 +4620,186 @@ class AsyncRiffDBMLflowClient:
 
     async def aggregate_span_analytics_by_model_after_commit(self, parameters: AggregateSpanAnalyticsByModelParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[AggregateSpanAnalyticsByModelResult]:
         return await self.aggregate_span_analytics_by_model(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    async def aggregate_span_analytics_by_name_status(self, parameters: AggregateSpanAnalyticsByNameStatusParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[AggregateSpanAnalyticsByNameStatusResult]:
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = await self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="AggregateSpanAnalyticsByNameStatus", plan_hash=AGGREGATE_SPAN_ANALYTICS_BY_NAME_STATUS_QUERY_PLAN_HASH,
+            parameters=encode_record(parameters), options=options,
+        )
+        outcomes = {
+            "Found": AggregateSpanAnalyticsByNameStatusFound,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    async def aggregate_span_analytics_by_name_status_after_commit(self, parameters: AggregateSpanAnalyticsByNameStatusParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[AggregateSpanAnalyticsByNameStatusResult]:
+        return await self.aggregate_span_analytics_by_name_status(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    async def aggregate_trace_analytics_by_name(self, parameters: AggregateTraceAnalyticsByNameParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[AggregateTraceAnalyticsByNameResult]:
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = await self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="AggregateTraceAnalyticsByName", plan_hash=AGGREGATE_TRACE_ANALYTICS_BY_NAME_QUERY_PLAN_HASH,
+            parameters=encode_record(parameters), options=options,
+        )
+        outcomes = {
+            "Found": AggregateTraceAnalyticsByNameFound,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    async def aggregate_trace_analytics_by_name_after_commit(self, parameters: AggregateTraceAnalyticsByNameParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[AggregateTraceAnalyticsByNameResult]:
+        return await self.aggregate_trace_analytics_by_name(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    async def aggregate_trace_analytics_by_status(self, parameters: AggregateTraceAnalyticsByStatusParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[AggregateTraceAnalyticsByStatusResult]:
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = await self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="AggregateTraceAnalyticsByStatus", plan_hash=AGGREGATE_TRACE_ANALYTICS_BY_STATUS_QUERY_PLAN_HASH,
+            parameters=encode_record(parameters), options=options,
+        )
+        outcomes = {
+            "Found": AggregateTraceAnalyticsByStatusFound,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    async def aggregate_trace_analytics_by_status_after_commit(self, parameters: AggregateTraceAnalyticsByStatusParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[AggregateTraceAnalyticsByStatusResult]:
+        return await self.aggregate_trace_analytics_by_status(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    async def batch_get_trace_assessments(self, parameters: BatchGetTraceAssessmentsParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[BatchGetTraceAssessmentsResult]:
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 200):
+            raise ValueError("limit must be an integer from 1 through 200")
+        encoded_parameters = encode_record(parameters)
+        generated_cursor = parameters.after
+        if generated_cursor is not None:
+            if options.cursor is not None:
+                raise ValueError("generated cursor conflicts with query options")
+            options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
+        encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = await self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="BatchGetTraceAssessments", plan_hash=BATCH_GET_TRACE_ASSESSMENTS_QUERY_PLAN_HASH,
+            parameters=encoded_parameters, options=options,
+        )
+        outcomes = {
+            "Found": BatchGetTraceAssessmentsFound,
+            "IntegrityFailure": BatchGetTraceAssessmentsIntegrityFailure,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    async def batch_get_trace_assessments_after_commit(self, parameters: BatchGetTraceAssessmentsParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[BatchGetTraceAssessmentsResult]:
+        return await self.batch_get_trace_assessments(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    async def batch_get_trace_assessments_pages(self, parameters: BatchGetTraceAssessmentsParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[BatchGetTraceAssessmentsResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[BatchGetTraceAssessmentsResult]] = []
+        for _ in range(max_pages):
+            page_parameters = BatchGetTraceAssessmentsParams(experiment_id=parameters.experiment_id, trace_ids=parameters.trace_ids, limit=parameters.limit, after=None)
+            page = await self.batch_get_trace_assessments(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
+
+    async def batch_get_trace_spans(self, parameters: BatchGetTraceSpansParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[BatchGetTraceSpansResult]:
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 200):
+            raise ValueError("limit must be an integer from 1 through 200")
+        encoded_parameters = encode_record(parameters)
+        generated_cursor = parameters.after
+        if generated_cursor is not None:
+            if options.cursor is not None:
+                raise ValueError("generated cursor conflicts with query options")
+            options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
+        encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = await self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="BatchGetTraceSpans", plan_hash=BATCH_GET_TRACE_SPANS_QUERY_PLAN_HASH,
+            parameters=encoded_parameters, options=options,
+        )
+        outcomes = {
+            "Found": BatchGetTraceSpansFound,
+            "IntegrityFailure": BatchGetTraceSpansIntegrityFailure,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    async def batch_get_trace_spans_after_commit(self, parameters: BatchGetTraceSpansParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[BatchGetTraceSpansResult]:
+        return await self.batch_get_trace_spans(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    async def batch_get_trace_spans_pages(self, parameters: BatchGetTraceSpansParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[BatchGetTraceSpansResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[BatchGetTraceSpansResult]] = []
+        for _ in range(max_pages):
+            page_parameters = BatchGetTraceSpansParams(experiment_id=parameters.experiment_id, trace_ids=parameters.trace_ids, limit=parameters.limit, after=None)
+            page = await self.batch_get_trace_spans(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
+
+    async def batch_get_traces(self, parameters: BatchGetTracesParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[BatchGetTracesResult]:
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 50):
+            raise ValueError("limit must be an integer from 1 through 50")
+        encoded_parameters = encode_record(parameters)
+        generated_cursor = parameters.after
+        if generated_cursor is not None:
+            if options.cursor is not None:
+                raise ValueError("generated cursor conflicts with query options")
+            options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
+        encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = await self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="BatchGetTraces", plan_hash=BATCH_GET_TRACES_QUERY_PLAN_HASH,
+            parameters=encoded_parameters, options=options,
+        )
+        outcomes = {
+            "Found": BatchGetTracesFound,
+            "IntegrityFailure": BatchGetTracesIntegrityFailure,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    async def batch_get_traces_after_commit(self, parameters: BatchGetTracesParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[BatchGetTracesResult]:
+        return await self.batch_get_traces(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    async def batch_get_traces_pages(self, parameters: BatchGetTracesParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[BatchGetTracesResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[BatchGetTracesResult]] = []
+        for _ in range(max_pages):
+            page_parameters = BatchGetTracesParams(experiment_id=parameters.experiment_id, trace_ids=parameters.trace_ids, limit=parameters.limit, after=None)
+            page = await self.batch_get_traces(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
 
     async def get_experiment(self, parameters: GetExperimentParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetExperimentResult]:
         if options.read_after_commit is None and self._read_after_commit is not None:

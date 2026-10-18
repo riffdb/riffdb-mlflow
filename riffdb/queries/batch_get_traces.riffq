@@ -1,0 +1,28 @@
+query BatchGetTraces(
+    $experiment_id: Trace.experiment_id,
+    $trace_ids: Set<Trace.trace_id>,
+    $limit: Limit<50> = 50,
+    $after: Cursor?,
+) {
+    many traces from Trace
+        where experiment_id == $experiment_id
+          && trace_id in $trace_ids
+        order by trace_id asc
+        take $limit after $after
+        else IntegrityFailure
+
+    return Found {
+        traces: traces {
+            experiment_id trace_id request_time_ms execution_duration_ms
+            state status_code trace_name client_request_id
+            request_preview response_preview source_run_id
+            span_count error_span_count
+            total_input_tokens total_output_tokens total_tokens
+            cache_read_input_tokens cache_creation_input_tokens
+            total_cost_micros session_id
+            packed_trace_metadata packed_tags packed_run_ids packed_prompt_versions
+            requested_at initialized
+        }
+    }
+    outcomes Found | IntegrityFailure
+}

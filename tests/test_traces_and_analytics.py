@@ -44,6 +44,9 @@ from riffdb_application import Timestamp
 
 from riffdb_mlflow.generated.client import (
     AggregateSpanAnalyticsByModelFound,
+    BatchGetTraceAssessmentsFound,
+    BatchGetTracesFound,
+    BatchGetTraceSpansFound,
     CreateExperimentExperimentCreated,
     CreateRunWithTagsRunCreated,
     DeleteLoggedModelEntityLoggedModelDeleted,
@@ -274,6 +277,36 @@ class FakeExtendedRiffDBClient:
                 spans=tuple(spans),  # type: ignore[arg-type]
                 assessments=tuple(assessments),  # type: ignore[arg-type]
             ),
+            application_head=self.commit_seq,
+        )
+
+    def batch_get_traces(self, params: Any) -> _FakeResult:
+        exp_id = int(params.experiment_id)
+        want = set(params.trace_ids)
+        rows = [t for (e, tid), t in self.traces.items() if e == exp_id and tid in want]
+        rows.sort(key=lambda r: r.trace_id)
+        return _FakeResult(
+            value=BatchGetTracesFound(traces=tuple(rows)),  # type: ignore[arg-type]
+            application_head=self.commit_seq,
+        )
+
+    def batch_get_trace_spans(self, params: Any) -> _FakeResult:
+        exp_id = int(params.experiment_id)
+        want = set(params.trace_ids)
+        rows = [s for (e, tid, _), s in self.spans.items() if e == exp_id and tid in want]
+        rows.sort(key=lambda r: (r.trace_id, r.start_time_ns, r.span_id))
+        return _FakeResult(
+            value=BatchGetTraceSpansFound(spans=tuple(rows)),  # type: ignore[arg-type]
+            application_head=self.commit_seq,
+        )
+
+    def batch_get_trace_assessments(self, params: Any) -> _FakeResult:
+        exp_id = int(params.experiment_id)
+        want = set(params.trace_ids)
+        rows = [a for (e, tid, _), a in self.assessments.items() if e == exp_id and tid in want]
+        rows.sort(key=lambda r: (r.trace_id, r.created_timestamp_ms, r.assessment_id))
+        return _FakeResult(
+            value=BatchGetTraceAssessmentsFound(assessments=tuple(rows)),  # type: ignore[arg-type]
             application_head=self.commit_seq,
         )
 

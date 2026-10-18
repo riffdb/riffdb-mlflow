@@ -1,0 +1,46 @@
+query AggregateSpanAnalyticsByNameStatus(
+    $experiment_id: TraceSpan.experiment_id,
+) {
+    source projected SpanAnalytics
+    freshness causal inherit_session_commit true max_wait_ms 5000
+
+    many spans from TraceSpan
+        where experiment_id == $experiment_id
+        take 500
+
+    aggregate by_name_status from spans {
+        group by name, status
+        count() as span_count
+        sum(duration_ms) as sum_duration_ms
+        min(duration_ms) as min_duration_ms
+        max(duration_ms) as max_duration_ms
+        p50(duration_ms) as p50_duration_ms
+        p90(duration_ms) as p90_duration_ms
+        p95(duration_ms) as p95_duration_ms
+        p99(duration_ms) as p99_duration_ms
+        sum(input_cost_micros) as sum_input_cost_micros
+        sum(output_cost_micros) as sum_output_cost_micros
+        sum(total_cost_micros) as sum_total_cost_micros
+        order by name asc, status asc
+        take 128
+    }
+
+    return Found {
+        by_name_status: by_name_status {
+            name
+            status
+            span_count
+            sum_duration_ms
+            min_duration_ms
+            max_duration_ms
+            p50_duration_ms
+            p90_duration_ms
+            p95_duration_ms
+            p99_duration_ms
+            sum_input_cost_micros
+            sum_output_cost_micros
+            sum_total_cost_micros
+        }
+    }
+    outcomes Found
+}

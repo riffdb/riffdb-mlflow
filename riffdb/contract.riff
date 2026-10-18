@@ -222,6 +222,7 @@ contract RiffDBMLflow version 1 {
     field packed_prompt_versions: bytes<16384>
     field requested_at: timestamp
     field initialized: bool
+    index by_id (experiment_id, trace_id)
     index by_request_time (experiment_id, request_time_ms, trace_id)
     index by_state_time (experiment_id, state, request_time_ms, trace_id)
     delete_policy no_inbound

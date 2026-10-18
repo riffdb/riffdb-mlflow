@@ -66,6 +66,18 @@ from riffdb_application import Timestamp
 from riffdb_mlflow.generated.client import (
     AggregateSpanAnalyticsByModelFound,
     AggregateSpanAnalyticsByModelParams,
+    AggregateSpanAnalyticsByNameStatusFound,
+    AggregateSpanAnalyticsByNameStatusParams,
+    AggregateTraceAnalyticsByNameFound,
+    AggregateTraceAnalyticsByNameParams,
+    AggregateTraceAnalyticsByStatusFound,
+    AggregateTraceAnalyticsByStatusParams,
+    BatchGetTraceAssessmentsFound,
+    BatchGetTraceAssessmentsParams,
+    BatchGetTracesFound,
+    BatchGetTraceSpansFound,
+    BatchGetTraceSpansParams,
+    BatchGetTracesParams,
     DeleteLoggedModelEntityInput,
     DeleteLoggedModelEntityLoggedModelDeleted,
     DeleteLoggedModelEntityLoggedModelMissing,
@@ -845,6 +857,87 @@ class RiffDBExtendedStoreMixin(AbstractStore):
         if not trace_ids:
             return []
         client = self._application()  # type: ignore[attr-defined]
+        if len(trace_ids) > 1 and hasattr(client, "batch_get_traces"):
+            by_exp: dict[int, list[str]] = defaultdict(list)
+            for tid in trace_ids:
+                exp_id = self._resolve_trace_experiment_id(tid, location=location)
+                if tid not in by_exp[exp_id]:
+                    by_exp[exp_id].append(tid)
+
+            trace_map: dict[str, Trace] = {}
+            for exp_id, exp_tids in by_exp.items():
+                for start in range(0, len(exp_tids), 50):
+                    chunk_ids = tuple(exp_tids[start : start + 50])
+                    t_res = client.batch_get_traces(
+                        BatchGetTracesParams(
+                            experiment_id=exp_id,
+                            trace_ids=chunk_ids,
+                            limit=50,
+                            after=None,
+                        )
+                    )
+                    if not isinstance(t_res.value, BatchGetTracesFound):
+                        raise MlflowException("Invalid BatchGetTraces response from RiffDB")
+                    t_rows = {r.trace_id: r for r in t_res.value.traces}
+                    for tid in chunk_ids:
+                        if tid not in t_rows:
+                            raise MlflowException(
+                                f"Trace with ID '{tid}' does not exist.",
+                                error_code=RESOURCE_DOES_NOT_EXIST,
+                            )
+
+                    spans_by_tid: dict[str, list[Span]] = defaultdict(list)
+                    s_cursor: str | None = None
+                    while True:
+                        s_res = client.batch_get_trace_spans(
+                            BatchGetTraceSpansParams(
+                                experiment_id=exp_id,
+                                trace_ids=chunk_ids,
+                                limit=200,
+                                after=s_cursor,
+                            )
+                        )
+                        if not isinstance(s_res.value, BatchGetTraceSpansFound):
+                            raise MlflowException("Invalid BatchGetTraceSpans response from RiffDB")
+                        for srow in s_res.value.spans:
+                            span_dict = json.loads(srow.packed_span_json.decode("utf-8"))
+                            spans_by_tid[srow.trace_id].append(Span.from_dict(span_dict))
+                        s_cursor = s_res.next_cursor
+                        if not s_cursor or not s_res.value.spans:
+                            break
+
+                    assessments_by_tid: dict[str, list[Any]] = defaultdict(list)
+                    a_cursor: str | None = None
+                    while True:
+                        a_res = client.batch_get_trace_assessments(
+                            BatchGetTraceAssessmentsParams(
+                                experiment_id=exp_id,
+                                trace_ids=chunk_ids,
+                                limit=200,
+                                after=a_cursor,
+                            )
+                        )
+                        if not isinstance(a_res.value, BatchGetTraceAssessmentsFound):
+                            raise MlflowException(
+                                "Invalid BatchGetTraceAssessments response from RiffDB"
+                            )
+                        for arow in a_res.value.assessments:
+                            assessments_by_tid[arow.trace_id].append(arow)
+                        a_cursor = a_res.next_cursor
+                        if not a_cursor or not a_res.value.assessments:
+                            break
+
+                    for tid in chunk_ids:
+                        info = self._to_mlflow_trace_info(
+                            t_rows[tid],
+                            assessments_by_tid.get(tid, ()),
+                        )
+                        trace_map[tid] = Trace(
+                            info=info,
+                            data=TraceData(spans=spans_by_tid.get(tid, [])),
+                        )
+            return [trace_map[tid] for tid in trace_ids]
+
         traces: list[Trace] = []
         for trace_id in trace_ids:
             experiment_id = self._resolve_trace_experiment_id(trace_id, location=location)
@@ -1865,6 +1958,27 @@ class RiffDBExtendedStoreMixin(AbstractStore):
             else None
         )
 
+        fast_points = self._try_server_side_trace_metrics(
+            client=client,
+            commit_seq=commit_seq,
+            experiment_ids=experiment_ids,
+            view_type=view_type,
+            metric_name=metric_name,
+            aggregations=aggregations,
+            dims_list=dims_list,
+            filters=filters,
+            time_interval_seconds=time_interval_seconds,
+            start_time_ms=start_time_ms,
+            end_time_ms=end_time_ms,
+        )
+        if fast_points is not None:
+            offset = int(page_token) if page_token is not None else 0
+            sliced = fast_points[offset : offset + max_results]
+            next_tok = (
+                str(offset + max_results) if offset + max_results < len(fast_points) else None
+            )
+            return PagedList(sliced, next_tok)
+
         has_trace_filter = any(
             not clause.strip().lower().startswith(("span.", "assessment."))
             for f in (filters or [])
@@ -2084,6 +2198,269 @@ class RiffDBExtendedStoreMixin(AbstractStore):
         sliced = data_points[offset : offset + max_results]
         next_tok = str(offset + max_results) if offset + max_results < len(data_points) else None
         return PagedList(sliced, next_tok)
+
+    def _try_server_side_trace_metrics(
+        self,
+        *,
+        client: Any,
+        commit_seq: int,
+        experiment_ids: list[str],
+        view_type: MetricViewType,
+        metric_name: str,
+        aggregations: list[MetricAggregation],
+        dims_list: list[str],
+        filters: list[str] | None,
+        time_interval_seconds: int | None,
+        start_time_ms: int | None,
+        end_time_ms: int | None,
+    ) -> list[MetricDataPoint] | None:
+        if (
+            len(experiment_ids) != 1
+            or filters
+            or time_interval_seconds is not None
+            or start_time_ms is not None
+            or end_time_ms is not None
+        ):
+            return None
+        for agg in aggregations:
+            if agg.aggregation_type == AggregationType.PERCENTILE and float(
+                agg.percentile_value or 50.0
+            ) not in (50.0, 90.0, 95.0, 99.0):
+                return None
+
+        exp_id = int(self._numeric_experiment_id(experiment_ids[0]))  # type: ignore[attr-defined]
+        has_percentile = any(a.aggregation_type == AggregationType.PERCENTILE for a in aggregations)
+
+        if view_type == MetricViewType.TRACES:
+            if metric_name not in (TraceMetricKey.TRACE_COUNT, TraceMetricKey.LATENCY):
+                return None
+            if dims_list == [TraceMetricDimensionKey.TRACE_NAME]:
+                if not hasattr(client, "aggregate_trace_analytics_by_name_after_commit"):
+                    return None
+                res = client.aggregate_trace_analytics_by_name_after_commit(
+                    AggregateTraceAnalyticsByNameParams(experiment_id=exp_id),
+                    commit_seq,
+                )
+                if not isinstance(res.value, AggregateTraceAnalyticsByNameFound):
+                    return None
+                rows_by_name: list[
+                    tuple[tuple[str, ...], int, float, float, float, float, float, float, float]
+                ] = [
+                    (
+                        (r.trace_name,),
+                        int(r.trace_count),
+                        float(r.sum_duration_ms),
+                        float(r.min_duration_ms or 0),
+                        float(r.max_duration_ms or 0),
+                        float(r.p50_duration_ms or 0),
+                        float(r.p90_duration_ms or 0),
+                        float(r.p95_duration_ms or 0),
+                        float(r.p99_duration_ms or 0),
+                    )
+                    for r in res.value.by_name
+                    if r.trace_name and int(r.trace_count) > 0
+                ]
+                return self._format_server_metric_groups(
+                    metric_name=metric_name,
+                    dims_list=dims_list,
+                    aggregations=aggregations,
+                    is_count_metric=(metric_name == TraceMetricKey.TRACE_COUNT),
+                    rows=rows_by_name,
+                )
+            if dims_list == [TraceMetricDimensionKey.TRACE_STATUS]:
+                if not hasattr(client, "aggregate_trace_analytics_by_status_after_commit"):
+                    return None
+                res = client.aggregate_trace_analytics_by_status_after_commit(
+                    AggregateTraceAnalyticsByStatusParams(experiment_id=exp_id),
+                    commit_seq,
+                )
+                if not isinstance(res.value, AggregateTraceAnalyticsByStatusFound):
+                    return None
+                rows_by_status: list[
+                    tuple[tuple[str, ...], int, float, float, float, float, float, float, float]
+                ] = [
+                    (
+                        (r.state,),
+                        int(r.trace_count),
+                        float(r.sum_duration_ms),
+                        float(r.min_duration_ms or 0),
+                        float(r.max_duration_ms or 0),
+                        float(r.p50_duration_ms or 0),
+                        float(r.p90_duration_ms or 0),
+                        float(r.p95_duration_ms or 0),
+                        float(r.p99_duration_ms or 0),
+                    )
+                    for r in res.value.by_status
+                    if r.state and int(r.trace_count) > 0
+                ]
+                return self._format_server_metric_groups(
+                    metric_name=metric_name,
+                    dims_list=dims_list,
+                    aggregations=aggregations,
+                    is_count_metric=(metric_name == TraceMetricKey.TRACE_COUNT),
+                    rows=rows_by_status,
+                )
+            return None
+
+        if view_type == MetricViewType.SPANS:
+            if metric_name not in (SpanMetricKey.SPAN_COUNT, SpanMetricKey.LATENCY):
+                return None
+            allowed_dims = {SpanMetricDimensionKey.SPAN_NAME, SpanMetricDimensionKey.SPAN_STATUS}
+            if not set(dims_list).issubset(allowed_dims):
+                return None
+            if has_percentile and set(dims_list) != allowed_dims:
+                return None
+            if not hasattr(client, "aggregate_span_analytics_by_name_status_after_commit"):
+                return None
+            res = client.aggregate_span_analytics_by_name_status_after_commit(
+                AggregateSpanAnalyticsByNameStatusParams(experiment_id=exp_id),
+                commit_seq,
+            )
+            if not isinstance(res.value, AggregateSpanAnalyticsByNameStatusFound):
+                return None
+            if set(dims_list) == allowed_dims:
+                span_rows: list[
+                    tuple[tuple[str, ...], int, float, float, float, float, float, float, float]
+                ] = []
+                for r in res.value.by_name_status:
+                    if not r.name or not r.status or int(r.span_count) <= 0:
+                        continue
+                    key_tuple = tuple(
+                        r.name if d == SpanMetricDimensionKey.SPAN_NAME else r.status
+                        for d in dims_list
+                    )
+                    span_rows.append(
+                        (
+                            key_tuple,
+                            int(r.span_count),
+                            float(r.sum_duration_ms),
+                            float(r.min_duration_ms or 0),
+                            float(r.max_duration_ms or 0),
+                            float(r.p50_duration_ms or 0),
+                            float(r.p90_duration_ms or 0),
+                            float(r.p95_duration_ms or 0),
+                            float(r.p99_duration_ms or 0),
+                        )
+                    )
+                span_rows.sort(key=lambda item: item[0])
+                return self._format_server_metric_groups(
+                    metric_name=metric_name,
+                    dims_list=dims_list,
+                    aggregations=aggregations,
+                    is_count_metric=(metric_name == SpanMetricKey.SPAN_COUNT),
+                    rows=span_rows,
+                )
+            merged: dict[tuple[str, ...], list[float]] = {}
+            for r in res.value.by_name_status:
+                if int(r.span_count) <= 0:
+                    continue
+                if SpanMetricDimensionKey.SPAN_NAME in dims_list and not r.name:
+                    continue
+                if SpanMetricDimensionKey.SPAN_STATUS in dims_list and not r.status:
+                    continue
+                key_tuple = tuple(
+                    r.name if d == SpanMetricDimensionKey.SPAN_NAME else r.status for d in dims_list
+                )
+                cnt = float(r.span_count)
+                s_dur = float(r.sum_duration_ms)
+                mn_dur = float(r.min_duration_ms or 0)
+                mx_dur = float(r.max_duration_ms or 0)
+                if key_tuple not in merged:
+                    merged[key_tuple] = [cnt, s_dur, mn_dur, mx_dur]
+                else:
+                    acc = merged[key_tuple]
+                    acc[0] += cnt
+                    acc[1] += s_dur
+                    acc[2] = min(acc[2], mn_dur)
+                    acc[3] = max(acc[3], mx_dur)
+            merged_rows: list[
+                tuple[tuple[str, ...], int, float, float, float, float, float, float, float]
+            ] = [
+                (k, int(v[0]), v[1], v[2], v[3], 0.0, 0.0, 0.0, 0.0)
+                for k, v in sorted(merged.items())
+            ]
+            return self._format_server_metric_groups(
+                metric_name=metric_name,
+                dims_list=dims_list,
+                aggregations=aggregations,
+                is_count_metric=(metric_name == SpanMetricKey.SPAN_COUNT),
+                rows=merged_rows,
+            )
+
+        return None
+
+    @staticmethod
+    def _format_server_metric_groups(
+        *,
+        metric_name: str,
+        dims_list: list[str],
+        aggregations: list[MetricAggregation],
+        is_count_metric: bool,
+        rows: Sequence[
+            tuple[tuple[str, ...], int, float, float, float, float, float, float, float]
+        ],
+    ) -> list[MetricDataPoint]:
+        if (
+            not rows
+            and not dims_list
+            and any(a.aggregation_type == AggregationType.COUNT for a in aggregations)
+        ):
+            return [
+                MetricDataPoint(
+                    metric_name=metric_name,
+                    dimensions={},
+                    values={
+                        str(a): 0.0
+                        for a in aggregations
+                        if a.aggregation_type == AggregationType.COUNT
+                    },
+                )
+            ]
+        points: list[MetricDataPoint] = []
+        for (
+            key_tuple,
+            count_val,
+            sum_val,
+            min_val,
+            max_val,
+            p50_val,
+            p90_val,
+            p95_val,
+            p99_val,
+        ) in rows:
+            dims_out = {dims_list[idx]: key_tuple[idx] for idx in range(len(dims_list))}
+            values_out: dict[str, float] = {}
+            for agg in aggregations:
+                agg_label = str(agg)
+                if agg.aggregation_type == AggregationType.COUNT or is_count_metric:
+                    values_out[agg_label] = float(count_val)
+                elif agg.aggregation_type == AggregationType.SUM:
+                    values_out[agg_label] = float(sum_val)
+                elif agg.aggregation_type == AggregationType.AVG:
+                    values_out[agg_label] = float(sum_val / count_val) if count_val > 0 else 0.0
+                elif agg.aggregation_type == AggregationType.MIN:
+                    values_out[agg_label] = float(min_val)
+                elif agg.aggregation_type == AggregationType.MAX:
+                    values_out[agg_label] = float(max_val)
+                elif agg.aggregation_type == AggregationType.PERCENTILE:
+                    pct_req = float(agg.percentile_value or 50.0)
+                    if pct_req == 50.0:
+                        values_out[agg_label] = float(p50_val)
+                    elif pct_req == 90.0:
+                        values_out[agg_label] = float(p90_val)
+                    elif pct_req == 95.0:
+                        values_out[agg_label] = float(p95_val)
+                    elif pct_req == 99.0:
+                        values_out[agg_label] = float(p99_val)
+            if values_out:
+                points.append(
+                    MetricDataPoint(
+                        metric_name=metric_name,
+                        dimensions=dims_out,
+                        values=values_out,
+                    )
+                )
+        return points
 
     @staticmethod
     def _extract_trace_metric_value(trow: Any, metric_name: str) -> Any:

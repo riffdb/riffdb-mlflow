@@ -1,0 +1,24 @@
+query BatchGetTraceSpans(
+    $experiment_id: TraceSpan.experiment_id,
+    $trace_ids: Set<TraceSpan.trace_id>,
+    $limit: Limit<200> = 200,
+    $after: Cursor?,
+) {
+    many spans from TraceSpan
+        where experiment_id == $experiment_id
+          && trace_id in $trace_ids
+        order by trace_id asc, start_time_ns asc, span_id asc
+        take $limit after $after
+        else IntegrityFailure
+
+    return Found {
+        spans: spans {
+            experiment_id trace_id span_id parent_id name span_type status
+            start_time_ns end_time_ns duration_ms model_name model_provider
+            input_tokens output_tokens total_tokens
+            input_cost_micros output_cost_micros total_cost_micros
+            started_at packed_span_json
+        }
+    }
+    outcomes Found | IntegrityFailure
+}

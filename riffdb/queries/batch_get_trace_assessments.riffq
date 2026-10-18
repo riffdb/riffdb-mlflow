@@ -1,0 +1,23 @@
+query BatchGetTraceAssessments(
+    $experiment_id: TraceAssessment.experiment_id,
+    $trace_ids: Set<TraceAssessment.trace_id>,
+    $limit: Limit<200> = 200,
+    $after: Cursor?,
+) {
+    many assessments from TraceAssessment
+        where experiment_id == $experiment_id
+          && trace_id in $trace_ids
+        order by trace_id asc, created_timestamp_ms asc, assessment_id asc
+        take $limit after $after
+        else IntegrityFailure
+
+    return Found {
+        assessments: assessments {
+            experiment_id trace_id assessment_id name assessment_type
+            value_text numeric_value_milli
+            created_timestamp_ms last_updated_timestamp_ms
+            span_id packed_assessment_json
+        }
+    }
+    outcomes Found | IntegrityFailure
+}

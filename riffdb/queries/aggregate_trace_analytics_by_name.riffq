@@ -1,0 +1,45 @@
+query AggregateTraceAnalyticsByName(
+    $experiment_id: Trace.experiment_id,
+) {
+    source projected TraceAnalytics
+    freshness causal inherit_session_commit true max_wait_ms 5000
+
+    many traces from Trace
+        where experiment_id == $experiment_id
+        take 500
+
+    aggregate by_name from traces {
+        group by trace_name
+        count() as trace_count
+        sum(execution_duration_ms) as sum_duration_ms
+        min(execution_duration_ms) as min_duration_ms
+        max(execution_duration_ms) as max_duration_ms
+        p50(execution_duration_ms) as p50_duration_ms
+        p90(execution_duration_ms) as p90_duration_ms
+        p95(execution_duration_ms) as p95_duration_ms
+        p99(execution_duration_ms) as p99_duration_ms
+        sum(total_input_tokens) as sum_input_tokens
+        sum(total_output_tokens) as sum_output_tokens
+        sum(total_tokens) as sum_total_tokens
+        order by trace_name asc
+        take 64
+    }
+
+    return Found {
+        by_name: by_name {
+            trace_name
+            trace_count
+            sum_duration_ms
+            min_duration_ms
+            max_duration_ms
+            p50_duration_ms
+            p90_duration_ms
+            p95_duration_ms
+            p99_duration_ms
+            sum_input_tokens
+            sum_output_tokens
+            sum_total_tokens
+        }
+    }
+    outcomes Found
+}
