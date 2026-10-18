@@ -631,7 +631,12 @@ class RiffDBExtendedStoreMixin(AbstractStore):
 
     @classmethod
     def _assessment_from_row(cls, row: Any) -> Assessment:
-        payload = json.loads(row.packed_assessment_json.decode("utf-8"))
+        raw_json = (
+            row.packed_assessment_json
+            if isinstance(row.packed_assessment_json, str)
+            else row.packed_assessment_json.decode("utf-8")
+        )
+        payload = json.loads(raw_json)
         if row.assessment_type == "EXPECTATION" or "expectation" in payload:
             assessment: Assessment = Expectation.from_dictionary(payload)
         else:
@@ -893,39 +898,48 @@ class RiffDBExtendedStoreMixin(AbstractStore):
                             BatchGetTraceSpansParams(
                                 experiment_id=exp_id,
                                 trace_ids=chunk_ids,
-                                limit=200,
+                                limit=500,
                                 after=s_cursor,
                             )
                         )
                         if not isinstance(s_res.value, BatchGetTraceSpansFound):
                             raise MlflowException("Invalid BatchGetTraceSpans response from RiffDB")
                         for srow in s_res.value.spans:
-                            span_dict = json.loads(srow.packed_span_json.decode("utf-8"))
-                            spans_by_tid[srow.trace_id].append(Span.from_dict(span_dict))
+                            raw_span = (
+                                srow.packed_span_json
+                                if isinstance(srow.packed_span_json, str)
+                                else srow.packed_span_json.decode("utf-8")
+                            )
+                            spans_by_tid[srow.trace_id].append(Span.from_dict(json.loads(raw_span)))
                         s_cursor = s_res.next_cursor
                         if not s_cursor or not s_res.value.spans:
                             break
 
                     assessments_by_tid: dict[str, list[Any]] = defaultdict(list)
-                    a_cursor: str | None = None
-                    while True:
-                        a_res = client.batch_get_trace_assessments(
-                            BatchGetTraceAssessmentsParams(
-                                experiment_id=exp_id,
-                                trace_ids=chunk_ids,
-                                limit=200,
-                                after=a_cursor,
+                    inline_assessments = getattr(t_res.value, "assessments", ())
+                    if len(inline_assessments) < 51:
+                        for arow_inline in inline_assessments:
+                            assessments_by_tid[arow_inline.trace_id].append(arow_inline)
+                    else:
+                        a_cursor: str | None = None
+                        while True:
+                            a_res = client.batch_get_trace_assessments(
+                                BatchGetTraceAssessmentsParams(
+                                    experiment_id=exp_id,
+                                    trace_ids=chunk_ids,
+                                    limit=500,
+                                    after=a_cursor,
+                                )
                             )
-                        )
-                        if not isinstance(a_res.value, BatchGetTraceAssessmentsFound):
-                            raise MlflowException(
-                                "Invalid BatchGetTraceAssessments response from RiffDB"
-                            )
-                        for arow in a_res.value.assessments:
-                            assessments_by_tid[arow.trace_id].append(arow)
-                        a_cursor = a_res.next_cursor
-                        if not a_cursor or not a_res.value.assessments:
-                            break
+                            if not isinstance(a_res.value, BatchGetTraceAssessmentsFound):
+                                raise MlflowException(
+                                    "Invalid BatchGetTraceAssessments response from RiffDB"
+                                )
+                            for arow in a_res.value.assessments:
+                                assessments_by_tid[arow.trace_id].append(arow)
+                            a_cursor = a_res.next_cursor
+                            if not a_cursor or not a_res.value.assessments:
+                                break
 
                     for tid in chunk_ids:
                         info = self._to_mlflow_trace_info(
@@ -952,8 +966,12 @@ class RiffDBExtendedStoreMixin(AbstractStore):
             info = self._to_mlflow_trace_info(res.value.trace, res.value.assessments)
             spans: list[Span] = []
             for span_row in res.value.spans:
-                span_dict = json.loads(span_row.packed_span_json.decode("utf-8"))
-                spans.append(Span.from_dict(span_dict))
+                raw_span = (
+                    span_row.packed_span_json
+                    if isinstance(span_row.packed_span_json, str)
+                    else span_row.packed_span_json.decode("utf-8")
+                )
+                spans.append(Span.from_dict(json.loads(raw_span)))
             traces.append(Trace(info=info, data=TraceData(spans=spans)))
         return traces
 
@@ -1042,9 +1060,7 @@ class RiffDBExtendedStoreMixin(AbstractStore):
         inputs_preview = _attr("mlflow.spanInputs")
         outputs_preview = _attr("mlflow.spanOutputs")
 
-        packed_json = json.dumps(span_dict, cls=TraceJSONEncoder, separators=(",", ":")).encode(
-            "utf-8"
-        )
+        packed_json = json.dumps(span_dict, cls=TraceJSONEncoder, separators=(",", ":"))
         return {
             "span_id": str(span.span_id),
             "trace_id": str(span.trace_id),
@@ -1767,7 +1783,7 @@ class RiffDBExtendedStoreMixin(AbstractStore):
         packed = json.dumps(
             assessment.to_dictionary(),  # type: ignore[no-untyped-call]
             separators=(",", ":"),
-        ).encode("utf-8")
+        )
         client = self._application()  # type: ignore[attr-defined]
         res = client.upsert_trace_assessment(
             UpsertTraceAssessmentInput(
@@ -1882,7 +1898,7 @@ class RiffDBExtendedStoreMixin(AbstractStore):
         packed = json.dumps(
             updated.to_dictionary(),  # type: ignore[no-untyped-call]
             separators=(",", ":"),
-        ).encode("utf-8")
+        )
         client = self._application()  # type: ignore[attr-defined]
         res = client.upsert_trace_assessment(
             UpsertTraceAssessmentInput(

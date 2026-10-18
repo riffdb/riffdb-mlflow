@@ -1,7 +1,7 @@
 query BatchGetTraceAssessments(
     $experiment_id: TraceAssessment.experiment_id,
     $trace_ids: Set<TraceAssessment.trace_id>,
-    $limit: Limit<200> = 200,
+    $limit: Limit<500> = 500,
     $after: Cursor?,
 ) {
     many assessments from TraceAssessment
@@ -13,10 +13,9 @@ query BatchGetTraceAssessments(
 
     return Found {
         assessments: assessments {
-            experiment_id trace_id assessment_id name assessment_type
-            value_text numeric_value_milli
+            trace_id assessment_id assessment_type
             created_timestamp_ms last_updated_timestamp_ms
-            span_id packed_assessment_json
+            packed_assessment_json
         }
     }
     outcomes Found | IntegrityFailure

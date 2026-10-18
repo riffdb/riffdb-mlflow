@@ -11,6 +11,13 @@ query BatchGetTraces(
         take $limit after $after
         else IntegrityFailure
 
+    many assessments from TraceAssessment
+        where experiment_id == $experiment_id
+          && trace_id in $trace_ids
+        order by trace_id asc, created_timestamp_ms asc, assessment_id asc
+        take 51
+        else IntegrityFailure
+
     return Found {
         traces: traces {
             experiment_id trace_id request_time_ms execution_duration_ms
@@ -22,6 +29,11 @@ query BatchGetTraces(
             total_cost_micros session_id
             packed_trace_metadata packed_tags packed_run_ids packed_prompt_versions
             requested_at initialized
+        }
+        assessments: assessments {
+            trace_id assessment_id assessment_type
+            created_timestamp_ms last_updated_timestamp_ms
+            packed_assessment_json
         }
     }
     outcomes Found | IntegrityFailure

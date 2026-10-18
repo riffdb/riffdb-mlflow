@@ -246,8 +246,8 @@ contract RiffDBMLflow version 1 {
     field output_cost_micros: i64
     field total_cost_micros: i64
     field started_at: timestamp
-    field packed_span_json: bytes<16384>
-    index by_trace_start (experiment_id, trace_id, start_time_ns, span_id)
+    field packed_span_json: string<7000>
+    index by_trace_start (experiment_id, trace_id, start_time_ns, span_id) cover (packed_span_json)
     index by_exp_start (experiment_id, start_time_ns, trace_id, span_id)
     delete_policy no_inbound
   }
@@ -261,8 +261,8 @@ contract RiffDBMLflow version 1 {
     field created_timestamp_ms: i64
     field last_updated_timestamp_ms: i64
     field span_id: optional<string<64>>
-    field packed_assessment_json: bytes<16384>
-    index by_trace_created (experiment_id, trace_id, created_timestamp_ms, assessment_id)
+    field packed_assessment_json: string<7000>
+    index by_trace_created (experiment_id, trace_id, created_timestamp_ms, assessment_id) cover (assessment_type, last_updated_timestamp_ms, packed_assessment_json)
     index by_exp_created (experiment_id, created_timestamp_ms, trace_id, assessment_id)
     delete_policy no_inbound
   }
@@ -1084,7 +1084,7 @@ contract RiffDBMLflow version 1 {
     input created_timestamp_ms: i64
     input last_updated_timestamp_ms: i64
     input span_id: optional<string<64>>
-    input packed_assessment_json: bytes<16384>
+    input packed_assessment_json: string<7000>
     idempotency_key request_id
     read Trace(experiment_id, trace_id) as trace else TraceMissing {}
     init_or_mutate TraceAssessment(experiment_id, trace_id, assessment_id) as assessment initialize {

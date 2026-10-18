@@ -285,8 +285,13 @@ class FakeExtendedRiffDBClient:
         want = set(params.trace_ids)
         rows = [t for (e, tid), t in self.traces.items() if e == exp_id and tid in want]
         rows.sort(key=lambda r: r.trace_id)
+        a_rows = [a for (e, tid, _), a in self.assessments.items() if e == exp_id and tid in want]
+        a_rows.sort(key=lambda r: (r.trace_id, r.created_timestamp_ms, r.assessment_id))
         return _FakeResult(
-            value=BatchGetTracesFound(traces=tuple(rows)),  # type: ignore[arg-type]
+            value=BatchGetTracesFound(
+                traces=tuple(rows),  # type: ignore[arg-type]
+                assessments=tuple(a_rows[:51]),  # type: ignore[arg-type]
+            ),
             application_head=self.commit_seq,
         )
 

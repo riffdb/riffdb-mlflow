@@ -22,8 +22,8 @@ def _compact_tag(value: object, tag: str, keys: frozenset[str]) -> dict[str, obj
 
 CONTRACT_LINEAGE: Final[str] = "RiffDBMLflow"
 CONTRACT_VERSION: Final[int] = 1
-CONTRACT_BUNDLE_HASH: Final[str] = "e8a6318db28d855d0105f3bc80140c812d91bc6a548e81a9831f34c0389f1ed0"
-QUERY_MODULE_HASH: Final[str] = "dea8579684952a0687d5f74054f692163ff3479d405942ba1947e2c41ac0e9e8"
+CONTRACT_BUNDLE_HASH: Final[str] = "ef8f6a55c08d9b926f4fe7eb0c579c40e2ea621ac7662005d2cda66fe56630c3"
+QUERY_MODULE_HASH: Final[str] = "d1db94cad3dee53bc5fde42a9507f77410fa34a53f561d60dff350f854d0a03c"
 
 COLLECTION_COUNT: Final[str] = "collection_count"
 INDIVIDUAL_VALUE_BYTES: Final[str] = "individual_value_bytes"
@@ -155,7 +155,7 @@ class TraceSpan:
     output_tokens: Annotated[int, "i64"]
     start_time_ns: Annotated[int, "i64"]
     model_provider: str
-    packed_span_json: bytes
+    packed_span_json: str
     input_cost_micros: Annotated[int, "i64"]
     total_cost_micros: Annotated[int, "i64"]
     output_cost_micros: Annotated[int, "i64"]
@@ -200,7 +200,7 @@ class TraceAssessment:
     assessment_type: str
     numeric_value_milli: Annotated[int, "i64"] | None
     created_timestamp_ms: Annotated[int, "i64"]
-    packed_assessment_json: bytes
+    packed_assessment_json: str
     last_updated_timestamp_ms: Annotated[int, "i64"]
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -220,7 +220,7 @@ class LoggedModelEntity:
     creation_timestamp_ms: Annotated[int, "i64"]
     last_updated_timestamp_ms: Annotated[int, "i64"]
 
-AGGREGATE_SPAN_ANALYTICS_BY_MODEL_QUERY_PLAN_HASH: Final[str] = "24cb8ff8c13a166a95e3f14ca9549e3e84ea9d1fbed8e9bfadf6958e8f4118c2"
+AGGREGATE_SPAN_ANALYTICS_BY_MODEL_QUERY_PLAN_HASH: Final[str] = "d51d7c81840bb7f84cae477642dac69b0db5dc7d3733911219b15ab693cb1dfa"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class AggregateSpanAnalyticsByModelParams:
@@ -257,7 +257,7 @@ class AggregateSpanAnalyticsByModelFound:
 
 AggregateSpanAnalyticsByModelResult: TypeAlias = AggregateSpanAnalyticsByModelFound
 
-AGGREGATE_SPAN_ANALYTICS_BY_NAME_STATUS_QUERY_PLAN_HASH: Final[str] = "c95e82bdcddcf8a98599aaedc41dd4ab5c124aab66dabef21fae0eba8f85adc1"
+AGGREGATE_SPAN_ANALYTICS_BY_NAME_STATUS_QUERY_PLAN_HASH: Final[str] = "be95c152c12457d0cd112417b452367d3fb0c13db33b96b663b911874a37a0fe"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class AggregateSpanAnalyticsByNameStatusParams:
@@ -292,7 +292,7 @@ class AggregateSpanAnalyticsByNameStatusFound:
 
 AggregateSpanAnalyticsByNameStatusResult: TypeAlias = AggregateSpanAnalyticsByNameStatusFound
 
-AGGREGATE_TRACE_ANALYTICS_BY_NAME_QUERY_PLAN_HASH: Final[str] = "d59c5e394403fd94d0fc88c03fadc0380ac856d77159ae666508559a72615918"
+AGGREGATE_TRACE_ANALYTICS_BY_NAME_QUERY_PLAN_HASH: Final[str] = "1650d813ea0364e858802cf793c3e01c5feb7907a0e462878ef381a9ed9b9fe1"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class AggregateTraceAnalyticsByNameParams:
@@ -326,7 +326,7 @@ class AggregateTraceAnalyticsByNameFound:
 
 AggregateTraceAnalyticsByNameResult: TypeAlias = AggregateTraceAnalyticsByNameFound
 
-AGGREGATE_TRACE_ANALYTICS_BY_STATUS_QUERY_PLAN_HASH: Final[str] = "4c18431b53214830284f1b125a4f343d6ab8ebdfe8b0d3ef1fbc02a79d036285"
+AGGREGATE_TRACE_ANALYTICS_BY_STATUS_QUERY_PLAN_HASH: Final[str] = "493db6a76472a2f0b5da01b1b314671ebb0793cb1a3dc85c12f51334c92bdd3f"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class AggregateTraceAnalyticsByStatusParams:
@@ -360,7 +360,7 @@ class AggregateTraceAnalyticsByStatusFound:
 
 AggregateTraceAnalyticsByStatusResult: TypeAlias = AggregateTraceAnalyticsByStatusFound
 
-BATCH_GET_TRACE_ASSESSMENTS_QUERY_PLAN_HASH: Final[str] = "21a4957d44ae78f99ba6930e8ce224f3c47013a02da351f2233674778b2cb9e8"
+BATCH_GET_TRACE_ASSESSMENTS_QUERY_PLAN_HASH: Final[str] = "c6b50708b2509a4d1c56e0c766af161630a818df340d97e932f558bc07e7da22"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class BatchGetTraceAssessmentsParams:
@@ -371,17 +371,12 @@ class BatchGetTraceAssessmentsParams:
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class BatchGetTraceAssessmentsFoundAssessments:
-    experiment_id: Annotated[int, "u64"]
     trace_id: str
     assessment_id: str
-    name: str
     assessment_type: str
-    value_text: str
-    numeric_value_milli: Annotated[int, "i64"] | None
     created_timestamp_ms: Annotated[int, "i64"]
     last_updated_timestamp_ms: Annotated[int, "i64"]
-    span_id: str | None
-    packed_assessment_json: bytes
+    packed_assessment_json: str
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class BatchGetTraceAssessmentsFound:
@@ -412,7 +407,7 @@ class BatchGetTraceAssessmentsIntegrityFailure:
 
 BatchGetTraceAssessmentsResult: TypeAlias = BatchGetTraceAssessmentsFound | BatchGetTraceAssessmentsIntegrityFailure
 
-BATCH_GET_TRACE_SPANS_QUERY_PLAN_HASH: Final[str] = "2e5103de0479bfc94c4b0f254ea87974c067f1bc08b6d58e3361f5378774f208"
+BATCH_GET_TRACE_SPANS_QUERY_PLAN_HASH: Final[str] = "e4c50d3bae7939df04055b556e1bebcbdd8aaf01930d499998fc9f10cae8afce"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class BatchGetTraceSpansParams:
@@ -423,26 +418,8 @@ class BatchGetTraceSpansParams:
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class BatchGetTraceSpansFoundSpans:
-    experiment_id: Annotated[int, "u64"]
     trace_id: str
-    span_id: str
-    parent_id: str | None
-    name: str
-    span_type: str
-    status: str
-    start_time_ns: Annotated[int, "i64"]
-    end_time_ns: Annotated[int, "i64"]
-    duration_ms: Annotated[int, "i64"]
-    model_name: str
-    model_provider: str
-    input_tokens: Annotated[int, "i64"]
-    output_tokens: Annotated[int, "i64"]
-    total_tokens: Annotated[int, "i64"]
-    input_cost_micros: Annotated[int, "i64"]
-    output_cost_micros: Annotated[int, "i64"]
-    total_cost_micros: Annotated[int, "i64"]
-    started_at: Timestamp
-    packed_span_json: bytes
+    packed_span_json: str
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class BatchGetTraceSpansFound:
@@ -473,7 +450,7 @@ class BatchGetTraceSpansIntegrityFailure:
 
 BatchGetTraceSpansResult: TypeAlias = BatchGetTraceSpansFound | BatchGetTraceSpansIntegrityFailure
 
-BATCH_GET_TRACES_QUERY_PLAN_HASH: Final[str] = "0e3435dc664d57223490e2f265c6c0b8c61bee6b8314a2a6f3252477a4093b72"
+BATCH_GET_TRACES_QUERY_PLAN_HASH: Final[str] = "6fea0f8fc8e54e455d1989c8b5ee7e7c95e1d3e9e8ab77e3fa9d4a277cd1c7de"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class BatchGetTracesParams:
@@ -512,8 +489,18 @@ class BatchGetTracesFoundTraces:
     initialized: bool
 
 @dataclass(frozen=True, slots=True, kw_only=True)
+class BatchGetTracesFoundAssessments:
+    trace_id: str
+    assessment_id: str
+    assessment_type: str
+    created_timestamp_ms: Annotated[int, "i64"]
+    last_updated_timestamp_ms: Annotated[int, "i64"]
+    packed_assessment_json: str
+
+@dataclass(frozen=True, slots=True, kw_only=True)
 class BatchGetTracesFound:
     traces: tuple[BatchGetTracesFoundTraces, ...]
+    assessments: tuple[BatchGetTracesFoundAssessments, ...]
     outcome: Literal["Found"] = field(default="Found", init=False)
 
     def is_found(self) -> bool:
@@ -540,7 +527,7 @@ class BatchGetTracesIntegrityFailure:
 
 BatchGetTracesResult: TypeAlias = BatchGetTracesFound | BatchGetTracesIntegrityFailure
 
-GET_EXPERIMENT_QUERY_PLAN_HASH: Final[str] = "9effa41d70dd7d4335daab10b09b5985364fa6ec7865e4542dedc1bd622a55fb"
+GET_EXPERIMENT_QUERY_PLAN_HASH: Final[str] = "95a496e578a022a7c7bf5df23af9f847fbd76bb8ab348113f256e54448a51059"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class GetExperimentParams:
@@ -587,7 +574,7 @@ class GetExperimentMissing:
 
 GetExperimentResult: TypeAlias = GetExperimentFound | GetExperimentMissing
 
-GET_EXPERIMENT_BY_NAME_QUERY_PLAN_HASH: Final[str] = "b7307651ac47f21a2ff68e34c8474936d8e7715e1ca1eee9eee1c3e59abfff4d"
+GET_EXPERIMENT_BY_NAME_QUERY_PLAN_HASH: Final[str] = "b9a295b6192c70fd9b3dab088d486856c90b7b1c1419c24c5b0ac02f202643c9"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class GetExperimentByNameParams:
@@ -634,7 +621,7 @@ class GetExperimentByNameMissing:
 
 GetExperimentByNameResult: TypeAlias = GetExperimentByNameFound | GetExperimentByNameMissing
 
-GET_LOGGED_MODEL_QUERY_PLAN_HASH: Final[str] = "28c8969c2d8dc6e65198a7d6c362cf3916e141ebeeade54a5c5ea800386c7247"
+GET_LOGGED_MODEL_QUERY_PLAN_HASH: Final[str] = "15532d095fa7ebed976dbdb9ea73a6fd586dc0a4aa9e857115c948fb90c80cb4"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class GetLoggedModelParams:
@@ -687,7 +674,7 @@ class GetLoggedModelMissing:
 
 GetLoggedModelResult: TypeAlias = GetLoggedModelFound | GetLoggedModelMissing
 
-GET_METRIC_HISTORY_QUERY_PLAN_HASH: Final[str] = "7839a954395fb5587281eacfc46b219f8731c4fc5fa02d3247bcf6c3c3b4bb53"
+GET_METRIC_HISTORY_QUERY_PLAN_HASH: Final[str] = "6d1358de01c6113b67ce91ecfb9d73cf08b1a7f8c0308149a1e98775772e6677"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class GetMetricHistoryParams:
@@ -735,7 +722,7 @@ class GetMetricHistoryIntegrityFailure:
 
 GetMetricHistoryResult: TypeAlias = GetMetricHistoryFound | GetMetricHistoryIntegrityFailure
 
-GET_RUN_QUERY_PLAN_HASH: Final[str] = "c1b091684b009a23f6a154c3128e8110c0485e628664a07c912618aea6e21ed9"
+GET_RUN_QUERY_PLAN_HASH: Final[str] = "d3a5c066d807031baa0bc14ed276d449d07aea2b4cf68dd507417dcb6c78b290"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class GetRunParams:
@@ -788,7 +775,7 @@ class GetRunMissing:
 
 GetRunResult: TypeAlias = GetRunFound | GetRunMissing
 
-GET_RUN_LINEAGE_QUERY_PLAN_HASH: Final[str] = "0d0389df2b63a10544624d84dd48cfa6f247007319bf984b4897e32994ba74d9"
+GET_RUN_LINEAGE_QUERY_PLAN_HASH: Final[str] = "9a6a05a657b5effe57922a75b99bf367579a05157cd4670224dca0533529051d"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class GetRunLineageParams:
@@ -832,7 +819,7 @@ class GetRunLineageMissing:
 
 GetRunLineageResult: TypeAlias = GetRunLineageFound | GetRunLineageMissing
 
-GET_TRACE_QUERY_PLAN_HASH: Final[str] = "6b9ebdb9c2014978bab392ccb554440ff8e7f44aacf04ae7c8649b1e72ddf262"
+GET_TRACE_QUERY_PLAN_HASH: Final[str] = "46bb0a62de900763c5cafcfee1a9305c4684a3639538419af742872fbb14bd06"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class GetTraceParams:
@@ -889,7 +876,7 @@ class GetTraceFoundSpans:
     output_cost_micros: Annotated[int, "i64"]
     total_cost_micros: Annotated[int, "i64"]
     started_at: Timestamp
-    packed_span_json: bytes
+    packed_span_json: str
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class GetTraceFoundAssessments:
@@ -903,7 +890,7 @@ class GetTraceFoundAssessments:
     created_timestamp_ms: Annotated[int, "i64"]
     last_updated_timestamp_ms: Annotated[int, "i64"]
     span_id: str | None
-    packed_assessment_json: bytes
+    packed_assessment_json: str
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class GetTraceFound:
@@ -936,7 +923,7 @@ class GetTraceMissing:
 
 GetTraceResult: TypeAlias = GetTraceFound | GetTraceMissing
 
-QUERY_ASSESSMENT_ANALYTICS_QUERY_PLAN_HASH: Final[str] = "1697f3f4b419ec5ab24fd5d14cb64f8193b45faa51b39bdd4f548898573dad3e"
+QUERY_ASSESSMENT_ANALYTICS_QUERY_PLAN_HASH: Final[str] = "48f440cb27a7e4f93514f5605f2c5dccb16a5647b985cb60c7c07a4f864bf9ce"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class QueryAssessmentAnalyticsParams:
@@ -984,7 +971,7 @@ class QueryAssessmentAnalyticsIntegrityFailure:
 
 QueryAssessmentAnalyticsResult: TypeAlias = QueryAssessmentAnalyticsFound | QueryAssessmentAnalyticsIntegrityFailure
 
-QUERY_SPAN_ANALYTICS_QUERY_PLAN_HASH: Final[str] = "ad1c297015035f56de1956994281e73898d9924d503af4042856e27693860b8c"
+QUERY_SPAN_ANALYTICS_QUERY_PLAN_HASH: Final[str] = "ab216ed264b00c6422adb6717d39a3fef3172d610aa6a4f9cdcf8d4850fe0633"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class QuerySpanAnalyticsParams:
@@ -1042,7 +1029,7 @@ class QuerySpanAnalyticsIntegrityFailure:
 
 QuerySpanAnalyticsResult: TypeAlias = QuerySpanAnalyticsFound | QuerySpanAnalyticsIntegrityFailure
 
-QUERY_SPAN_MODEL_ROLLUP_QUERY_PLAN_HASH: Final[str] = "ae23fb99f303ba81c5f057085dd5b8ec1c19224ec7184d110a076f2c088b64fb"
+QUERY_SPAN_MODEL_ROLLUP_QUERY_PLAN_HASH: Final[str] = "d5030fcc4790ef6524cc46a73f1d8810c40b8ff6e68665374d0da151886c2fde"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class QuerySpanModelRollupParams:
@@ -1099,7 +1086,7 @@ class QuerySpanModelRollupIntegrityFailure:
 
 QuerySpanModelRollupResult: TypeAlias = QuerySpanModelRollupFound | QuerySpanModelRollupIntegrityFailure
 
-QUERY_TRACE_ANALYTICS_QUERY_PLAN_HASH: Final[str] = "10f71fe68f18342c0df49f8ecd1532706f9fbce3a4b137dd04969cdaaaed3e51"
+QUERY_TRACE_ANALYTICS_QUERY_PLAN_HASH: Final[str] = "463ad2e791ff3370d0ed18bc5c1f0df45a2859214f60827a43428158cd672355"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class QueryTraceAnalyticsParams:
@@ -1156,7 +1143,7 @@ class QueryTraceAnalyticsIntegrityFailure:
 
 QueryTraceAnalyticsResult: TypeAlias = QueryTraceAnalyticsFound | QueryTraceAnalyticsIntegrityFailure
 
-SEARCH_EXPERIMENTS_QUERY_PLAN_HASH: Final[str] = "152037660e9a6ecf036547db7257ff02ba5039cf132f4d87d06fb36b99b00674"
+SEARCH_EXPERIMENTS_QUERY_PLAN_HASH: Final[str] = "4859476daf9408ac8436f34cf36966e05243d3a6d3fb93fbedca689b9c2a19f8"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsParams:
@@ -1206,7 +1193,7 @@ class SearchExperimentsIntegrityFailure:
 
 SearchExperimentsResult: TypeAlias = SearchExperimentsFound | SearchExperimentsIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_NAME_QUERY_PLAN_HASH: Final[str] = "2018af68f71acf37df6f8627b6117e93adf83e54fb1db7fb6db51b642ca53180"
+SEARCH_EXPERIMENTS_BY_NAME_QUERY_PLAN_HASH: Final[str] = "bbf3a8d1b9558edf246b13943c1f4c9442b3fc10016d56a2f5156905acad1b4e"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByNameParams:
@@ -1257,7 +1244,7 @@ class SearchExperimentsByNameIntegrityFailure:
 
 SearchExperimentsByNameResult: TypeAlias = SearchExperimentsByNameFound | SearchExperimentsByNameIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_NAME_ILIKE_QUERY_PLAN_HASH: Final[str] = "7a757ae1f9cbaff512e6ad650e84c02e770690bd5ad59879c5663515275d9dcf"
+SEARCH_EXPERIMENTS_BY_NAME_ILIKE_QUERY_PLAN_HASH: Final[str] = "f4efd49eebae4a53641ba66c424b94e96262f002423385507f95313f4e9cd2f5"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByNameILikeParams:
@@ -1308,7 +1295,7 @@ class SearchExperimentsByNameILikeIntegrityFailure:
 
 SearchExperimentsByNameILikeResult: TypeAlias = SearchExperimentsByNameILikeFound | SearchExperimentsByNameILikeIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_NAME_LIKE_QUERY_PLAN_HASH: Final[str] = "a7cb22e64c85db759f4601d056bbbb14516c83cf2fa87257bdcd2823fccd5a71"
+SEARCH_EXPERIMENTS_BY_NAME_LIKE_QUERY_PLAN_HASH: Final[str] = "fb5a308657928ce1af7bc43f7503c3f855eb3763b15aa06d7a3e7d6998e6dfd2"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByNameLikeParams:
@@ -1359,7 +1346,7 @@ class SearchExperimentsByNameLikeIntegrityFailure:
 
 SearchExperimentsByNameLikeResult: TypeAlias = SearchExperimentsByNameLikeFound | SearchExperimentsByNameLikeIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_TAG_QUERY_PLAN_HASH: Final[str] = "0109a0806488180191e592dd05d00aa312fa460d0671e4583c5469ee432e5517"
+SEARCH_EXPERIMENTS_BY_TAG_QUERY_PLAN_HASH: Final[str] = "d04b0a916773b5d235945a147e64e7d0a2a1e401e055b0241f6afe0a26f9dbb9"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByTagParams:
@@ -1411,7 +1398,7 @@ class SearchExperimentsByTagIntegrityFailure:
 
 SearchExperimentsByTagResult: TypeAlias = SearchExperimentsByTagFound | SearchExperimentsByTagIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_TAG_ILIKE_QUERY_PLAN_HASH: Final[str] = "4a979d4c89873dc960978105cc494970b6e456535048fe73ad5330844e45c964"
+SEARCH_EXPERIMENTS_BY_TAG_ILIKE_QUERY_PLAN_HASH: Final[str] = "ccd131c2831849fc06ed831a318d36c108ccdcf97e4a9ce6bc1b33e05dcc0621"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByTagILikeParams:
@@ -1463,7 +1450,7 @@ class SearchExperimentsByTagILikeIntegrityFailure:
 
 SearchExperimentsByTagILikeResult: TypeAlias = SearchExperimentsByTagILikeFound | SearchExperimentsByTagILikeIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_TAG_LIKE_QUERY_PLAN_HASH: Final[str] = "5fc591f8905c10f967ba5e58d77060510df3237a698b16fa21104f95882f59ec"
+SEARCH_EXPERIMENTS_BY_TAG_LIKE_QUERY_PLAN_HASH: Final[str] = "9d04010ec4ab5d9b991aef1788e86c6a848f1e9942a47fbe6f592328d7f8c4fa"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByTagLikeParams:
@@ -1515,7 +1502,7 @@ class SearchExperimentsByTagLikeIntegrityFailure:
 
 SearchExperimentsByTagLikeResult: TypeAlias = SearchExperimentsByTagLikeFound | SearchExperimentsByTagLikeIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_TWO_TAGS_QUERY_PLAN_HASH: Final[str] = "fb361e6b7d551c419cf90a08f6a75052ddd651041d8aa10fe09844e4a420df1b"
+SEARCH_EXPERIMENTS_BY_TWO_TAGS_QUERY_PLAN_HASH: Final[str] = "31303048b72da8a6e8b057ad0c90984c79ee7521788702e3f6e1b41abb9854d3"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByTwoTagsParams:
@@ -1569,7 +1556,7 @@ class SearchExperimentsByTwoTagsIntegrityFailure:
 
 SearchExperimentsByTwoTagsResult: TypeAlias = SearchExperimentsByTwoTagsFound | SearchExperimentsByTwoTagsIntegrityFailure
 
-SEARCH_LOGGED_MODELS_QUERY_PLAN_HASH: Final[str] = "3d8f29b1e3410b2d81bde3655c1c9ff3e48040941eee53dccd46d71ab4becd03"
+SEARCH_LOGGED_MODELS_QUERY_PLAN_HASH: Final[str] = "86d2d4dac07e4999b5ed0d8e1a7cb9258a404c1dc04f28a8bf76b301cd9a5659"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchLoggedModelsParams:
@@ -1623,7 +1610,7 @@ class SearchLoggedModelsIntegrityFailure:
 
 SearchLoggedModelsResult: TypeAlias = SearchLoggedModelsFound | SearchLoggedModelsIntegrityFailure
 
-SEARCH_RUNS_QUERY_PLAN_HASH: Final[str] = "a3533986d9fd02356459b500c592d7cb7075492249ff710446cc643d6b9a38ff"
+SEARCH_RUNS_QUERY_PLAN_HASH: Final[str] = "0887b5cc0f82c208895f733aef5fe5ecea6428a0e0d37df1a61edf2fa1ac46fc"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchRunsParams:
@@ -1677,7 +1664,7 @@ class SearchRunsIntegrityFailure:
 
 SearchRunsResult: TypeAlias = SearchRunsFound | SearchRunsIntegrityFailure
 
-SEARCH_RUNS_BY_LIFECYCLE_QUERY_PLAN_HASH: Final[str] = "d6dcf9b48561f27803608a0be649baa55123a6c89565b769faa77236237fd96e"
+SEARCH_RUNS_BY_LIFECYCLE_QUERY_PLAN_HASH: Final[str] = "30433dc370b50f693823959dabf4bd5eee3f047c747e2856912918a160bd0ee4"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchRunsByLifecycleParams:
@@ -1732,7 +1719,7 @@ class SearchRunsByLifecycleIntegrityFailure:
 
 SearchRunsByLifecycleResult: TypeAlias = SearchRunsByLifecycleFound | SearchRunsByLifecycleIntegrityFailure
 
-SEARCH_TRACES_QUERY_PLAN_HASH: Final[str] = "4b7f096680844b52d61caaf5625ef1a79a67a5dfabaeaa3883dae358e6f4db4e"
+SEARCH_TRACES_QUERY_PLAN_HASH: Final[str] = "5fb0123b6e261d6c21919f56c135fc8fdeec562c0993a14d065ec9e77d97b7b9"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchTracesParams:
@@ -2211,7 +2198,7 @@ class DeleteTraceAssessmentInput:
     assessment_id: str
     experiment_id: Annotated[int, "u64"]
 
-DELETE_TRACE_ASSESSMENT_PLAN_HASH: Final[str] = "36cc1137c865f588c995caa1b7bf54580d34b3bf34f1cfd51da02ba63328053f"
+DELETE_TRACE_ASSESSMENT_PLAN_HASH: Final[str] = "b9e0c993f75d157327e10d8035db8cc3c520e33706e966777652593db1af8a47"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class DeleteTraceAssessmentTraceAssessmentDeleted:
     assessment: TraceAssessment
@@ -2242,7 +2229,7 @@ class DeleteTraceSpanInput:
     request_id: str = field(default_factory=lambda: str(__import__("uuid").uuid4()))
     experiment_id: Annotated[int, "u64"]
 
-DELETE_TRACE_SPAN_PLAN_HASH: Final[str] = "6769d8ac280a53ab0ed04cd764e06ccd2b404c50217ef17a5160053f77e5e2aa"
+DELETE_TRACE_SPAN_PLAN_HASH: Final[str] = "45326ba7ff17d1feaff40fd9dcb3401f9be8c0af9dbb312d34de513a5ad7fe61"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class DeleteTraceSpanTraceSpanDeleted:
     span: TraceSpan
@@ -2297,7 +2284,7 @@ class IngestTraceSpansInput:
     cache_read_input_tokens: Annotated[int, "i64"]
     cache_creation_input_tokens: Annotated[int, "i64"]
 
-INGEST_TRACE_SPANS_PLAN_HASH: Final[str] = "4f400efbed02bd0afffcdcdd27e601483f5a2fda1870ec857a9a6b2e1cd7107f"
+INGEST_TRACE_SPANS_PLAN_HASH: Final[str] = "8db943eba0814f1a869bf5a8474523dfd5057a97cfe39bd98555f21e261d6934"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class IngestTraceSpansTraceSpansIngested:
     trace: Trace
@@ -2802,10 +2789,10 @@ class UpsertTraceAssessmentInput:
     assessment_type: str
     numeric_value_milli: Annotated[int, "i64"] | None
     created_timestamp_ms: Annotated[int, "i64"]
-    packed_assessment_json: bytes
+    packed_assessment_json: str
     last_updated_timestamp_ms: Annotated[int, "i64"]
 
-UPSERT_TRACE_ASSESSMENT_PLAN_HASH: Final[str] = "0e98ae93cca8bc18e8db0ef0283b81e8286de3a3ad43e63f755c693fa1bc58be"
+UPSERT_TRACE_ASSESSMENT_PLAN_HASH: Final[str] = "f3be69fc79d066c85dbd2fde2c0993e6866f1acd47c1c6d280a46500db891036"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class UpsertTraceAssessmentTraceMissing:
     outcome: Literal["TraceMissing"] = field(default="TraceMissing", init=False)
@@ -2967,8 +2954,8 @@ class RiffDBMLflowClient:
         return self.aggregate_trace_analytics_by_status(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
 
     def batch_get_trace_assessments(self, parameters: BatchGetTraceAssessmentsParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[BatchGetTraceAssessmentsResult]:
-        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 200):
-            raise ValueError("limit must be an integer from 1 through 200")
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 500):
+            raise ValueError("limit must be an integer from 1 through 500")
         encoded_parameters = encode_record(parameters)
         generated_cursor = parameters.after
         if generated_cursor is not None:
@@ -3010,8 +2997,8 @@ class RiffDBMLflowClient:
         return pages
 
     def batch_get_trace_spans(self, parameters: BatchGetTraceSpansParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[BatchGetTraceSpansResult]:
-        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 200):
-            raise ValueError("limit must be an integer from 1 through 200")
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 500):
+            raise ValueError("limit must be an integer from 1 through 500")
         encoded_parameters = encode_record(parameters)
         generated_cursor = parameters.after
         if generated_cursor is not None:
@@ -4245,7 +4232,7 @@ class RiffDBMLflowClient:
                 raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "spans", index, "model_name")
             if len(item.model_provider.encode("utf-8")) > 64:
                 raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "spans", index, "model_provider")
-            if len(item.packed_span_json) > 16384:
+            if len(item.packed_span_json.encode("utf-8")) > 7000:
                 raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "spans", index, "packed_span_json")
         aggregate_element_bytes = sum(canonical_value_encoded_length(encode_value(item, TraceSpan)) for item in input.spans)
         if aggregate_element_bytes > 1000000:
@@ -4288,7 +4275,7 @@ class RiffDBMLflowClient:
                     raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "spans", index, "model_name")
                 if len(item.model_provider.encode("utf-8")) > 64:
                     raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "spans", index, "model_provider")
-                if len(item.packed_span_json) > 16384:
+                if len(item.packed_span_json.encode("utf-8")) > 7000:
                     raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "spans", index, "packed_span_json")
             aggregate_element_bytes = sum(canonical_value_encoded_length(encode_value(item, TraceSpan)) for item in input.spans)
             if aggregate_element_bytes > 1000000:
@@ -4673,8 +4660,8 @@ class AsyncRiffDBMLflowClient:
         return await self.aggregate_trace_analytics_by_status(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
 
     async def batch_get_trace_assessments(self, parameters: BatchGetTraceAssessmentsParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[BatchGetTraceAssessmentsResult]:
-        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 200):
-            raise ValueError("limit must be an integer from 1 through 200")
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 500):
+            raise ValueError("limit must be an integer from 1 through 500")
         encoded_parameters = encode_record(parameters)
         generated_cursor = parameters.after
         if generated_cursor is not None:
@@ -4716,8 +4703,8 @@ class AsyncRiffDBMLflowClient:
         return pages
 
     async def batch_get_trace_spans(self, parameters: BatchGetTraceSpansParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[BatchGetTraceSpansResult]:
-        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 200):
-            raise ValueError("limit must be an integer from 1 through 200")
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 500):
+            raise ValueError("limit must be an integer from 1 through 500")
         encoded_parameters = encode_record(parameters)
         generated_cursor = parameters.after
         if generated_cursor is not None:
@@ -5951,7 +5938,7 @@ class AsyncRiffDBMLflowClient:
                 raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "spans", index, "model_name")
             if len(item.model_provider.encode("utf-8")) > 64:
                 raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "spans", index, "model_provider")
-            if len(item.packed_span_json) > 16384:
+            if len(item.packed_span_json.encode("utf-8")) > 7000:
                 raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "spans", index, "packed_span_json")
         aggregate_element_bytes = sum(canonical_value_encoded_length(encode_value(item, TraceSpan)) for item in input.spans)
         if aggregate_element_bytes > 1000000:
@@ -5994,7 +5981,7 @@ class AsyncRiffDBMLflowClient:
                     raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "spans", index, "model_name")
                 if len(item.model_provider.encode("utf-8")) > 64:
                     raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "spans", index, "model_provider")
-                if len(item.packed_span_json) > 16384:
+                if len(item.packed_span_json.encode("utf-8")) > 7000:
                     raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "spans", index, "packed_span_json")
             aggregate_element_bytes = sum(canonical_value_encoded_length(encode_value(item, TraceSpan)) for item in input.spans)
             if aggregate_element_bytes > 1000000:
