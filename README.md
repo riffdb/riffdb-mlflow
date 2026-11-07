@@ -45,15 +45,13 @@ RiffDB TLS and credential material is supplied through protected environment
 configuration described in [DESIGN.md](DESIGN.md); it is never embedded in the
 tracking URI.
 
-Development uses the local RiffDB Python registry:
+Development and verification:
 
 ```bash
-uv sync --index riffdb=http://127.0.0.1:4874/python/simple/
+uv sync
 make check
+make conformance
 ```
-
-Source is public on GitHub. Package releases remain out of scope until real
-RiffDB loopback and upstream MLflow semantics are green.
 
 
 ## RiffDB compatibility CI
