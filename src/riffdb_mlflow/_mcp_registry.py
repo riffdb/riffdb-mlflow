@@ -26,11 +26,9 @@ from mlflow.protos.databricks_pb2 import (
 )
 from mlflow.store.entities.paged_list import PagedList
 from mlflow.store.tracking import SEARCH_MAX_RESULTS_DEFAULT
-from mlflow.store.tracking.gateway.abstract_mixin import GatewayStoreMixin
 from mlflow.store.tracking.mcp_server_registry.abstract_mixin import (
     NOT_SET,
     MCPIcon,
-    MCPServerRegistryMixin,
 )
 from mlflow.utils.search_utils import (
     SearchMCPAccessEndpointUtils,
@@ -46,6 +44,7 @@ from mlflow.utils.validation import (
     _validate_mcp_tool_payloads,
 )
 
+from riffdb_mlflow._gateway_and_scorers import RiffDBGatewayAndScorerMixin
 from riffdb_mlflow.generated.client import (
     CreateMCPServerEntityInput,
     CreateMCPServerEntityMCPServerCreated,
@@ -92,12 +91,6 @@ _PAGE_BATCH_SIZE = 10
 _NOT_SET: Any = NOT_SET
 SEARCH_MCP_SERVER_MAX_RESULTS_THRESHOLD = 1000
 _VALID_FILTER_COMPARATORS = {"=", "!=", ">", ">=", "<", "<=", "LIKE", "ILIKE", "IN"}
-_GATEWAY_UNSUPPORTED_MESSAGE = (
-    "MLflow 3.15 UI-managed AI Gateway requires a SQLAlchemy tracking store "
-    "(enforced by upstream mlflow.server.gateway_api._validate_store). "
-    "Use the standalone config-based gateway ('mlflow gateway start --config-path ...' "
-    "with 'riffdb-mlflow[gateway]') alongside RiffDBTrackingStore."
-)
 
 
 def _now_ms() -> int:
@@ -255,124 +248,11 @@ def _compare_value(actual: Any, comparator: str, expected: Any) -> bool:
     return False
 
 
-class RiffDBMCPServerRegistryMixin(MCPServerRegistryMixin, GatewayStoreMixin):
-    """Compiled RiffDB implementation of MLflow 3.15 MCP Server Registry mixin."""
+class RiffDBMCPServerRegistryMixin(RiffDBGatewayAndScorerMixin):
+    """Compiled RiffDB implementation of MLflow 3.15 MCP Server Registry and AI Gateway mixins."""
 
     def _mcp_client(self) -> Any:
         return self._application()  # type: ignore[attr-defined]
-
-    # --- GatewayStoreMixin explicit unsupported overrides ---
-
-    def _raise_gateway_unsupported(self) -> Any:
-        raise MlflowException(_GATEWAY_UNSUPPORTED_MESSAGE, error_code=INVALID_PARAMETER_VALUE)
-
-    def create_gateway_secret(self, *args: Any, **kwargs: Any) -> Any:
-        return self._raise_gateway_unsupported()
-
-    def get_secret_info(self, *args: Any, **kwargs: Any) -> Any:
-        return self._raise_gateway_unsupported()
-
-    def update_gateway_secret(self, *args: Any, **kwargs: Any) -> Any:
-        return self._raise_gateway_unsupported()
-
-    def delete_gateway_secret(self, *args: Any, **kwargs: Any) -> Any:
-        return self._raise_gateway_unsupported()
-
-    def list_secret_infos(self, *args: Any, **kwargs: Any) -> Any:
-        return self._raise_gateway_unsupported()
-
-    def create_gateway_model_definition(self, *args: Any, **kwargs: Any) -> Any:
-        return self._raise_gateway_unsupported()
-
-    def get_gateway_model_definition(self, *args: Any, **kwargs: Any) -> Any:
-        return self._raise_gateway_unsupported()
-
-    def list_gateway_model_definitions(self, *args: Any, **kwargs: Any) -> Any:
-        return self._raise_gateway_unsupported()
-
-    def update_gateway_model_definition(self, *args: Any, **kwargs: Any) -> Any:
-        return self._raise_gateway_unsupported()
-
-    def delete_gateway_model_definition(self, *args: Any, **kwargs: Any) -> Any:
-        return self._raise_gateway_unsupported()
-
-    def create_gateway_endpoint(self, *args: Any, **kwargs: Any) -> Any:
-        return self._raise_gateway_unsupported()
-
-    def get_gateway_endpoint(self, *args: Any, **kwargs: Any) -> Any:
-        return self._raise_gateway_unsupported()
-
-    def update_gateway_endpoint(self, *args: Any, **kwargs: Any) -> Any:
-        return self._raise_gateway_unsupported()
-
-    def delete_gateway_endpoint(self, *args: Any, **kwargs: Any) -> Any:
-        return self._raise_gateway_unsupported()
-
-    def list_gateway_endpoints(self, *args: Any, **kwargs: Any) -> Any:
-        return self._raise_gateway_unsupported()
-
-    def attach_model_to_endpoint(self, *args: Any, **kwargs: Any) -> Any:
-        return self._raise_gateway_unsupported()
-
-    def detach_model_from_endpoint(self, *args: Any, **kwargs: Any) -> Any:
-        return self._raise_gateway_unsupported()
-
-    def create_endpoint_binding(self, *args: Any, **kwargs: Any) -> Any:
-        return self._raise_gateway_unsupported()
-
-    def delete_endpoint_binding(self, *args: Any, **kwargs: Any) -> Any:
-        return self._raise_gateway_unsupported()
-
-    def list_endpoint_bindings(self, *args: Any, **kwargs: Any) -> Any:
-        return self._raise_gateway_unsupported()
-
-    def set_gateway_endpoint_tag(self, *args: Any, **kwargs: Any) -> Any:
-        return self._raise_gateway_unsupported()
-
-    def delete_gateway_endpoint_tag(self, *args: Any, **kwargs: Any) -> Any:
-        return self._raise_gateway_unsupported()
-
-    def create_budget_policy(self, *args: Any, **kwargs: Any) -> Any:
-        return self._raise_gateway_unsupported()
-
-    def get_budget_policy(self, *args: Any, **kwargs: Any) -> Any:
-        return self._raise_gateway_unsupported()
-
-    def update_budget_policy(self, *args: Any, **kwargs: Any) -> Any:
-        return self._raise_gateway_unsupported()
-
-    def delete_budget_policy(self, *args: Any, **kwargs: Any) -> Any:
-        return self._raise_gateway_unsupported()
-
-    def list_budget_policies(self, *args: Any, **kwargs: Any) -> Any:
-        return self._raise_gateway_unsupported()
-
-    def sum_gateway_trace_cost(self, *args: Any, **kwargs: Any) -> Any:
-        return self._raise_gateway_unsupported()
-
-    def create_gateway_guardrail(self, *args: Any, **kwargs: Any) -> Any:
-        return self._raise_gateway_unsupported()
-
-    def get_gateway_guardrail(self, *args: Any, **kwargs: Any) -> Any:
-        return self._raise_gateway_unsupported()
-
-    def delete_gateway_guardrail(self, *args: Any, **kwargs: Any) -> Any:
-        return self._raise_gateway_unsupported()
-
-    def list_gateway_guardrails(self, *args: Any, **kwargs: Any) -> Any:
-        return self._raise_gateway_unsupported()
-
-    def add_guardrail_to_endpoint(self, *args: Any, **kwargs: Any) -> Any:
-        return self._raise_gateway_unsupported()
-
-    def remove_guardrail_from_endpoint(self, *args: Any, **kwargs: Any) -> Any:
-        return self._raise_gateway_unsupported()
-
-    def list_endpoint_guardrail_configs(self, *args: Any, **kwargs: Any) -> Any:
-        return self._raise_gateway_unsupported()
-
-    def update_endpoint_guardrail_config(self, *args: Any, **kwargs: Any) -> Any:
-        return self._raise_gateway_unsupported()
 
     # --- Internal MCP helpers ---
 

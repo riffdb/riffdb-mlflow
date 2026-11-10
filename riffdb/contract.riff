@@ -390,6 +390,116 @@ contract RiffDBMLflow version 1 {
     delete_policy no_inbound
   }
 
+  entity GatewaySecretEntity {
+    key (scope: string<32>, secret_id: string<64>)
+    field secret_name: string<256>
+    field encrypted_value: bytes<32768>
+    field wrapped_dek: bytes<4096>
+    field masked_value_json: string<4096>
+    field kek_version: i64
+    field provider: optional<string<128>>
+    field auth_config_json: optional<string<8192>>
+    field created_at_ms: i64
+    field last_updated_at_ms: i64
+    field created_by: optional<string<256>>
+    field last_updated_by: optional<string<256>>
+    index by_id (scope, secret_id)
+    delete_policy no_inbound
+  }
+
+  entity GatewayModelDefinitionEntity {
+    key (scope: string<32>, model_definition_id: string<64>)
+    field name: string<256>
+    field secret_id: optional<string<64>>
+    field provider: string<128>
+    field model_name: string<256>
+    field created_at_ms: i64
+    field last_updated_at_ms: i64
+    field created_by: optional<string<256>>
+    field last_updated_by: optional<string<256>>
+    index by_id (scope, model_definition_id)
+    delete_policy no_inbound
+  }
+
+  entity GatewayEndpointEntity {
+    key (scope: string<32>, endpoint_id: string<64>)
+    field name: string<256>
+    field routing_strategy: optional<string<64>>
+    field fallback_config_json: optional<string<8192>>
+    field experiment_id: optional<u64>
+    field usage_tracking: bool
+    field packed_model_mappings: bytes<32768>
+    field packed_tags: bytes<16384>
+    field packed_bindings: bytes<16384>
+    field packed_guardrail_configs: bytes<16384>
+    field created_at_ms: i64
+    field last_updated_at_ms: i64
+    field created_by: optional<string<256>>
+    field last_updated_by: optional<string<256>>
+    index by_id (scope, endpoint_id)
+    delete_policy no_inbound
+  }
+
+  entity GatewayBudgetPolicyEntity {
+    key (scope: string<32>, budget_policy_id: string<64>)
+    field budget_unit: string<64>
+    field budget_amount_json: string<128>
+    field duration_unit: string<64>
+    field duration_value: i64
+    field target_scope: string<64>
+    field target_value: optional<string<256>>
+    field budget_action: string<64>
+    field created_at_ms: i64
+    field last_updated_at_ms: i64
+    field created_by: optional<string<256>>
+    field last_updated_by: optional<string<256>>
+    index by_id (scope, budget_policy_id)
+    delete_policy no_inbound
+  }
+
+  entity GatewayGuardrailEntity {
+    key (scope: string<32>, guardrail_id: string<64>)
+    field name: string<256>
+    field scorer_id: string<64>
+    field scorer_version: i64
+    field stage: string<64>
+    field action: string<64>
+    field action_endpoint_id: optional<string<64>>
+    field created_at_ms: i64
+    field last_updated_at_ms: i64
+    field created_by: optional<string<256>>
+    field last_updated_by: optional<string<256>>
+    index by_id (scope, guardrail_id)
+    delete_policy no_inbound
+  }
+
+  entity ScorerEntity {
+    key (scope: string<32>, scorer_id: string<64>)
+    field experiment_id: u64
+    field scorer_name: string<256>
+    field latest_version: i64
+    field packed_versions: bytes<65536>
+    field packed_online_config: bytes<8192>
+    index by_id (scope, scorer_id)
+    index by_experiment (scope, experiment_id, scorer_id)
+    delete_policy no_inbound
+  }
+
+  entity ServerJobEntity {
+    key (scope: string<32>, job_id: string<64>)
+    field creation_time_ms: i64
+    field job_name: string<256>
+    field params_json: string<16384>
+    field timeout_json: optional<string<128>>
+    field status_code: i64
+    field result_text: optional<string<32768>>
+    field retry_count: i64
+    field last_update_time_ms: i64
+    field status_details_json: optional<string<16384>>
+    index by_creation (scope, creation_time_ms, job_id)
+    delete_policy no_inbound
+  }
+
   event SpanObserved {
     experiment_id: u64
     span_type: string<64>
@@ -524,6 +634,48 @@ contract RiffDBMLflow version 1 {
     root MCPAccessEndpointEntity
     partition_by scope
     conflict_key (scope, endpoint_id)
+  }
+
+  aggregate GatewaySecrets {
+    root GatewaySecretEntity
+    partition_by scope
+    conflict_key (scope, secret_id)
+  }
+
+  aggregate GatewayModelDefinitions {
+    root GatewayModelDefinitionEntity
+    partition_by scope
+    conflict_key (scope, model_definition_id)
+  }
+
+  aggregate GatewayEndpoints {
+    root GatewayEndpointEntity
+    partition_by scope
+    conflict_key (scope, endpoint_id)
+  }
+
+  aggregate GatewayBudgetPolicies {
+    root GatewayBudgetPolicyEntity
+    partition_by scope
+    conflict_key (scope, budget_policy_id)
+  }
+
+  aggregate GatewayGuardrails {
+    root GatewayGuardrailEntity
+    partition_by scope
+    conflict_key (scope, guardrail_id)
+  }
+
+  aggregate Scorers {
+    root ScorerEntity
+    partition_by scope
+    conflict_key (scope, scorer_id)
+  }
+
+  aggregate ServerJobs {
+    root ServerJobEntity
+    partition_by scope
+    conflict_key (scope, job_id)
   }
 
   command CreateExperiment {
@@ -1663,5 +1815,325 @@ contract RiffDBMLflow version 1 {
     idempotency_key request_id
     delete MCPAccessEndpointEntity("global", endpoint_id) as endpoint else MCPAccessEndpointMissing {}
     return MCPAccessEndpointDeleted { endpoint: endpoint }
+  }
+
+  command UpsertGatewaySecretEntity {
+    input request_id: string<128>
+    input secret_id: string<64>
+    input secret_name: string<256>
+    input encrypted_value: bytes<32768>
+    input wrapped_dek: bytes<4096>
+    input masked_value_json: string<4096>
+    input kek_version: i64
+    input provider: optional<string<128>>
+    input auth_config_json: optional<string<8192>>
+    input created_at_ms: i64
+    input last_updated_at_ms: i64
+    input created_by: optional<string<256>>
+    input last_updated_by: optional<string<256>>
+    idempotency_key request_id
+    init_or_mutate GatewaySecretEntity("global", secret_id) as secret initialize {
+      secret_name: secret_name,
+      encrypted_value: encrypted_value,
+      wrapped_dek: wrapped_dek,
+      masked_value_json: masked_value_json,
+      kek_version: kek_version,
+      provider: provider,
+      auth_config_json: auth_config_json,
+      created_at_ms: created_at_ms,
+      last_updated_at_ms: last_updated_at_ms,
+      created_by: created_by,
+      last_updated_by: last_updated_by,
+    }
+    overwrite secret.secret_name = secret_name
+    overwrite secret.encrypted_value = encrypted_value
+    overwrite secret.wrapped_dek = wrapped_dek
+    overwrite secret.masked_value_json = masked_value_json
+    overwrite secret.kek_version = kek_version
+    overwrite secret.provider = provider
+    overwrite secret.auth_config_json = auth_config_json
+    overwrite secret.created_at_ms = created_at_ms
+    overwrite secret.last_updated_at_ms = last_updated_at_ms
+    overwrite secret.created_by = created_by
+    overwrite secret.last_updated_by = last_updated_by
+    return GatewaySecretUpserted { secret: secret }
+  }
+
+  command DeleteGatewaySecretEntity {
+    input request_id: string<128>
+    input secret_id: string<64>
+    idempotency_key request_id
+    delete GatewaySecretEntity("global", secret_id) as secret else GatewaySecretMissing {}
+    return GatewaySecretDeleted { secret: secret }
+  }
+
+  command UpsertGatewayModelDefinitionEntity {
+    input request_id: string<128>
+    input model_definition_id: string<64>
+    input name: string<256>
+    input secret_id: optional<string<64>>
+    input provider: string<128>
+    input model_name: string<256>
+    input created_at_ms: i64
+    input last_updated_at_ms: i64
+    input created_by: optional<string<256>>
+    input last_updated_by: optional<string<256>>
+    idempotency_key request_id
+    init_or_mutate GatewayModelDefinitionEntity("global", model_definition_id) as model_def initialize {
+      name: name,
+      secret_id: secret_id,
+      provider: provider,
+      model_name: model_name,
+      created_at_ms: created_at_ms,
+      last_updated_at_ms: last_updated_at_ms,
+      created_by: created_by,
+      last_updated_by: last_updated_by,
+    }
+    overwrite model_def.name = name
+    overwrite model_def.secret_id = secret_id
+    overwrite model_def.provider = provider
+    overwrite model_def.model_name = model_name
+    overwrite model_def.created_at_ms = created_at_ms
+    overwrite model_def.last_updated_at_ms = last_updated_at_ms
+    overwrite model_def.created_by = created_by
+    overwrite model_def.last_updated_by = last_updated_by
+    return GatewayModelDefinitionUpserted { model_def: model_def }
+  }
+
+  command DeleteGatewayModelDefinitionEntity {
+    input request_id: string<128>
+    input model_definition_id: string<64>
+    idempotency_key request_id
+    delete GatewayModelDefinitionEntity("global", model_definition_id) as model_def else GatewayModelDefinitionMissing {}
+    return GatewayModelDefinitionDeleted { model_def: model_def }
+  }
+
+  command UpsertGatewayEndpointEntity {
+    input request_id: string<128>
+    input endpoint_id: string<64>
+    input name: string<256>
+    input routing_strategy: optional<string<64>>
+    input fallback_config_json: optional<string<8192>>
+    input experiment_id: optional<u64>
+    input usage_tracking: bool
+    input packed_model_mappings: bytes<32768>
+    input packed_tags: bytes<16384>
+    input packed_bindings: bytes<16384>
+    input packed_guardrail_configs: bytes<16384>
+    input created_at_ms: i64
+    input last_updated_at_ms: i64
+    input created_by: optional<string<256>>
+    input last_updated_by: optional<string<256>>
+    idempotency_key request_id
+    init_or_mutate GatewayEndpointEntity("global", endpoint_id) as endpoint initialize {
+      name: name,
+      routing_strategy: routing_strategy,
+      fallback_config_json: fallback_config_json,
+      experiment_id: experiment_id,
+      usage_tracking: usage_tracking,
+      packed_model_mappings: packed_model_mappings,
+      packed_tags: packed_tags,
+      packed_bindings: packed_bindings,
+      packed_guardrail_configs: packed_guardrail_configs,
+      created_at_ms: created_at_ms,
+      last_updated_at_ms: last_updated_at_ms,
+      created_by: created_by,
+      last_updated_by: last_updated_by,
+    }
+    overwrite endpoint.name = name
+    overwrite endpoint.routing_strategy = routing_strategy
+    overwrite endpoint.fallback_config_json = fallback_config_json
+    overwrite endpoint.experiment_id = experiment_id
+    overwrite endpoint.usage_tracking = usage_tracking
+    overwrite endpoint.packed_model_mappings = packed_model_mappings
+    overwrite endpoint.packed_tags = packed_tags
+    overwrite endpoint.packed_bindings = packed_bindings
+    overwrite endpoint.packed_guardrail_configs = packed_guardrail_configs
+    overwrite endpoint.created_at_ms = created_at_ms
+    overwrite endpoint.last_updated_at_ms = last_updated_at_ms
+    overwrite endpoint.created_by = created_by
+    overwrite endpoint.last_updated_by = last_updated_by
+    return GatewayEndpointUpserted { endpoint: endpoint }
+  }
+
+  command DeleteGatewayEndpointEntity {
+    input request_id: string<128>
+    input endpoint_id: string<64>
+    idempotency_key request_id
+    delete GatewayEndpointEntity("global", endpoint_id) as endpoint else GatewayEndpointMissing {}
+    return GatewayEndpointDeleted { endpoint: endpoint }
+  }
+
+  command UpsertGatewayBudgetPolicyEntity {
+    input request_id: string<128>
+    input budget_policy_id: string<64>
+    input budget_unit: string<64>
+    input budget_amount_json: string<128>
+    input duration_unit: string<64>
+    input duration_value: i64
+    input target_scope: string<64>
+    input target_value: optional<string<256>>
+    input budget_action: string<64>
+    input created_at_ms: i64
+    input last_updated_at_ms: i64
+    input created_by: optional<string<256>>
+    input last_updated_by: optional<string<256>>
+    idempotency_key request_id
+    init_or_mutate GatewayBudgetPolicyEntity("global", budget_policy_id) as policy initialize {
+      budget_unit: budget_unit,
+      budget_amount_json: budget_amount_json,
+      duration_unit: duration_unit,
+      duration_value: duration_value,
+      target_scope: target_scope,
+      target_value: target_value,
+      budget_action: budget_action,
+      created_at_ms: created_at_ms,
+      last_updated_at_ms: last_updated_at_ms,
+      created_by: created_by,
+      last_updated_by: last_updated_by,
+    }
+    overwrite policy.budget_unit = budget_unit
+    overwrite policy.budget_amount_json = budget_amount_json
+    overwrite policy.duration_unit = duration_unit
+    overwrite policy.duration_value = duration_value
+    overwrite policy.target_scope = target_scope
+    overwrite policy.target_value = target_value
+    overwrite policy.budget_action = budget_action
+    overwrite policy.created_at_ms = created_at_ms
+    overwrite policy.last_updated_at_ms = last_updated_at_ms
+    overwrite policy.created_by = created_by
+    overwrite policy.last_updated_by = last_updated_by
+    return GatewayBudgetPolicyUpserted { policy: policy }
+  }
+
+  command DeleteGatewayBudgetPolicyEntity {
+    input request_id: string<128>
+    input budget_policy_id: string<64>
+    idempotency_key request_id
+    delete GatewayBudgetPolicyEntity("global", budget_policy_id) as policy else GatewayBudgetPolicyMissing {}
+    return GatewayBudgetPolicyDeleted { policy: policy }
+  }
+
+  command UpsertGatewayGuardrailEntity {
+    input request_id: string<128>
+    input guardrail_id: string<64>
+    input name: string<256>
+    input scorer_id: string<64>
+    input scorer_version: i64
+    input stage: string<64>
+    input action: string<64>
+    input action_endpoint_id: optional<string<64>>
+    input created_at_ms: i64
+    input last_updated_at_ms: i64
+    input created_by: optional<string<256>>
+    input last_updated_by: optional<string<256>>
+    idempotency_key request_id
+    init_or_mutate GatewayGuardrailEntity("global", guardrail_id) as guardrail initialize {
+      name: name,
+      scorer_id: scorer_id,
+      scorer_version: scorer_version,
+      stage: stage,
+      action: action,
+      action_endpoint_id: action_endpoint_id,
+      created_at_ms: created_at_ms,
+      last_updated_at_ms: last_updated_at_ms,
+      created_by: created_by,
+      last_updated_by: last_updated_by,
+    }
+    overwrite guardrail.name = name
+    overwrite guardrail.scorer_id = scorer_id
+    overwrite guardrail.scorer_version = scorer_version
+    overwrite guardrail.stage = stage
+    overwrite guardrail.action = action
+    overwrite guardrail.action_endpoint_id = action_endpoint_id
+    overwrite guardrail.created_at_ms = created_at_ms
+    overwrite guardrail.last_updated_at_ms = last_updated_at_ms
+    overwrite guardrail.created_by = created_by
+    overwrite guardrail.last_updated_by = last_updated_by
+    return GatewayGuardrailUpserted { guardrail: guardrail }
+  }
+
+  command DeleteGatewayGuardrailEntity {
+    input request_id: string<128>
+    input guardrail_id: string<64>
+    idempotency_key request_id
+    delete GatewayGuardrailEntity("global", guardrail_id) as guardrail else GatewayGuardrailMissing {}
+    return GatewayGuardrailDeleted { guardrail: guardrail }
+  }
+
+  command UpsertScorerEntity {
+    input request_id: string<128>
+    input scorer_id: string<64>
+    input experiment_id: u64
+    input scorer_name: string<256>
+    input latest_version: i64
+    input packed_versions: bytes<65536>
+    input packed_online_config: bytes<8192>
+    idempotency_key request_id
+    init_or_mutate ScorerEntity("global", scorer_id) as scorer initialize {
+      experiment_id: experiment_id,
+      scorer_name: scorer_name,
+      latest_version: latest_version,
+      packed_versions: packed_versions,
+      packed_online_config: packed_online_config,
+    }
+    overwrite scorer.experiment_id = experiment_id
+    overwrite scorer.scorer_name = scorer_name
+    overwrite scorer.latest_version = latest_version
+    overwrite scorer.packed_versions = packed_versions
+    overwrite scorer.packed_online_config = packed_online_config
+    return ScorerUpserted { scorer: scorer }
+  }
+
+  command DeleteScorerEntity {
+    input request_id: string<128>
+    input scorer_id: string<64>
+    idempotency_key request_id
+    delete ScorerEntity("global", scorer_id) as scorer else ScorerMissing {}
+    return ScorerDeleted { scorer: scorer }
+  }
+
+  command UpsertServerJobEntity {
+    input request_id: string<128>
+    input job_id: string<64>
+    input creation_time_ms: i64
+    input job_name: string<256>
+    input params_json: string<16384>
+    input timeout_json: optional<string<128>>
+    input status_code: i64
+    input result_text: optional<string<32768>>
+    input retry_count: i64
+    input last_update_time_ms: i64
+    input status_details_json: optional<string<16384>>
+    idempotency_key request_id
+    init_or_mutate ServerJobEntity("global", job_id) as job initialize {
+      creation_time_ms: creation_time_ms,
+      job_name: job_name,
+      params_json: params_json,
+      timeout_json: timeout_json,
+      status_code: status_code,
+      result_text: result_text,
+      retry_count: retry_count,
+      last_update_time_ms: last_update_time_ms,
+      status_details_json: status_details_json,
+    }
+    overwrite job.creation_time_ms = creation_time_ms
+    overwrite job.job_name = job_name
+    overwrite job.params_json = params_json
+    overwrite job.timeout_json = timeout_json
+    overwrite job.status_code = status_code
+    overwrite job.result_text = result_text
+    overwrite job.retry_count = retry_count
+    overwrite job.last_update_time_ms = last_update_time_ms
+    overwrite job.status_details_json = status_details_json
+    return ServerJobUpserted { job: job }
+  }
+
+  command DeleteServerJobEntity {
+    input request_id: string<128>
+    input job_id: string<64>
+    idempotency_key request_id
+    delete ServerJobEntity("global", job_id) as job else ServerJobMissing {}
+    return ServerJobDeleted { job: job }
   }
 }

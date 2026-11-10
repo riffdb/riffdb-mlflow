@@ -1,0 +1,19 @@
+query ListGatewayModelDefinitions(
+    $scope: GatewayModelDefinitionEntity.scope,
+    $limit: Limit<50> = 50,
+    $after: Cursor?,
+) {
+    many model_defs from GatewayModelDefinitionEntity
+        where scope == $scope
+        order by model_definition_id asc
+        take $limit after $after
+        else IntegrityFailure
+
+    return Found {
+        model_defs: model_defs {
+            model_definition_id name secret_id provider model_name
+            created_at_ms last_updated_at_ms created_by last_updated_by
+        }
+    }
+    outcomes Found | IntegrityFailure
+}

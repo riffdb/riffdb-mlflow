@@ -1,0 +1,18 @@
+query GetServerJob(
+    $scope: ServerJobEntity.scope,
+    $job_id: ServerJobEntity.job_id,
+) {
+    one job from ServerJobEntity
+        where scope == $scope
+          && job_id == $job_id
+        else Missing
+
+    return Found {
+        job: job {
+            job_id creation_time_ms job_name params_json timeout_json
+            status_code result_text retry_count last_update_time_ms
+            status_details_json
+        }
+    }
+    outcomes Found | Missing
+}

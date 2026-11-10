@@ -1,0 +1,20 @@
+query ListGatewayGuardrails(
+    $scope: GatewayGuardrailEntity.scope,
+    $limit: Limit<50> = 50,
+    $after: Cursor?,
+) {
+    many guardrails from GatewayGuardrailEntity
+        where scope == $scope
+        order by guardrail_id asc
+        take $limit after $after
+        else IntegrityFailure
+
+    return Found {
+        guardrails: guardrails {
+            guardrail_id name scorer_id scorer_version stage action
+            action_endpoint_id created_at_ms last_updated_at_ms
+            created_by last_updated_by
+        }
+    }
+    outcomes Found | IntegrityFailure
+}

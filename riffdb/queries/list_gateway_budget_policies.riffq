@@ -1,0 +1,20 @@
+query ListGatewayBudgetPolicies(
+    $scope: GatewayBudgetPolicyEntity.scope,
+    $limit: Limit<50> = 50,
+    $after: Cursor?,
+) {
+    many policies from GatewayBudgetPolicyEntity
+        where scope == $scope
+        order by budget_policy_id asc
+        take $limit after $after
+        else IntegrityFailure
+
+    return Found {
+        policies: policies {
+            budget_policy_id budget_unit budget_amount_json duration_unit
+            duration_value target_scope target_value budget_action
+            created_at_ms last_updated_at_ms created_by last_updated_by
+        }
+    }
+    outcomes Found | IntegrityFailure
+}

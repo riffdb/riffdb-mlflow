@@ -1,0 +1,19 @@
+query ListScorers(
+    $scope: ScorerEntity.scope,
+    $limit: Limit<10> = 10,
+    $after: Cursor?,
+) {
+    many scorers from ScorerEntity
+        where scope == $scope
+        order by scorer_id asc
+        take $limit after $after
+        else IntegrityFailure
+
+    return Found {
+        scorers: scorers {
+            scorer_id experiment_id scorer_name latest_version
+            packed_versions packed_online_config
+        }
+    }
+    outcomes Found | IntegrityFailure
+}

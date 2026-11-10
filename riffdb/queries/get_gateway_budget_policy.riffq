@@ -1,0 +1,18 @@
+query GetGatewayBudgetPolicy(
+    $scope: GatewayBudgetPolicyEntity.scope,
+    $budget_policy_id: GatewayBudgetPolicyEntity.budget_policy_id,
+) {
+    one policy from GatewayBudgetPolicyEntity
+        where scope == $scope
+          && budget_policy_id == $budget_policy_id
+        else Missing
+
+    return Found {
+        policy: policy {
+            budget_policy_id budget_unit budget_amount_json duration_unit
+            duration_value target_scope target_value budget_action
+            created_at_ms last_updated_at_ms created_by last_updated_by
+        }
+    }
+    outcomes Found | Missing
+}

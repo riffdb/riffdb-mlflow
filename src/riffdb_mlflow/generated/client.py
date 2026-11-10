@@ -22,8 +22,8 @@ def _compact_tag(value: object, tag: str, keys: frozenset[str]) -> dict[str, obj
 
 CONTRACT_LINEAGE: Final[str] = "RiffDBMLflow"
 CONTRACT_VERSION: Final[int] = 1
-CONTRACT_BUNDLE_HASH: Final[str] = "28e4ecae8bf711d4bc91f5b5f075ce93d4d85e704995d67e6a400df7e6390ee8"
-QUERY_MODULE_HASH: Final[str] = "4736d1e84b1190c2b537332f5f4b80efe9f234813482248bc6acf84ea58677ae"
+CONTRACT_BUNDLE_HASH: Final[str] = "e33d420a33b939de946cb79eedb45d409a71aed1da5b76f25e7fc38b60653d3f"
+QUERY_MODULE_HASH: Final[str] = "919ed0d070f2bef42a3d45124a8d1b879b61623029b222fb7604971f224ad255"
 
 COLLECTION_COUNT: Final[str] = "collection_count"
 INDIVIDUAL_VALUE_BYTES: Final[str] = "individual_value_bytes"
@@ -183,6 +183,16 @@ class RunLineage:
     packed_model_outputs: bytes
 
 @dataclass(frozen=True, slots=True, kw_only=True)
+class ScorerEntity:
+    scope: str
+    scorer_id: str
+    scorer_name: str
+    experiment_id: Annotated[int, "u64"]
+    latest_version: Annotated[int, "i64"]
+    packed_versions: bytes
+    packed_online_config: bytes
+
+@dataclass(frozen=True, slots=True, kw_only=True)
 class ExperimentTag:
     scope: str
     value: str
@@ -204,6 +214,20 @@ class MCPServerEntity:
     packed_aliases: bytes
     last_updated_by: str | None
     last_updated_at_ms: Annotated[int, "i64"]
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class ServerJobEntity:
+    scope: str
+    job_id: str
+    job_name: str
+    params_json: str
+    result_text: str | None
+    retry_count: Annotated[int, "i64"]
+    status_code: Annotated[int, "i64"]
+    timeout_json: str | None
+    creation_time_ms: Annotated[int, "i64"]
+    last_update_time_ms: Annotated[int, "i64"]
+    status_details_json: str | None
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class TraceAssessment:
@@ -255,6 +279,40 @@ class ModelVersionEntity:
     last_updated_timestamp_ms: Annotated[int, "i64"]
 
 @dataclass(frozen=True, slots=True, kw_only=True)
+class GatewaySecretEntity:
+    scope: str
+    provider: str | None
+    secret_id: str
+    created_by: str | None
+    kek_version: Annotated[int, "i64"]
+    secret_name: str
+    wrapped_dek: bytes
+    created_at_ms: Annotated[int, "i64"]
+    encrypted_value: bytes
+    last_updated_by: str | None
+    auth_config_json: str | None
+    masked_value_json: str
+    last_updated_at_ms: Annotated[int, "i64"]
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class GatewayEndpointEntity:
+    name: str
+    scope: str
+    created_by: str | None
+    endpoint_id: str
+    packed_tags: bytes
+    created_at_ms: Annotated[int, "i64"]
+    experiment_id: Annotated[int, "u64"] | None
+    usage_tracking: bool
+    last_updated_by: str | None
+    packed_bindings: bytes
+    routing_strategy: str | None
+    last_updated_at_ms: Annotated[int, "i64"]
+    fallback_config_json: str | None
+    packed_model_mappings: bytes
+    packed_guardrail_configs: bytes
+
+@dataclass(frozen=True, slots=True, kw_only=True)
 class RegisteredModelEntity:
     name: str
     scope: str
@@ -278,6 +336,21 @@ class RegistryWebhookEntity:
     deleted_timestamp_ms: Annotated[int, "i64"] | None
     creation_timestamp_ms: Annotated[int, "i64"]
     last_updated_timestamp_ms: Annotated[int, "i64"]
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class GatewayGuardrailEntity:
+    name: str
+    scope: str
+    stage: str
+    action: str
+    scorer_id: str
+    created_by: str | None
+    guardrail_id: str
+    created_at_ms: Annotated[int, "i64"]
+    scorer_version: Annotated[int, "i64"]
+    last_updated_by: str | None
+    action_endpoint_id: str | None
+    last_updated_at_ms: Annotated[int, "i64"]
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class MCPServerVersionEntity:
@@ -313,7 +386,36 @@ class MCPAccessEndpointEntity:
     last_updated_by: str | None
     last_updated_at_ms: Annotated[int, "i64"]
 
-AGGREGATE_SPAN_ANALYTICS_BY_MODEL_QUERY_PLAN_HASH: Final[str] = "d45ec47e7ca57c539056c39e5a4cb10d737adbc7e3e66ecb91d8a0472e907ed8"
+@dataclass(frozen=True, slots=True, kw_only=True)
+class GatewayBudgetPolicyEntity:
+    scope: str
+    created_by: str | None
+    budget_unit: str
+    target_scope: str
+    target_value: str | None
+    budget_action: str
+    created_at_ms: Annotated[int, "i64"]
+    duration_unit: str
+    duration_value: Annotated[int, "i64"]
+    last_updated_by: str | None
+    budget_policy_id: str
+    budget_amount_json: str
+    last_updated_at_ms: Annotated[int, "i64"]
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class GatewayModelDefinitionEntity:
+    name: str
+    scope: str
+    provider: str
+    secret_id: str | None
+    created_by: str | None
+    model_name: str
+    created_at_ms: Annotated[int, "i64"]
+    last_updated_by: str | None
+    last_updated_at_ms: Annotated[int, "i64"]
+    model_definition_id: str
+
+AGGREGATE_SPAN_ANALYTICS_BY_MODEL_QUERY_PLAN_HASH: Final[str] = "5535574c14a4c0fc7a17933d1122c8d684da905d3d95a353503f82f634e4c9a5"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class AggregateSpanAnalyticsByModelParams:
@@ -350,7 +452,7 @@ class AggregateSpanAnalyticsByModelFound:
 
 AggregateSpanAnalyticsByModelResult: TypeAlias = AggregateSpanAnalyticsByModelFound
 
-AGGREGATE_SPAN_ANALYTICS_BY_NAME_STATUS_QUERY_PLAN_HASH: Final[str] = "a4927a74aa3ad356866bfc7740e22df2f3c1fa97ea2e93dfca58ec7aaa6cc504"
+AGGREGATE_SPAN_ANALYTICS_BY_NAME_STATUS_QUERY_PLAN_HASH: Final[str] = "573a0969d3cf87a0c501b224a839bd37e2ea43f26a28b68b61aa464c83fa0dca"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class AggregateSpanAnalyticsByNameStatusParams:
@@ -385,7 +487,7 @@ class AggregateSpanAnalyticsByNameStatusFound:
 
 AggregateSpanAnalyticsByNameStatusResult: TypeAlias = AggregateSpanAnalyticsByNameStatusFound
 
-AGGREGATE_TRACE_ANALYTICS_BY_NAME_QUERY_PLAN_HASH: Final[str] = "76ce30692cad1797880aad643847149d943cb5b9c7c4798cd52148cea9f4589e"
+AGGREGATE_TRACE_ANALYTICS_BY_NAME_QUERY_PLAN_HASH: Final[str] = "18e22082aee013d5756e39f0090250140fa6ec9a55b90039ee0d82a3e0af744d"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class AggregateTraceAnalyticsByNameParams:
@@ -419,7 +521,7 @@ class AggregateTraceAnalyticsByNameFound:
 
 AggregateTraceAnalyticsByNameResult: TypeAlias = AggregateTraceAnalyticsByNameFound
 
-AGGREGATE_TRACE_ANALYTICS_BY_STATUS_QUERY_PLAN_HASH: Final[str] = "02922f7d8e1959656a2a55da80e24228d8b75f465e7cc5cddb8715ecd68b7968"
+AGGREGATE_TRACE_ANALYTICS_BY_STATUS_QUERY_PLAN_HASH: Final[str] = "2b3827738c0623593bc3b8061f9dd1abd9c567d55e0f9fe5dd6c8e21f38dc099"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class AggregateTraceAnalyticsByStatusParams:
@@ -453,7 +555,7 @@ class AggregateTraceAnalyticsByStatusFound:
 
 AggregateTraceAnalyticsByStatusResult: TypeAlias = AggregateTraceAnalyticsByStatusFound
 
-BATCH_GET_TRACE_ASSESSMENTS_QUERY_PLAN_HASH: Final[str] = "cba150340cd06054b14335906781129ce57ad2a47fc93add5da06abcc8570da2"
+BATCH_GET_TRACE_ASSESSMENTS_QUERY_PLAN_HASH: Final[str] = "ae3d98947887eb2f33d1ad6ac31d697b7e3dc334f23550c537e66cc46ef095da"
 BATCH_GET_TRACE_ASSESSMENTS_TRACE_IDS_MAX_ITEMS: Final[int] = 200
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -501,7 +603,7 @@ class BatchGetTraceAssessmentsIntegrityFailure:
 
 BatchGetTraceAssessmentsResult: TypeAlias = BatchGetTraceAssessmentsFound | BatchGetTraceAssessmentsIntegrityFailure
 
-BATCH_GET_TRACE_SPANS_QUERY_PLAN_HASH: Final[str] = "3f49cda3733694fa45ea801155088e25c9f5a3f642380d96099a3ec2bc6644ee"
+BATCH_GET_TRACE_SPANS_QUERY_PLAN_HASH: Final[str] = "cb8566f0cbe35773b707b79e49cc820b6f1683b2b2038ef5da72ad6ade1c0a06"
 BATCH_GET_TRACE_SPANS_TRACE_IDS_MAX_ITEMS: Final[int] = 200
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -545,7 +647,7 @@ class BatchGetTraceSpansIntegrityFailure:
 
 BatchGetTraceSpansResult: TypeAlias = BatchGetTraceSpansFound | BatchGetTraceSpansIntegrityFailure
 
-BATCH_GET_TRACES_QUERY_PLAN_HASH: Final[str] = "91649018e6db9199a5a884a8506a3ec6fb8a554b39dbf41b90b67aa546c664ea"
+BATCH_GET_TRACES_QUERY_PLAN_HASH: Final[str] = "4840989fee5cee5bfdb747843bb0cb9b115b530be5db607e34285f67e15416df"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class BatchGetTracesParams:
@@ -622,7 +724,7 @@ class BatchGetTracesIntegrityFailure:
 
 BatchGetTracesResult: TypeAlias = BatchGetTracesFound | BatchGetTracesIntegrityFailure
 
-GET_EXPERIMENT_QUERY_PLAN_HASH: Final[str] = "a13d09e030d343d45221a8cec1ffb584cbff67ecc0aa97800b226384185435c9"
+GET_EXPERIMENT_QUERY_PLAN_HASH: Final[str] = "5636edb45f9318eaf1cecec654d31d88e35ed09683db291775f84d8114033713"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class GetExperimentParams:
@@ -669,7 +771,7 @@ class GetExperimentMissing:
 
 GetExperimentResult: TypeAlias = GetExperimentFound | GetExperimentMissing
 
-GET_EXPERIMENT_BY_NAME_QUERY_PLAN_HASH: Final[str] = "0328b4aa033b4109d33a63a509eb11b9c4d63a5edcc0cd4077016c95665cd600"
+GET_EXPERIMENT_BY_NAME_QUERY_PLAN_HASH: Final[str] = "294bfe7c0fadeb84f83f932db08199c2f6287ff4a081f97589aa98396438d266"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class GetExperimentByNameParams:
@@ -716,7 +818,260 @@ class GetExperimentByNameMissing:
 
 GetExperimentByNameResult: TypeAlias = GetExperimentByNameFound | GetExperimentByNameMissing
 
-GET_LOGGED_MODEL_QUERY_PLAN_HASH: Final[str] = "4cf3c6da8cf9d4756bbd02adba2a979503f50bfa937c2960a8a826beb2c8f556"
+GET_GATEWAY_BUDGET_POLICY_QUERY_PLAN_HASH: Final[str] = "1b8d13d89b6cfbda5d9a3aa7066f971242ce6e3350b3d4ad5ad53f5f424767de"
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class GetGatewayBudgetPolicyParams:
+    scope: str
+    budget_policy_id: str
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class GetGatewayBudgetPolicyFoundPolicy:
+    budget_policy_id: str
+    budget_unit: str
+    budget_amount_json: str
+    duration_unit: str
+    duration_value: Annotated[int, "i64"]
+    target_scope: str
+    target_value: str | None
+    budget_action: str
+    created_at_ms: Annotated[int, "i64"]
+    last_updated_at_ms: Annotated[int, "i64"]
+    created_by: str | None
+    last_updated_by: str | None
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class GetGatewayBudgetPolicyFound:
+    policy: GetGatewayBudgetPolicyFoundPolicy
+    outcome: Literal["Found"] = field(default="Found", init=False)
+
+    def is_found(self) -> bool:
+        return True
+
+    def is_missing(self) -> bool:
+        return False
+
+    def unwrap_found(self) -> GetGatewayBudgetPolicyFound:
+        return self
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class GetGatewayBudgetPolicyMissing:
+    outcome: Literal["Missing"] = field(default="Missing", init=False)
+
+    def is_found(self) -> bool:
+        return False
+
+    def is_missing(self) -> bool:
+        return True
+
+    def unwrap_found(self) -> GetGatewayBudgetPolicyFound:
+        raise ValueError("expected GetGatewayBudgetPolicy outcome found")
+
+GetGatewayBudgetPolicyResult: TypeAlias = GetGatewayBudgetPolicyFound | GetGatewayBudgetPolicyMissing
+
+GET_GATEWAY_ENDPOINT_QUERY_PLAN_HASH: Final[str] = "ecaf4d81b45f7e243a5ee3c5f7ac96d3cb19375ab2e4a41def6e77fcdb0125e7"
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class GetGatewayEndpointParams:
+    scope: str
+    endpoint_id: str
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class GetGatewayEndpointFoundEndpoint:
+    endpoint_id: str
+    name: str
+    routing_strategy: str | None
+    fallback_config_json: str | None
+    experiment_id: Annotated[int, "u64"] | None
+    usage_tracking: bool
+    packed_model_mappings: bytes
+    packed_tags: bytes
+    packed_bindings: bytes
+    packed_guardrail_configs: bytes
+    created_at_ms: Annotated[int, "i64"]
+    last_updated_at_ms: Annotated[int, "i64"]
+    created_by: str | None
+    last_updated_by: str | None
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class GetGatewayEndpointFound:
+    endpoint: GetGatewayEndpointFoundEndpoint
+    outcome: Literal["Found"] = field(default="Found", init=False)
+
+    def is_found(self) -> bool:
+        return True
+
+    def is_missing(self) -> bool:
+        return False
+
+    def unwrap_found(self) -> GetGatewayEndpointFound:
+        return self
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class GetGatewayEndpointMissing:
+    outcome: Literal["Missing"] = field(default="Missing", init=False)
+
+    def is_found(self) -> bool:
+        return False
+
+    def is_missing(self) -> bool:
+        return True
+
+    def unwrap_found(self) -> GetGatewayEndpointFound:
+        raise ValueError("expected GetGatewayEndpoint outcome found")
+
+GetGatewayEndpointResult: TypeAlias = GetGatewayEndpointFound | GetGatewayEndpointMissing
+
+GET_GATEWAY_GUARDRAIL_QUERY_PLAN_HASH: Final[str] = "c6b5c1bd10a7a4757a51e0c2d3309c76404d7c8a5d149d4cb4f7ff85450c79e1"
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class GetGatewayGuardrailParams:
+    scope: str
+    guardrail_id: str
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class GetGatewayGuardrailFoundGuardrail:
+    guardrail_id: str
+    name: str
+    scorer_id: str
+    scorer_version: Annotated[int, "i64"]
+    stage: str
+    action: str
+    action_endpoint_id: str | None
+    created_at_ms: Annotated[int, "i64"]
+    last_updated_at_ms: Annotated[int, "i64"]
+    created_by: str | None
+    last_updated_by: str | None
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class GetGatewayGuardrailFound:
+    guardrail: GetGatewayGuardrailFoundGuardrail
+    outcome: Literal["Found"] = field(default="Found", init=False)
+
+    def is_found(self) -> bool:
+        return True
+
+    def is_missing(self) -> bool:
+        return False
+
+    def unwrap_found(self) -> GetGatewayGuardrailFound:
+        return self
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class GetGatewayGuardrailMissing:
+    outcome: Literal["Missing"] = field(default="Missing", init=False)
+
+    def is_found(self) -> bool:
+        return False
+
+    def is_missing(self) -> bool:
+        return True
+
+    def unwrap_found(self) -> GetGatewayGuardrailFound:
+        raise ValueError("expected GetGatewayGuardrail outcome found")
+
+GetGatewayGuardrailResult: TypeAlias = GetGatewayGuardrailFound | GetGatewayGuardrailMissing
+
+GET_GATEWAY_MODEL_DEFINITION_QUERY_PLAN_HASH: Final[str] = "ac13e42c6e3c4fe89dfcd5c42ee306bdcdad9d38fa1f32b66010acfb7ad5c9bd"
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class GetGatewayModelDefinitionParams:
+    scope: str
+    model_definition_id: str
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class GetGatewayModelDefinitionFoundModelDef:
+    model_definition_id: str
+    name: str
+    secret_id: str | None
+    provider: str
+    model_name: str
+    created_at_ms: Annotated[int, "i64"]
+    last_updated_at_ms: Annotated[int, "i64"]
+    created_by: str | None
+    last_updated_by: str | None
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class GetGatewayModelDefinitionFound:
+    model_def: GetGatewayModelDefinitionFoundModelDef
+    outcome: Literal["Found"] = field(default="Found", init=False)
+
+    def is_found(self) -> bool:
+        return True
+
+    def is_missing(self) -> bool:
+        return False
+
+    def unwrap_found(self) -> GetGatewayModelDefinitionFound:
+        return self
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class GetGatewayModelDefinitionMissing:
+    outcome: Literal["Missing"] = field(default="Missing", init=False)
+
+    def is_found(self) -> bool:
+        return False
+
+    def is_missing(self) -> bool:
+        return True
+
+    def unwrap_found(self) -> GetGatewayModelDefinitionFound:
+        raise ValueError("expected GetGatewayModelDefinition outcome found")
+
+GetGatewayModelDefinitionResult: TypeAlias = GetGatewayModelDefinitionFound | GetGatewayModelDefinitionMissing
+
+GET_GATEWAY_SECRET_QUERY_PLAN_HASH: Final[str] = "a1893ad447ead2473645aeb4b4308600172e123dde76a940de679db4b6572d78"
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class GetGatewaySecretParams:
+    scope: str
+    secret_id: str
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class GetGatewaySecretFoundSecret:
+    secret_id: str
+    secret_name: str
+    encrypted_value: bytes
+    wrapped_dek: bytes
+    masked_value_json: str
+    kek_version: Annotated[int, "i64"]
+    provider: str | None
+    auth_config_json: str | None
+    created_at_ms: Annotated[int, "i64"]
+    last_updated_at_ms: Annotated[int, "i64"]
+    created_by: str | None
+    last_updated_by: str | None
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class GetGatewaySecretFound:
+    secret: GetGatewaySecretFoundSecret
+    outcome: Literal["Found"] = field(default="Found", init=False)
+
+    def is_found(self) -> bool:
+        return True
+
+    def is_missing(self) -> bool:
+        return False
+
+    def unwrap_found(self) -> GetGatewaySecretFound:
+        return self
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class GetGatewaySecretMissing:
+    outcome: Literal["Missing"] = field(default="Missing", init=False)
+
+    def is_found(self) -> bool:
+        return False
+
+    def is_missing(self) -> bool:
+        return True
+
+    def unwrap_found(self) -> GetGatewaySecretFound:
+        raise ValueError("expected GetGatewaySecret outcome found")
+
+GetGatewaySecretResult: TypeAlias = GetGatewaySecretFound | GetGatewaySecretMissing
+
+GET_LOGGED_MODEL_QUERY_PLAN_HASH: Final[str] = "51f917515527f1a80c22ab0b2b43d63b0f409a62207fb2929a114573ae64c5fc"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class GetLoggedModelParams:
@@ -769,7 +1124,7 @@ class GetLoggedModelMissing:
 
 GetLoggedModelResult: TypeAlias = GetLoggedModelFound | GetLoggedModelMissing
 
-GET_MCPACCESS_ENDPOINT_QUERY_PLAN_HASH: Final[str] = "41ea0462af78d2d0b85c6a6d8d57a975fc50aca4f5aad94d338a499ded12404a"
+GET_MCPACCESS_ENDPOINT_QUERY_PLAN_HASH: Final[str] = "f6d2d24371712cafa338e6e7bb0aee9aa71468188c14cd432333b8ce1e46a523"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class GetMCPAccessEndpointParams:
@@ -818,7 +1173,7 @@ class GetMCPAccessEndpointMissing:
 
 GetMCPAccessEndpointResult: TypeAlias = GetMCPAccessEndpointFound | GetMCPAccessEndpointMissing
 
-GET_MCPSERVER_QUERY_PLAN_HASH: Final[str] = "743e4c2ac57964fe56d1ca94540ea0e4999d4a33fbaa618aff023bd0480b33be"
+GET_MCPSERVER_QUERY_PLAN_HASH: Final[str] = "05479fe367dfe76cbac5c0bbcde4173d9dda859342a8b0a97a23476b956a409a"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class GetMCPServerParams:
@@ -867,7 +1222,7 @@ class GetMCPServerMissing:
 
 GetMCPServerResult: TypeAlias = GetMCPServerFound | GetMCPServerMissing
 
-GET_MCPSERVER_VERSION_QUERY_PLAN_HASH: Final[str] = "f615ded669b759d9ae127ce826c4a92b787009ee5dc8be0f8c4839dcba3f0d3b"
+GET_MCPSERVER_VERSION_QUERY_PLAN_HASH: Final[str] = "b9ef3f7001d4ce21c0c779819bb733080362669d2d2cab9d8fd35ee47506e9b1"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class GetMCPServerVersionParams:
@@ -923,7 +1278,7 @@ class GetMCPServerVersionMissing:
 
 GetMCPServerVersionResult: TypeAlias = GetMCPServerVersionFound | GetMCPServerVersionMissing
 
-GET_METRIC_HISTORY_QUERY_PLAN_HASH: Final[str] = "c95c3642952b513878a5c4bcfbef3fb07a57997991c834117c7fbfddb83ece7c"
+GET_METRIC_HISTORY_QUERY_PLAN_HASH: Final[str] = "448907280d97d92cc9a939b9094f69577903ef32b5202dd240de6b45eb8dd3e7"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class GetMetricHistoryParams:
@@ -971,7 +1326,7 @@ class GetMetricHistoryIntegrityFailure:
 
 GetMetricHistoryResult: TypeAlias = GetMetricHistoryFound | GetMetricHistoryIntegrityFailure
 
-GET_MODEL_VERSION_QUERY_PLAN_HASH: Final[str] = "560a7aeceb892cf5eb2343a276ad8bf9574e08e055983c236a93bb357556e70a"
+GET_MODEL_VERSION_QUERY_PLAN_HASH: Final[str] = "232b9ee690599999f4f8d4c9b3c904e3be81c2d9c9d4d1d96b18278474f86f09"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class GetModelVersionParams:
@@ -1025,7 +1380,7 @@ class GetModelVersionMissing:
 
 GetModelVersionResult: TypeAlias = GetModelVersionFound | GetModelVersionMissing
 
-GET_REGISTERED_MODEL_QUERY_PLAN_HASH: Final[str] = "41f3ce6286616469b238028bbc9af9f7c219fe0a0353aff9af6954beee6a699a"
+GET_REGISTERED_MODEL_QUERY_PLAN_HASH: Final[str] = "e5460524d36ee603dd0800eb8fe45c5b444b0dacbc410130b68524835903a5a0"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class GetRegisteredModelParams:
@@ -1071,7 +1426,7 @@ class GetRegisteredModelMissing:
 
 GetRegisteredModelResult: TypeAlias = GetRegisteredModelFound | GetRegisteredModelMissing
 
-GET_REGISTRY_WEBHOOK_QUERY_PLAN_HASH: Final[str] = "a9a98c078819f111b889e641849a1916ac3eba0c4c1afbcc9476bb40596c88a8"
+GET_REGISTRY_WEBHOOK_QUERY_PLAN_HASH: Final[str] = "93912d05cb75ea4dedca36bc4143d4223976e00d3b53dafef791eb0ee2b8527b"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class GetRegistryWebhookParams:
@@ -1120,7 +1475,7 @@ class GetRegistryWebhookMissing:
 
 GetRegistryWebhookResult: TypeAlias = GetRegistryWebhookFound | GetRegistryWebhookMissing
 
-GET_RUN_QUERY_PLAN_HASH: Final[str] = "8e64600e09ed3c4010418e56f6bb48174e2cd308296dbe5eb79fd962badbb8b0"
+GET_RUN_QUERY_PLAN_HASH: Final[str] = "d093bd6690297dde297a88972e6be706854dd3ba1325150de40d70748fa9ecbe"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class GetRunParams:
@@ -1173,7 +1528,7 @@ class GetRunMissing:
 
 GetRunResult: TypeAlias = GetRunFound | GetRunMissing
 
-GET_RUN_LINEAGE_QUERY_PLAN_HASH: Final[str] = "3c06d3aa976c9621e67d5dc5efaf9a6e484c127b3cce3b04937ae867e9f921c7"
+GET_RUN_LINEAGE_QUERY_PLAN_HASH: Final[str] = "c897acb13f4130bd294f9c74b6c7ca8dbdc5c5bff454e277cb2c74161ad97750"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class GetRunLineageParams:
@@ -1217,7 +1572,101 @@ class GetRunLineageMissing:
 
 GetRunLineageResult: TypeAlias = GetRunLineageFound | GetRunLineageMissing
 
-GET_TRACE_QUERY_PLAN_HASH: Final[str] = "8db9dc9a8f47bcd00f52453dc67f43320da43bd1bf0714b30da2e950a4efed80"
+GET_SCORER_QUERY_PLAN_HASH: Final[str] = "533ce2af81cfa790a2ad9f17309e9a0de2ba747b20fcc38ca58474e74a5715cf"
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class GetScorerParams:
+    scope: str
+    scorer_id: str
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class GetScorerFoundScorer:
+    scorer_id: str
+    experiment_id: Annotated[int, "u64"]
+    scorer_name: str
+    latest_version: Annotated[int, "i64"]
+    packed_versions: bytes
+    packed_online_config: bytes
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class GetScorerFound:
+    scorer: GetScorerFoundScorer
+    outcome: Literal["Found"] = field(default="Found", init=False)
+
+    def is_found(self) -> bool:
+        return True
+
+    def is_missing(self) -> bool:
+        return False
+
+    def unwrap_found(self) -> GetScorerFound:
+        return self
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class GetScorerMissing:
+    outcome: Literal["Missing"] = field(default="Missing", init=False)
+
+    def is_found(self) -> bool:
+        return False
+
+    def is_missing(self) -> bool:
+        return True
+
+    def unwrap_found(self) -> GetScorerFound:
+        raise ValueError("expected GetScorer outcome found")
+
+GetScorerResult: TypeAlias = GetScorerFound | GetScorerMissing
+
+GET_SERVER_JOB_QUERY_PLAN_HASH: Final[str] = "62ede0a9351e852df68573245be35ea2510c36c611b2e71e9847ca40d2e41b2b"
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class GetServerJobParams:
+    scope: str
+    job_id: str
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class GetServerJobFoundJob:
+    job_id: str
+    creation_time_ms: Annotated[int, "i64"]
+    job_name: str
+    params_json: str
+    timeout_json: str | None
+    status_code: Annotated[int, "i64"]
+    result_text: str | None
+    retry_count: Annotated[int, "i64"]
+    last_update_time_ms: Annotated[int, "i64"]
+    status_details_json: str | None
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class GetServerJobFound:
+    job: GetServerJobFoundJob
+    outcome: Literal["Found"] = field(default="Found", init=False)
+
+    def is_found(self) -> bool:
+        return True
+
+    def is_missing(self) -> bool:
+        return False
+
+    def unwrap_found(self) -> GetServerJobFound:
+        return self
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class GetServerJobMissing:
+    outcome: Literal["Missing"] = field(default="Missing", init=False)
+
+    def is_found(self) -> bool:
+        return False
+
+    def is_missing(self) -> bool:
+        return True
+
+    def unwrap_found(self) -> GetServerJobFound:
+        raise ValueError("expected GetServerJob outcome found")
+
+GetServerJobResult: TypeAlias = GetServerJobFound | GetServerJobMissing
+
+GET_TRACE_QUERY_PLAN_HASH: Final[str] = "cd0a1bbf04d5a0153d90119e07793ce96352795fbbe316078bf4718805ae4617"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class GetTraceParams:
@@ -1321,7 +1770,265 @@ class GetTraceMissing:
 
 GetTraceResult: TypeAlias = GetTraceFound | GetTraceMissing
 
-LIST_MCPACCESS_ENDPOINTS_BY_SERVER_QUERY_PLAN_HASH: Final[str] = "52d46df5c4b866864744ac4b3d8feb2b62cef16ab7909f6e2b20143e3eab151c"
+LIST_GATEWAY_BUDGET_POLICIES_QUERY_PLAN_HASH: Final[str] = "d41c45969a8ca3c65e9c2003b2f41f43f07d4737914a848799c8d03693b38bed"
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class ListGatewayBudgetPoliciesParams:
+    scope: str
+    limit: Annotated[int, "u64"] | None = None
+    after: str | None = None
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class ListGatewayBudgetPoliciesFoundPolicies:
+    budget_policy_id: str
+    budget_unit: str
+    budget_amount_json: str
+    duration_unit: str
+    duration_value: Annotated[int, "i64"]
+    target_scope: str
+    target_value: str | None
+    budget_action: str
+    created_at_ms: Annotated[int, "i64"]
+    last_updated_at_ms: Annotated[int, "i64"]
+    created_by: str | None
+    last_updated_by: str | None
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class ListGatewayBudgetPoliciesFound:
+    policies: tuple[ListGatewayBudgetPoliciesFoundPolicies, ...]
+    outcome: Literal["Found"] = field(default="Found", init=False)
+
+    def is_found(self) -> bool:
+        return True
+
+    def is_integrity_failure(self) -> bool:
+        return False
+
+    def unwrap_found(self) -> ListGatewayBudgetPoliciesFound:
+        return self
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class ListGatewayBudgetPoliciesIntegrityFailure:
+    outcome: Literal["IntegrityFailure"] = field(default="IntegrityFailure", init=False)
+
+    def is_found(self) -> bool:
+        return False
+
+    def is_integrity_failure(self) -> bool:
+        return True
+
+    def unwrap_found(self) -> ListGatewayBudgetPoliciesFound:
+        raise ValueError("expected ListGatewayBudgetPolicies outcome found")
+
+ListGatewayBudgetPoliciesResult: TypeAlias = ListGatewayBudgetPoliciesFound | ListGatewayBudgetPoliciesIntegrityFailure
+
+LIST_GATEWAY_ENDPOINTS_QUERY_PLAN_HASH: Final[str] = "5d229a8af94175e36da7dbf0156aacc754ee861720316ad8ea28b15d4c4a4adf"
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class ListGatewayEndpointsParams:
+    scope: str
+    limit: Annotated[int, "u64"] | None = None
+    after: str | None = None
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class ListGatewayEndpointsFoundEndpoints:
+    endpoint_id: str
+    name: str
+    routing_strategy: str | None
+    fallback_config_json: str | None
+    experiment_id: Annotated[int, "u64"] | None
+    usage_tracking: bool
+    packed_model_mappings: bytes
+    packed_tags: bytes
+    packed_bindings: bytes
+    packed_guardrail_configs: bytes
+    created_at_ms: Annotated[int, "i64"]
+    last_updated_at_ms: Annotated[int, "i64"]
+    created_by: str | None
+    last_updated_by: str | None
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class ListGatewayEndpointsFound:
+    endpoints: tuple[ListGatewayEndpointsFoundEndpoints, ...]
+    outcome: Literal["Found"] = field(default="Found", init=False)
+
+    def is_found(self) -> bool:
+        return True
+
+    def is_integrity_failure(self) -> bool:
+        return False
+
+    def unwrap_found(self) -> ListGatewayEndpointsFound:
+        return self
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class ListGatewayEndpointsIntegrityFailure:
+    outcome: Literal["IntegrityFailure"] = field(default="IntegrityFailure", init=False)
+
+    def is_found(self) -> bool:
+        return False
+
+    def is_integrity_failure(self) -> bool:
+        return True
+
+    def unwrap_found(self) -> ListGatewayEndpointsFound:
+        raise ValueError("expected ListGatewayEndpoints outcome found")
+
+ListGatewayEndpointsResult: TypeAlias = ListGatewayEndpointsFound | ListGatewayEndpointsIntegrityFailure
+
+LIST_GATEWAY_GUARDRAILS_QUERY_PLAN_HASH: Final[str] = "37486eefad8047d7c1fe869dc01899c9f1e647633715200d3678450390a5c637"
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class ListGatewayGuardrailsParams:
+    scope: str
+    limit: Annotated[int, "u64"] | None = None
+    after: str | None = None
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class ListGatewayGuardrailsFoundGuardrails:
+    guardrail_id: str
+    name: str
+    scorer_id: str
+    scorer_version: Annotated[int, "i64"]
+    stage: str
+    action: str
+    action_endpoint_id: str | None
+    created_at_ms: Annotated[int, "i64"]
+    last_updated_at_ms: Annotated[int, "i64"]
+    created_by: str | None
+    last_updated_by: str | None
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class ListGatewayGuardrailsFound:
+    guardrails: tuple[ListGatewayGuardrailsFoundGuardrails, ...]
+    outcome: Literal["Found"] = field(default="Found", init=False)
+
+    def is_found(self) -> bool:
+        return True
+
+    def is_integrity_failure(self) -> bool:
+        return False
+
+    def unwrap_found(self) -> ListGatewayGuardrailsFound:
+        return self
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class ListGatewayGuardrailsIntegrityFailure:
+    outcome: Literal["IntegrityFailure"] = field(default="IntegrityFailure", init=False)
+
+    def is_found(self) -> bool:
+        return False
+
+    def is_integrity_failure(self) -> bool:
+        return True
+
+    def unwrap_found(self) -> ListGatewayGuardrailsFound:
+        raise ValueError("expected ListGatewayGuardrails outcome found")
+
+ListGatewayGuardrailsResult: TypeAlias = ListGatewayGuardrailsFound | ListGatewayGuardrailsIntegrityFailure
+
+LIST_GATEWAY_MODEL_DEFINITIONS_QUERY_PLAN_HASH: Final[str] = "05c72f26f8cad9c75c335ceafe5ece8f65b6d62893d3798ac14e34d574e83cc6"
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class ListGatewayModelDefinitionsParams:
+    scope: str
+    limit: Annotated[int, "u64"] | None = None
+    after: str | None = None
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class ListGatewayModelDefinitionsFoundModelDefs:
+    model_definition_id: str
+    name: str
+    secret_id: str | None
+    provider: str
+    model_name: str
+    created_at_ms: Annotated[int, "i64"]
+    last_updated_at_ms: Annotated[int, "i64"]
+    created_by: str | None
+    last_updated_by: str | None
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class ListGatewayModelDefinitionsFound:
+    model_defs: tuple[ListGatewayModelDefinitionsFoundModelDefs, ...]
+    outcome: Literal["Found"] = field(default="Found", init=False)
+
+    def is_found(self) -> bool:
+        return True
+
+    def is_integrity_failure(self) -> bool:
+        return False
+
+    def unwrap_found(self) -> ListGatewayModelDefinitionsFound:
+        return self
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class ListGatewayModelDefinitionsIntegrityFailure:
+    outcome: Literal["IntegrityFailure"] = field(default="IntegrityFailure", init=False)
+
+    def is_found(self) -> bool:
+        return False
+
+    def is_integrity_failure(self) -> bool:
+        return True
+
+    def unwrap_found(self) -> ListGatewayModelDefinitionsFound:
+        raise ValueError("expected ListGatewayModelDefinitions outcome found")
+
+ListGatewayModelDefinitionsResult: TypeAlias = ListGatewayModelDefinitionsFound | ListGatewayModelDefinitionsIntegrityFailure
+
+LIST_GATEWAY_SECRETS_QUERY_PLAN_HASH: Final[str] = "142eb22759d8d7abd67e84ddd116d25ab8ecab59dac3fce1568d791e5db4eef5"
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class ListGatewaySecretsParams:
+    scope: str
+    limit: Annotated[int, "u64"] | None = None
+    after: str | None = None
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class ListGatewaySecretsFoundSecrets:
+    secret_id: str
+    secret_name: str
+    encrypted_value: bytes
+    wrapped_dek: bytes
+    masked_value_json: str
+    kek_version: Annotated[int, "i64"]
+    provider: str | None
+    auth_config_json: str | None
+    created_at_ms: Annotated[int, "i64"]
+    last_updated_at_ms: Annotated[int, "i64"]
+    created_by: str | None
+    last_updated_by: str | None
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class ListGatewaySecretsFound:
+    secrets: tuple[ListGatewaySecretsFoundSecrets, ...]
+    outcome: Literal["Found"] = field(default="Found", init=False)
+
+    def is_found(self) -> bool:
+        return True
+
+    def is_integrity_failure(self) -> bool:
+        return False
+
+    def unwrap_found(self) -> ListGatewaySecretsFound:
+        return self
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class ListGatewaySecretsIntegrityFailure:
+    outcome: Literal["IntegrityFailure"] = field(default="IntegrityFailure", init=False)
+
+    def is_found(self) -> bool:
+        return False
+
+    def is_integrity_failure(self) -> bool:
+        return True
+
+    def unwrap_found(self) -> ListGatewaySecretsFound:
+        raise ValueError("expected ListGatewaySecrets outcome found")
+
+ListGatewaySecretsResult: TypeAlias = ListGatewaySecretsFound | ListGatewaySecretsIntegrityFailure
+
+LIST_MCPACCESS_ENDPOINTS_BY_SERVER_QUERY_PLAN_HASH: Final[str] = "4b319091103263d43a6438f8b3aa1f262e82b36d486590719c3cbc2b45b3b8cc"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class ListMCPAccessEndpointsByServerParams:
@@ -1372,7 +2079,7 @@ class ListMCPAccessEndpointsByServerIntegrityFailure:
 
 ListMCPAccessEndpointsByServerResult: TypeAlias = ListMCPAccessEndpointsByServerFound | ListMCPAccessEndpointsByServerIntegrityFailure
 
-LIST_MCPSERVER_VERSIONS_BY_SERVER_QUERY_PLAN_HASH: Final[str] = "d81b7f5d7743e264e16bfdb41d589f7924c6c98daa7a1cedcd138925fedc9e66"
+LIST_MCPSERVER_VERSIONS_BY_SERVER_QUERY_PLAN_HASH: Final[str] = "175c829119f5265c7ead0b17fc6a96cf0334bec910afb1b188bfb203843fa257"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class ListMCPServerVersionsByServerParams:
@@ -1429,7 +2136,7 @@ class ListMCPServerVersionsByServerIntegrityFailure:
 
 ListMCPServerVersionsByServerResult: TypeAlias = ListMCPServerVersionsByServerFound | ListMCPServerVersionsByServerIntegrityFailure
 
-LIST_MODEL_VERSIONS_BY_MODEL_QUERY_PLAN_HASH: Final[str] = "88bddb714ecccd11c6801da8d8b50a349c508e05c9be74ca7f5c0619f39e0d4f"
+LIST_MODEL_VERSIONS_BY_MODEL_QUERY_PLAN_HASH: Final[str] = "6c39f5d24248f921f7afa3e5c2099e4d69a9e242e3137695cb3d05e989dd4d09"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class ListModelVersionsByModelParams:
@@ -1484,7 +2191,7 @@ class ListModelVersionsByModelIntegrityFailure:
 
 ListModelVersionsByModelResult: TypeAlias = ListModelVersionsByModelFound | ListModelVersionsByModelIntegrityFailure
 
-LIST_REGISTRY_WEBHOOKS_QUERY_PLAN_HASH: Final[str] = "7884820cc8bae213b705f282af42d968952028d699c6045ad591ecb53ed0445f"
+LIST_REGISTRY_WEBHOOKS_QUERY_PLAN_HASH: Final[str] = "ed641d663bc1449713061827db4dad255bc84f4653b45b98f8e6b07bbbc5edb5"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class ListRegistryWebhooksParams:
@@ -1534,7 +2241,103 @@ class ListRegistryWebhooksIntegrityFailure:
 
 ListRegistryWebhooksResult: TypeAlias = ListRegistryWebhooksFound | ListRegistryWebhooksIntegrityFailure
 
-QUERY_ASSESSMENT_ANALYTICS_QUERY_PLAN_HASH: Final[str] = "f6caa2de97dd0b5950079aff8bc4d4f51823b09e9700ca9f331a6853dc252938"
+LIST_SCORERS_QUERY_PLAN_HASH: Final[str] = "797b48e9a5fb75b28e049182c03d6f90721b39efe219c22191247bcba8a44b70"
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class ListScorersParams:
+    scope: str
+    limit: Annotated[int, "u64"] | None = None
+    after: str | None = None
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class ListScorersFoundScorers:
+    scorer_id: str
+    experiment_id: Annotated[int, "u64"]
+    scorer_name: str
+    latest_version: Annotated[int, "i64"]
+    packed_versions: bytes
+    packed_online_config: bytes
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class ListScorersFound:
+    scorers: tuple[ListScorersFoundScorers, ...]
+    outcome: Literal["Found"] = field(default="Found", init=False)
+
+    def is_found(self) -> bool:
+        return True
+
+    def is_integrity_failure(self) -> bool:
+        return False
+
+    def unwrap_found(self) -> ListScorersFound:
+        return self
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class ListScorersIntegrityFailure:
+    outcome: Literal["IntegrityFailure"] = field(default="IntegrityFailure", init=False)
+
+    def is_found(self) -> bool:
+        return False
+
+    def is_integrity_failure(self) -> bool:
+        return True
+
+    def unwrap_found(self) -> ListScorersFound:
+        raise ValueError("expected ListScorers outcome found")
+
+ListScorersResult: TypeAlias = ListScorersFound | ListScorersIntegrityFailure
+
+LIST_SERVER_JOBS_QUERY_PLAN_HASH: Final[str] = "e5ae5b54ae0d084924a3eeeee70f90418faf923c65222f153e1bdd585e7bec18"
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class ListServerJobsParams:
+    scope: str
+    limit: Annotated[int, "u64"] | None = None
+    after: str | None = None
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class ListServerJobsFoundJobs:
+    job_id: str
+    creation_time_ms: Annotated[int, "i64"]
+    job_name: str
+    params_json: str
+    timeout_json: str | None
+    status_code: Annotated[int, "i64"]
+    result_text: str | None
+    retry_count: Annotated[int, "i64"]
+    last_update_time_ms: Annotated[int, "i64"]
+    status_details_json: str | None
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class ListServerJobsFound:
+    jobs: tuple[ListServerJobsFoundJobs, ...]
+    outcome: Literal["Found"] = field(default="Found", init=False)
+
+    def is_found(self) -> bool:
+        return True
+
+    def is_integrity_failure(self) -> bool:
+        return False
+
+    def unwrap_found(self) -> ListServerJobsFound:
+        return self
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class ListServerJobsIntegrityFailure:
+    outcome: Literal["IntegrityFailure"] = field(default="IntegrityFailure", init=False)
+
+    def is_found(self) -> bool:
+        return False
+
+    def is_integrity_failure(self) -> bool:
+        return True
+
+    def unwrap_found(self) -> ListServerJobsFound:
+        raise ValueError("expected ListServerJobs outcome found")
+
+ListServerJobsResult: TypeAlias = ListServerJobsFound | ListServerJobsIntegrityFailure
+
+QUERY_ASSESSMENT_ANALYTICS_QUERY_PLAN_HASH: Final[str] = "c528e51543fc08cf02d1c3f6f7fefb116146686ac30c3900448834beb7c93e79"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class QueryAssessmentAnalyticsParams:
@@ -1582,7 +2385,7 @@ class QueryAssessmentAnalyticsIntegrityFailure:
 
 QueryAssessmentAnalyticsResult: TypeAlias = QueryAssessmentAnalyticsFound | QueryAssessmentAnalyticsIntegrityFailure
 
-QUERY_SPAN_ANALYTICS_QUERY_PLAN_HASH: Final[str] = "37db7a729b0b516a4c68b1154d9e3c0b4358df184900884750447783a1493d62"
+QUERY_SPAN_ANALYTICS_QUERY_PLAN_HASH: Final[str] = "16f168323fe3d33f5209053ac0de296d6447739139c42759c62ab96cbe8d7e66"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class QuerySpanAnalyticsParams:
@@ -1640,7 +2443,7 @@ class QuerySpanAnalyticsIntegrityFailure:
 
 QuerySpanAnalyticsResult: TypeAlias = QuerySpanAnalyticsFound | QuerySpanAnalyticsIntegrityFailure
 
-QUERY_SPAN_MODEL_ROLLUP_QUERY_PLAN_HASH: Final[str] = "76bcaa4a9cb97d7840744ad3fa38c790fca3b441ee7c6cab142d780362c85902"
+QUERY_SPAN_MODEL_ROLLUP_QUERY_PLAN_HASH: Final[str] = "cf5a30f00b111c8c64da8b058c88cde7a0e006f7feb048d307809cc352d7a534"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class QuerySpanModelRollupParams:
@@ -1697,7 +2500,7 @@ class QuerySpanModelRollupIntegrityFailure:
 
 QuerySpanModelRollupResult: TypeAlias = QuerySpanModelRollupFound | QuerySpanModelRollupIntegrityFailure
 
-QUERY_TRACE_ANALYTICS_QUERY_PLAN_HASH: Final[str] = "a09ab8acd91e3a2def6432743aaf764fc4591a1cf26585422a2747d550f2b2e1"
+QUERY_TRACE_ANALYTICS_QUERY_PLAN_HASH: Final[str] = "d7354f1a96701306612f50b9a70e0551fb511c08940551b8097b4e36c54ea8b9"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class QueryTraceAnalyticsParams:
@@ -1754,7 +2557,7 @@ class QueryTraceAnalyticsIntegrityFailure:
 
 QueryTraceAnalyticsResult: TypeAlias = QueryTraceAnalyticsFound | QueryTraceAnalyticsIntegrityFailure
 
-SEARCH_EXPERIMENTS_QUERY_PLAN_HASH: Final[str] = "bf6c49b2f7cc666883b39d3318cad089a8864d53f046d3fda72b8439596aeeac"
+SEARCH_EXPERIMENTS_QUERY_PLAN_HASH: Final[str] = "9f75223d34e3501941ff550aff6952902924f929c97aa389acca3c9bcb50e0fd"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsParams:
@@ -1804,7 +2607,7 @@ class SearchExperimentsIntegrityFailure:
 
 SearchExperimentsResult: TypeAlias = SearchExperimentsFound | SearchExperimentsIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_NAME_QUERY_PLAN_HASH: Final[str] = "44f11d3c741b1839de6bc5dbe395afe7f61c606516d8dd90c27313cdb0f82f50"
+SEARCH_EXPERIMENTS_BY_NAME_QUERY_PLAN_HASH: Final[str] = "410db1a2f78de1056ad4a2b249714398181c94ccb27141867eb05f05356b3fe7"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByNameParams:
@@ -1855,7 +2658,7 @@ class SearchExperimentsByNameIntegrityFailure:
 
 SearchExperimentsByNameResult: TypeAlias = SearchExperimentsByNameFound | SearchExperimentsByNameIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_NAME_AND_TAG_QUERY_PLAN_HASH: Final[str] = "9d225c5bb1d2e658afc2ec805cd58d697054a2268bf6afff94797a6097a98f2e"
+SEARCH_EXPERIMENTS_BY_NAME_AND_TAG_QUERY_PLAN_HASH: Final[str] = "0f569f779387b7c08918705e714de9c85297d56449279ed203adf4c0df513efa"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByNameAndTagParams:
@@ -1908,7 +2711,7 @@ class SearchExperimentsByNameAndTagIntegrityFailure:
 
 SearchExperimentsByNameAndTagResult: TypeAlias = SearchExperimentsByNameAndTagFound | SearchExperimentsByNameAndTagIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_NAME_AND_TAG_IS_NULL_QUERY_PLAN_HASH: Final[str] = "d2a643e95320877b0d1e7b82b0b10338e0123c31cf014a717445ec06f0170fba"
+SEARCH_EXPERIMENTS_BY_NAME_AND_TAG_IS_NULL_QUERY_PLAN_HASH: Final[str] = "47703c0f4bdb31fd51654b9ff0bb310f56d74cf9cd768d7021596f0ac51995cf"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByNameAndTagIsNullParams:
@@ -1960,7 +2763,7 @@ class SearchExperimentsByNameAndTagIsNullIntegrityFailure:
 
 SearchExperimentsByNameAndTagIsNullResult: TypeAlias = SearchExperimentsByNameAndTagIsNullFound | SearchExperimentsByNameAndTagIsNullIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_NAME_ILIKE_QUERY_PLAN_HASH: Final[str] = "54a9fb95757bd929beb11b77102670481498cbcb7917ce222e8b1b3b59e1d559"
+SEARCH_EXPERIMENTS_BY_NAME_ILIKE_QUERY_PLAN_HASH: Final[str] = "8739106103e3f387c56e7b0e334c256469d47d11c658c7a14017cb2cdc935b94"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByNameILikeParams:
@@ -2011,7 +2814,7 @@ class SearchExperimentsByNameILikeIntegrityFailure:
 
 SearchExperimentsByNameILikeResult: TypeAlias = SearchExperimentsByNameILikeFound | SearchExperimentsByNameILikeIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_NAME_ILIKE_AND_GATEWAY_IS_NULL_QUERY_PLAN_HASH: Final[str] = "d1c9519d417d77d96e91edd15f8f1fe2e14d3f3159454c2597335f54f07c9f04"
+SEARCH_EXPERIMENTS_BY_NAME_ILIKE_AND_GATEWAY_IS_NULL_QUERY_PLAN_HASH: Final[str] = "7314236b16c6a2cc3426f071b6af1e102becb5e01155f7a01a9ecc7656e9fcd9"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByNameILikeAndGatewayIsNullParams:
@@ -2062,7 +2865,7 @@ class SearchExperimentsByNameILikeAndGatewayIsNullIntegrityFailure:
 
 SearchExperimentsByNameILikeAndGatewayIsNullResult: TypeAlias = SearchExperimentsByNameILikeAndGatewayIsNullFound | SearchExperimentsByNameILikeAndGatewayIsNullIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_NAME_ILIKE_AND_TAG_QUERY_PLAN_HASH: Final[str] = "c326f5b8bc9cf21776c05f5f8e8ebe8af8e3f848eb2e17dee454823da027bd56"
+SEARCH_EXPERIMENTS_BY_NAME_ILIKE_AND_TAG_QUERY_PLAN_HASH: Final[str] = "b00a0bd5617b1dcc3430633d29d31aaafd83df8b6577bb2308e0864574d153d8"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByNameILikeAndTagParams:
@@ -2115,7 +2918,7 @@ class SearchExperimentsByNameILikeAndTagIntegrityFailure:
 
 SearchExperimentsByNameILikeAndTagResult: TypeAlias = SearchExperimentsByNameILikeAndTagFound | SearchExperimentsByNameILikeAndTagIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_NAME_ILIKE_AND_TAG_AND_GATEWAY_IS_NULL_QUERY_PLAN_HASH: Final[str] = "4025a6d647ab2af86bfebe5f10ce3f107bb9845e9e80b10e2c70a11b7a15f317"
+SEARCH_EXPERIMENTS_BY_NAME_ILIKE_AND_TAG_AND_GATEWAY_IS_NULL_QUERY_PLAN_HASH: Final[str] = "36800571e1e86b749a5a2fe8ac6e0d7e108c67cf3353532a208f4cb4b7804ee3"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByNameILikeAndTagAndGatewayIsNullParams:
@@ -2168,7 +2971,7 @@ class SearchExperimentsByNameILikeAndTagAndGatewayIsNullIntegrityFailure:
 
 SearchExperimentsByNameILikeAndTagAndGatewayIsNullResult: TypeAlias = SearchExperimentsByNameILikeAndTagAndGatewayIsNullFound | SearchExperimentsByNameILikeAndTagAndGatewayIsNullIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_NAME_ILIKE_AND_TAG_IS_NOT_NULL_QUERY_PLAN_HASH: Final[str] = "36f63ca33b3c1c3b3ab125c368e9c25a2b61b76ca3a0e88f7849779311055dbb"
+SEARCH_EXPERIMENTS_BY_NAME_ILIKE_AND_TAG_IS_NOT_NULL_QUERY_PLAN_HASH: Final[str] = "1621e51252231cbb8003f93a675a502fd28d0400ab17e66e54294af4e2f3a4c6"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByNameILikeAndTagIsNotNullParams:
@@ -2220,7 +3023,7 @@ class SearchExperimentsByNameILikeAndTagIsNotNullIntegrityFailure:
 
 SearchExperimentsByNameILikeAndTagIsNotNullResult: TypeAlias = SearchExperimentsByNameILikeAndTagIsNotNullFound | SearchExperimentsByNameILikeAndTagIsNotNullIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_NAME_LIKE_QUERY_PLAN_HASH: Final[str] = "57541d67a0d05043516fe085aed95632f92ed73d61228daff0a9805d2d6fa4ae"
+SEARCH_EXPERIMENTS_BY_NAME_LIKE_QUERY_PLAN_HASH: Final[str] = "d973d0937a9199851cc717438485577953dd202a10908dea256a04b1b5df826b"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByNameLikeParams:
@@ -2271,7 +3074,7 @@ class SearchExperimentsByNameLikeIntegrityFailure:
 
 SearchExperimentsByNameLikeResult: TypeAlias = SearchExperimentsByNameLikeFound | SearchExperimentsByNameLikeIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_NAME_LIKE_AND_GATEWAY_IS_NULL_QUERY_PLAN_HASH: Final[str] = "da7ec2d370fa6c47f400aaebb5372ff1fbdc86a404c6b580ca7c94caa5089f56"
+SEARCH_EXPERIMENTS_BY_NAME_LIKE_AND_GATEWAY_IS_NULL_QUERY_PLAN_HASH: Final[str] = "ede4f6c6f27731b7ba9afc642d260ddb72d78404df39a74fafa03f5243730fd0"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByNameLikeAndGatewayIsNullParams:
@@ -2322,7 +3125,7 @@ class SearchExperimentsByNameLikeAndGatewayIsNullIntegrityFailure:
 
 SearchExperimentsByNameLikeAndGatewayIsNullResult: TypeAlias = SearchExperimentsByNameLikeAndGatewayIsNullFound | SearchExperimentsByNameLikeAndGatewayIsNullIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_NAME_LIKE_AND_TAG_QUERY_PLAN_HASH: Final[str] = "b8dc4c5c720e4ecbdaeef9efc95aeadc5cc7e5ab71e574cf82ac49253bebc57d"
+SEARCH_EXPERIMENTS_BY_NAME_LIKE_AND_TAG_QUERY_PLAN_HASH: Final[str] = "a6ef5022c999bf515c985808dace4a067c1a6d31e558109e36965f3526ba1bd7"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByNameLikeAndTagParams:
@@ -2375,7 +3178,7 @@ class SearchExperimentsByNameLikeAndTagIntegrityFailure:
 
 SearchExperimentsByNameLikeAndTagResult: TypeAlias = SearchExperimentsByNameLikeAndTagFound | SearchExperimentsByNameLikeAndTagIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_NAME_NOT_EQUAL_QUERY_PLAN_HASH: Final[str] = "316e7a5c9891dbd75769a6c36910c06b8440eb85c05e2f7c587595d3ddf6f23d"
+SEARCH_EXPERIMENTS_BY_NAME_NOT_EQUAL_QUERY_PLAN_HASH: Final[str] = "5f1371b2cae54aec12889e5a0a41fa55e3672dca7096f8733dc94b5597ac8916"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByNameNotEqualParams:
@@ -2426,7 +3229,7 @@ class SearchExperimentsByNameNotEqualIntegrityFailure:
 
 SearchExperimentsByNameNotEqualResult: TypeAlias = SearchExperimentsByNameNotEqualFound | SearchExperimentsByNameNotEqualIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_NAME_NOT_EQUAL_AND_TAG_IS_NULL_QUERY_PLAN_HASH: Final[str] = "8795d5c42ad9a5c0bf3ec7288ba61ca74b0447c0229b26f64b46e9eec61fdc9a"
+SEARCH_EXPERIMENTS_BY_NAME_NOT_EQUAL_AND_TAG_IS_NULL_QUERY_PLAN_HASH: Final[str] = "30acacd682958177c3fecdd27aba80365d51c5b783bfc0b4bd6c6044140ad364"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByNameNotEqualAndTagIsNullParams:
@@ -2478,7 +3281,7 @@ class SearchExperimentsByNameNotEqualAndTagIsNullIntegrityFailure:
 
 SearchExperimentsByNameNotEqualAndTagIsNullResult: TypeAlias = SearchExperimentsByNameNotEqualAndTagIsNullFound | SearchExperimentsByNameNotEqualAndTagIsNullIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_TAG_QUERY_PLAN_HASH: Final[str] = "e54c72205b169131acccdf5df9e00a4ba232807ae287786e03dab5e6d9a5f0b0"
+SEARCH_EXPERIMENTS_BY_TAG_QUERY_PLAN_HASH: Final[str] = "6a20738f2c1d7c7df353233cb8b93436ad2e426165a9257aa6f06550ddc324de"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByTagParams:
@@ -2530,7 +3333,7 @@ class SearchExperimentsByTagIntegrityFailure:
 
 SearchExperimentsByTagResult: TypeAlias = SearchExperimentsByTagFound | SearchExperimentsByTagIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_TAG_AND_GATEWAY_IS_NULL_QUERY_PLAN_HASH: Final[str] = "e636d7202aa65920d87a060e12392263bfc260e5eb91a9fafc823a5a00934ac8"
+SEARCH_EXPERIMENTS_BY_TAG_AND_GATEWAY_IS_NULL_QUERY_PLAN_HASH: Final[str] = "9e9b7c06f4761f7af6218dc2cd911f45005e20630cf473d2a85556e7d2da5034"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByTagAndGatewayIsNullParams:
@@ -2582,7 +3385,7 @@ class SearchExperimentsByTagAndGatewayIsNullIntegrityFailure:
 
 SearchExperimentsByTagAndGatewayIsNullResult: TypeAlias = SearchExperimentsByTagAndGatewayIsNullFound | SearchExperimentsByTagAndGatewayIsNullIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_TAG_AND_TAG_IS_NOT_NULL_QUERY_PLAN_HASH: Final[str] = "3242c97d13335dabf53744860851ca27ec9c9812f154ecda00ba06275372cddd"
+SEARCH_EXPERIMENTS_BY_TAG_AND_TAG_IS_NOT_NULL_QUERY_PLAN_HASH: Final[str] = "b0c95cf0a913152e8748233daf878a542a6fa89d9de4845b11b8dc3280c0ebdb"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByTagAndTagIsNotNullParams:
@@ -2635,7 +3438,7 @@ class SearchExperimentsByTagAndTagIsNotNullIntegrityFailure:
 
 SearchExperimentsByTagAndTagIsNotNullResult: TypeAlias = SearchExperimentsByTagAndTagIsNotNullFound | SearchExperimentsByTagAndTagIsNotNullIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_TAG_ILIKE_QUERY_PLAN_HASH: Final[str] = "c0a30c5d6ad8c0da0116a6fc2825fc99e23ef3ff3c7a1952251a107312c5179a"
+SEARCH_EXPERIMENTS_BY_TAG_ILIKE_QUERY_PLAN_HASH: Final[str] = "532ecee2c14fa7376bb151fce3146d040322a4ac71705a8065607e96f8c087c0"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByTagILikeParams:
@@ -2687,7 +3490,7 @@ class SearchExperimentsByTagILikeIntegrityFailure:
 
 SearchExperimentsByTagILikeResult: TypeAlias = SearchExperimentsByTagILikeFound | SearchExperimentsByTagILikeIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_TAG_IS_NOT_NULL_QUERY_PLAN_HASH: Final[str] = "68c886dfca8d8fd6957180a1cbfe4ee27db87c9b1dccc2173cd281523aa3b42f"
+SEARCH_EXPERIMENTS_BY_TAG_IS_NOT_NULL_QUERY_PLAN_HASH: Final[str] = "1392467fac9205aeea8dd356c0039d855cecc78eef74beb5b2a360f655f0bcc1"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByTagIsNotNullParams:
@@ -2738,7 +3541,7 @@ class SearchExperimentsByTagIsNotNullIntegrityFailure:
 
 SearchExperimentsByTagIsNotNullResult: TypeAlias = SearchExperimentsByTagIsNotNullFound | SearchExperimentsByTagIsNotNullIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_TAG_IS_NOT_NULL_AND_GATEWAY_IS_NULL_QUERY_PLAN_HASH: Final[str] = "24d2f1463f9ba3c7d7da774a6512f9b41781f1bc53aab36ee2b58caef586c711"
+SEARCH_EXPERIMENTS_BY_TAG_IS_NOT_NULL_AND_GATEWAY_IS_NULL_QUERY_PLAN_HASH: Final[str] = "6081e48eb928a6cef79c0fb97713dbc35332972ab69020b98ddd82d34f287313"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByTagIsNotNullAndGatewayIsNullParams:
@@ -2789,7 +3592,7 @@ class SearchExperimentsByTagIsNotNullAndGatewayIsNullIntegrityFailure:
 
 SearchExperimentsByTagIsNotNullAndGatewayIsNullResult: TypeAlias = SearchExperimentsByTagIsNotNullAndGatewayIsNullFound | SearchExperimentsByTagIsNotNullAndGatewayIsNullIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_TAG_IS_NULL_QUERY_PLAN_HASH: Final[str] = "3238d2e6fef7793dd1d330f5e3d3c34604387fea5a47b772c8894584559862e7"
+SEARCH_EXPERIMENTS_BY_TAG_IS_NULL_QUERY_PLAN_HASH: Final[str] = "be0b70ebdc474823488a65c076e8d0dae667b4de79a9d5f0ef0470d56abaffad"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByTagIsNullParams:
@@ -2840,7 +3643,7 @@ class SearchExperimentsByTagIsNullIntegrityFailure:
 
 SearchExperimentsByTagIsNullResult: TypeAlias = SearchExperimentsByTagIsNullFound | SearchExperimentsByTagIsNullIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_TAG_LIKE_QUERY_PLAN_HASH: Final[str] = "43cc898ad6961fe41b98583978f86a618e815c07c8a21ea1cbd6e01092206142"
+SEARCH_EXPERIMENTS_BY_TAG_LIKE_QUERY_PLAN_HASH: Final[str] = "789ea2f037fedeae4254571ce102ff02d6eefe4d5c1b324cd766801b3fae6896"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByTagLikeParams:
@@ -2892,7 +3695,7 @@ class SearchExperimentsByTagLikeIntegrityFailure:
 
 SearchExperimentsByTagLikeResult: TypeAlias = SearchExperimentsByTagLikeFound | SearchExperimentsByTagLikeIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_TAG_NOT_EQUAL_QUERY_PLAN_HASH: Final[str] = "fdfe539ef74154aa80792b8461a8759edb46c074c0bbfcfedd3c7119b1d7c6d2"
+SEARCH_EXPERIMENTS_BY_TAG_NOT_EQUAL_QUERY_PLAN_HASH: Final[str] = "f74b9f2e3b5d2888cd77ddf3b1fd75a4d71c89a7997d4bace6e321723d5acfbc"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByTagNotEqualParams:
@@ -2944,7 +3747,7 @@ class SearchExperimentsByTagNotEqualIntegrityFailure:
 
 SearchExperimentsByTagNotEqualResult: TypeAlias = SearchExperimentsByTagNotEqualFound | SearchExperimentsByTagNotEqualIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_TAG_NOT_EQUAL_AND_GATEWAY_IS_NULL_QUERY_PLAN_HASH: Final[str] = "7f4f54bc8a62e971c66cff502c16bd0888e54cbcb112bcbe17545fba38ef44e0"
+SEARCH_EXPERIMENTS_BY_TAG_NOT_EQUAL_AND_GATEWAY_IS_NULL_QUERY_PLAN_HASH: Final[str] = "8e16ef3c6d7b8d86c2dca8e7a84572b843cc8d5d47f35976cb241d9d537a3871"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByTagNotEqualAndGatewayIsNullParams:
@@ -2996,7 +3799,7 @@ class SearchExperimentsByTagNotEqualAndGatewayIsNullIntegrityFailure:
 
 SearchExperimentsByTagNotEqualAndGatewayIsNullResult: TypeAlias = SearchExperimentsByTagNotEqualAndGatewayIsNullFound | SearchExperimentsByTagNotEqualAndGatewayIsNullIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_TWO_TAGS_QUERY_PLAN_HASH: Final[str] = "939255409df7a39d80a8d734d20d0d1cdf118561dfa676837487cc46cf5ef978"
+SEARCH_EXPERIMENTS_BY_TWO_TAGS_QUERY_PLAN_HASH: Final[str] = "0895a39c30867eb622ee22b690e472c1ca1d9c93adcc378e5f15a39c0970c5c8"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByTwoTagsParams:
@@ -3050,7 +3853,7 @@ class SearchExperimentsByTwoTagsIntegrityFailure:
 
 SearchExperimentsByTwoTagsResult: TypeAlias = SearchExperimentsByTwoTagsFound | SearchExperimentsByTwoTagsIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_TWO_TAGS_ILIKE_QUERY_PLAN_HASH: Final[str] = "b5abe55864e9872fc9028452eab5c39bd57d57f7212adc60e087bbdf2140d0f1"
+SEARCH_EXPERIMENTS_BY_TWO_TAGS_ILIKE_QUERY_PLAN_HASH: Final[str] = "4d1cb57b41c2f56e80e923610922e51e4a6cdd6e54a84d39e66f103a752bc571"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByTwoTagsILikeParams:
@@ -3104,7 +3907,7 @@ class SearchExperimentsByTwoTagsILikeIntegrityFailure:
 
 SearchExperimentsByTwoTagsILikeResult: TypeAlias = SearchExperimentsByTwoTagsILikeFound | SearchExperimentsByTwoTagsILikeIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_TWO_TAGS_IS_NULL_QUERY_PLAN_HASH: Final[str] = "7d95428616d832e63962b103fbf39dd99eabcb3a98c9140dd94a721f4d59b997"
+SEARCH_EXPERIMENTS_BY_TWO_TAGS_IS_NULL_QUERY_PLAN_HASH: Final[str] = "537a11e1c4b4f9872b94846659d5ad24cafc67ab6faf4ae3d786caba71312b3d"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByTwoTagsIsNullParams:
@@ -3156,7 +3959,7 @@ class SearchExperimentsByTwoTagsIsNullIntegrityFailure:
 
 SearchExperimentsByTwoTagsIsNullResult: TypeAlias = SearchExperimentsByTwoTagsIsNullFound | SearchExperimentsByTwoTagsIsNullIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_TWO_TAGS_NOT_EQUAL_QUERY_PLAN_HASH: Final[str] = "caad90a3b4b6a259bd30c5eccac521e33ae447676310159251cf5c49a1957f0f"
+SEARCH_EXPERIMENTS_BY_TWO_TAGS_NOT_EQUAL_QUERY_PLAN_HASH: Final[str] = "579640f8741ceebde708dca90c72994fb64ea853f0feeb8557b8a7537a145204"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByTwoTagsNotEqualParams:
@@ -3210,7 +4013,7 @@ class SearchExperimentsByTwoTagsNotEqualIntegrityFailure:
 
 SearchExperimentsByTwoTagsNotEqualResult: TypeAlias = SearchExperimentsByTwoTagsNotEqualFound | SearchExperimentsByTwoTagsNotEqualIntegrityFailure
 
-SEARCH_LOGGED_MODELS_QUERY_PLAN_HASH: Final[str] = "7cde2b1f6657353fb984e83054d2879c242508870f6c8658efdbbc5052ba0ed4"
+SEARCH_LOGGED_MODELS_QUERY_PLAN_HASH: Final[str] = "7272a54047e73cee8af4ff74e111c2cfec933b235a4f233016b36762d7841db8"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchLoggedModelsParams:
@@ -3264,7 +4067,7 @@ class SearchLoggedModelsIntegrityFailure:
 
 SearchLoggedModelsResult: TypeAlias = SearchLoggedModelsFound | SearchLoggedModelsIntegrityFailure
 
-SEARCH_MCPACCESS_ENDPOINTS_QUERY_PLAN_HASH: Final[str] = "5389ea7fb6f9ad3592839416053f958900e9a293bc7eb7927c13893785c5373d"
+SEARCH_MCPACCESS_ENDPOINTS_QUERY_PLAN_HASH: Final[str] = "2f8c2a53f22199744b9e0ab4282b4ffd4e56a3b06d7be9fe3dfab0b8c64e063b"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchMCPAccessEndpointsParams:
@@ -3314,7 +4117,7 @@ class SearchMCPAccessEndpointsIntegrityFailure:
 
 SearchMCPAccessEndpointsResult: TypeAlias = SearchMCPAccessEndpointsFound | SearchMCPAccessEndpointsIntegrityFailure
 
-SEARCH_MCPSERVERS_QUERY_PLAN_HASH: Final[str] = "66dda9dd11a5fb2bfeec075a146d524a9135d2608c560ff97b62f8464f409076"
+SEARCH_MCPSERVERS_QUERY_PLAN_HASH: Final[str] = "417220791c23fab0df4db7f216f472d878987e4ea278a9694a75ba835ca7a4b8"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchMCPServersParams:
@@ -3364,7 +4167,7 @@ class SearchMCPServersIntegrityFailure:
 
 SearchMCPServersResult: TypeAlias = SearchMCPServersFound | SearchMCPServersIntegrityFailure
 
-SEARCH_MODEL_VERSIONS_QUERY_PLAN_HASH: Final[str] = "cef216b857cc8e81dc16f6429f07b2bb74993c5f0ac31965fe3bf360a69f508f"
+SEARCH_MODEL_VERSIONS_QUERY_PLAN_HASH: Final[str] = "e49fd8cea42f334bb3ed5bfd94410bdf89a2dbae80b85fe8ea8c608009bcfc1c"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchModelVersionsParams:
@@ -3418,7 +4221,7 @@ class SearchModelVersionsIntegrityFailure:
 
 SearchModelVersionsResult: TypeAlias = SearchModelVersionsFound | SearchModelVersionsIntegrityFailure
 
-SEARCH_REGISTERED_MODELS_QUERY_PLAN_HASH: Final[str] = "26d42bec491582c9668af7af606b979266be3f051101f3edb2579aa2792811d2"
+SEARCH_REGISTERED_MODELS_QUERY_PLAN_HASH: Final[str] = "104b3eba84ea4a25b00ff0e8707a9076792f2a31f4ae4fe41a4df5d8154e25f2"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchRegisteredModelsParams:
@@ -3465,7 +4268,7 @@ class SearchRegisteredModelsIntegrityFailure:
 
 SearchRegisteredModelsResult: TypeAlias = SearchRegisteredModelsFound | SearchRegisteredModelsIntegrityFailure
 
-SEARCH_RUNS_QUERY_PLAN_HASH: Final[str] = "0a84c52633f425343ae44cc5e29e2cf53d37ac5d9c85246b40dd6738bb3abf9d"
+SEARCH_RUNS_QUERY_PLAN_HASH: Final[str] = "28e3cfb80455ecbe79b7ec768da9c82589cf66d654b5e288a33f1c8f4ec82713"
 SEARCH_RUNS_EXPERIMENT_IDS_MAX_ITEMS: Final[int] = 1000
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -3520,7 +4323,7 @@ class SearchRunsIntegrityFailure:
 
 SearchRunsResult: TypeAlias = SearchRunsFound | SearchRunsIntegrityFailure
 
-SEARCH_RUNS_BY_LIFECYCLE_QUERY_PLAN_HASH: Final[str] = "6901b7709848df0d38ce86ae6291033bc47200088dbdece791d78eea61c96c93"
+SEARCH_RUNS_BY_LIFECYCLE_QUERY_PLAN_HASH: Final[str] = "03cfb0e4f5e88335046ca57aa8d4f6c1912a606a22e11d48dc3e59780c6f2f5e"
 SEARCH_RUNS_BY_LIFECYCLE_EXPERIMENT_IDS_MAX_ITEMS: Final[int] = 1000
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -3576,7 +4379,7 @@ class SearchRunsByLifecycleIntegrityFailure:
 
 SearchRunsByLifecycleResult: TypeAlias = SearchRunsByLifecycleFound | SearchRunsByLifecycleIntegrityFailure
 
-SEARCH_TRACES_QUERY_PLAN_HASH: Final[str] = "30ce2fdeaab6e1b09279b9ae672fe307a4377eee160e3f5fefcd70d2dfa854fe"
+SEARCH_TRACES_QUERY_PLAN_HASH: Final[str] = "77f7e09b13179a7fa5c80f4831e8381f68e35bc981f43d6ada4870873c177737"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchTracesParams:
@@ -3652,7 +4455,7 @@ class CreateExperimentInput:
     experiment_id: Annotated[int, "u64"]
     artifact_location: str | None
 
-CREATE_EXPERIMENT_PLAN_HASH: Final[str] = "b69bccbd6cff674a7e4813c2b451f9fa22328bc4f4997a7dad7ed9bb0de23148"
+CREATE_EXPERIMENT_PLAN_HASH: Final[str] = "9f81af14dfdfe20bc24811052ff1000864feb92dbaa12fa57cc6bba4acc68784"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class CreateExperimentExperimentExists:
     outcome: Literal["ExperimentExists"] = field(default="ExperimentExists", init=False)
@@ -3687,7 +4490,7 @@ class CreateExperimentWithTagsInput:
     experiment_id: Annotated[int, "u64"]
     artifact_location: str | None
 
-CREATE_EXPERIMENT_WITH_TAGS_PLAN_HASH: Final[str] = "5ad99260cb9b5fce82a0287133a8243c81a2465ba75d136880c8d70b99cda283"
+CREATE_EXPERIMENT_WITH_TAGS_PLAN_HASH: Final[str] = "8ff90a943b330c0dceb16d2ae825d54e24d7eaa881701059c0e7af63537e4c54"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class CreateExperimentWithTagsExperimentExists:
     outcome: Literal["ExperimentExists"] = field(default="ExperimentExists", init=False)
@@ -3744,7 +4547,7 @@ class CreateMCPServerEntityInput:
     last_updated_by: str | None
     last_updated_at_ms: Annotated[int, "i64"]
 
-CREATE_MCPSERVER_ENTITY_PLAN_HASH: Final[str] = "88ffca24fd5350b90929242c28a756d3a80f85e82c9a1947b71bff42a9a98cbc"
+CREATE_MCPSERVER_ENTITY_PLAN_HASH: Final[str] = "e7e7100e09c16c13c8df9cdca04637001a75ea8e7b6ddbdd84a45237be9fcd9c"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class CreateMCPServerEntityMCPServerExists:
     outcome: Literal["MCPServerExists"] = field(default="MCPServerExists", init=False)
@@ -3788,7 +4591,7 @@ class CreateMCPServerVersionEntityInput:
     packed_connect_options: bytes
     version_prerelease_sort_key: str
 
-CREATE_MCPSERVER_VERSION_ENTITY_PLAN_HASH: Final[str] = "3db98bd3f638e3a1ad41651b31194351953ca568f37aee3198d66958e664f599"
+CREATE_MCPSERVER_VERSION_ENTITY_PLAN_HASH: Final[str] = "b7851585d83b6eac1bd783a87fb085d756f36970faadabc406776dcd3ab3aaff"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class CreateMCPServerVersionEntityMCPServerVersionExists:
     outcome: Literal["MCPServerVersionExists"] = field(default="MCPServerVersionExists", init=False)
@@ -3823,7 +4626,7 @@ class CreateRegisteredModelEntityInput:
     creation_timestamp_ms: Annotated[int, "i64"]
     last_updated_timestamp_ms: Annotated[int, "i64"]
 
-CREATE_REGISTERED_MODEL_ENTITY_PLAN_HASH: Final[str] = "7c2a5c3ba23e29c0b64cb878844c74471ce48b6d6257265c2dbc03c5e88fa435"
+CREATE_REGISTERED_MODEL_ENTITY_PLAN_HASH: Final[str] = "acc5cf1a39946fc274459476be46d200644bd4f32080f69d67916429c67b03de"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class CreateRegisteredModelEntityRegisteredModelExists:
     outcome: Literal["RegisteredModelExists"] = field(default="RegisteredModelExists", init=False)
@@ -3946,7 +4749,7 @@ class DeleteExperimentInput:
     request_id: str = field(default_factory=lambda: str(__import__("uuid").uuid4()))
     experiment_id: Annotated[int, "u64"]
 
-DELETE_EXPERIMENT_PLAN_HASH: Final[str] = "5fdc8cfce8575e13c3c0246bc483485203309fa3cb7f5aade938762ef86ad3de"
+DELETE_EXPERIMENT_PLAN_HASH: Final[str] = "5d3242b0b92287a790aae5a07b5a2c71bfbb9fea06b0550e8c3077bfa925d42b"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class DeleteExperimentExperimentDeleted:
     experiment: Experiment
@@ -3979,7 +4782,7 @@ class DeleteExperimentTagInput:
     experiment_id: Annotated[int, "u64"]
     expected_revision: Annotated[int, "u64"]
 
-DELETE_EXPERIMENT_TAG_PLAN_HASH: Final[str] = "f60d737c31bbdbd97fdc0f3fa4ff3a41b27d48c50dd3e58d51998eadc813b4ce"
+DELETE_EXPERIMENT_TAG_PLAN_HASH: Final[str] = "073028f32af2e14baf5e18f8048311685c0e4e823bb856699331f6f014a4951a"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class DeleteExperimentTagExperimentStale:
     outcome: Literal["ExperimentStale"] = field(default="ExperimentStale", init=False)
@@ -4079,12 +4882,157 @@ class DeleteExperimentTagExperimentTagMissing:
 DeleteExperimentTagOutcome: TypeAlias = DeleteExperimentTagExperimentStale | DeleteExperimentTagExperimentMissing | DeleteExperimentTagExperimentInactive | DeleteExperimentTagExperimentTagDeleted | DeleteExperimentTagExperimentTagMissing
 
 @dataclass(frozen=True, slots=True, kw_only=True)
+class DeleteGatewayBudgetPolicyEntityInput:
+    request_id: str = field(default_factory=lambda: str(__import__("uuid").uuid4()))
+    budget_policy_id: str
+
+DELETE_GATEWAY_BUDGET_POLICY_ENTITY_PLAN_HASH: Final[str] = "3e72ff945d4ffa955c6603447b6b4a33c749205244c14a39053782d8c224add9"
+@dataclass(frozen=True, slots=True, kw_only=True)
+class DeleteGatewayBudgetPolicyEntityGatewayBudgetPolicyDeleted:
+    policy: GatewayBudgetPolicyEntity
+    outcome: Literal["GatewayBudgetPolicyDeleted"] = field(default="GatewayBudgetPolicyDeleted", init=False)
+
+    def is_gateway_budget_policy_deleted(self) -> bool:
+        return True
+
+    def is_gateway_budget_policy_missing(self) -> bool:
+        return False
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class DeleteGatewayBudgetPolicyEntityGatewayBudgetPolicyMissing:
+    outcome: Literal["GatewayBudgetPolicyMissing"] = field(default="GatewayBudgetPolicyMissing", init=False)
+
+    def is_gateway_budget_policy_deleted(self) -> bool:
+        return False
+
+    def is_gateway_budget_policy_missing(self) -> bool:
+        return True
+
+DeleteGatewayBudgetPolicyEntityOutcome: TypeAlias = DeleteGatewayBudgetPolicyEntityGatewayBudgetPolicyDeleted | DeleteGatewayBudgetPolicyEntityGatewayBudgetPolicyMissing
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class DeleteGatewayEndpointEntityInput:
+    request_id: str = field(default_factory=lambda: str(__import__("uuid").uuid4()))
+    endpoint_id: str
+
+DELETE_GATEWAY_ENDPOINT_ENTITY_PLAN_HASH: Final[str] = "de87db02af0c0f2b0634b40ce7a96db9cdb4385485c7070c3ebeeda66ea1dd4a"
+@dataclass(frozen=True, slots=True, kw_only=True)
+class DeleteGatewayEndpointEntityGatewayEndpointDeleted:
+    endpoint: GatewayEndpointEntity
+    outcome: Literal["GatewayEndpointDeleted"] = field(default="GatewayEndpointDeleted", init=False)
+
+    def is_gateway_endpoint_deleted(self) -> bool:
+        return True
+
+    def is_gateway_endpoint_missing(self) -> bool:
+        return False
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class DeleteGatewayEndpointEntityGatewayEndpointMissing:
+    outcome: Literal["GatewayEndpointMissing"] = field(default="GatewayEndpointMissing", init=False)
+
+    def is_gateway_endpoint_deleted(self) -> bool:
+        return False
+
+    def is_gateway_endpoint_missing(self) -> bool:
+        return True
+
+DeleteGatewayEndpointEntityOutcome: TypeAlias = DeleteGatewayEndpointEntityGatewayEndpointDeleted | DeleteGatewayEndpointEntityGatewayEndpointMissing
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class DeleteGatewayGuardrailEntityInput:
+    request_id: str = field(default_factory=lambda: str(__import__("uuid").uuid4()))
+    guardrail_id: str
+
+DELETE_GATEWAY_GUARDRAIL_ENTITY_PLAN_HASH: Final[str] = "4a9085cb1a5dede58f5e55689009a908d6913613484de12427bfa1bb0bc8f461"
+@dataclass(frozen=True, slots=True, kw_only=True)
+class DeleteGatewayGuardrailEntityGatewayGuardrailDeleted:
+    guardrail: GatewayGuardrailEntity
+    outcome: Literal["GatewayGuardrailDeleted"] = field(default="GatewayGuardrailDeleted", init=False)
+
+    def is_gateway_guardrail_deleted(self) -> bool:
+        return True
+
+    def is_gateway_guardrail_missing(self) -> bool:
+        return False
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class DeleteGatewayGuardrailEntityGatewayGuardrailMissing:
+    outcome: Literal["GatewayGuardrailMissing"] = field(default="GatewayGuardrailMissing", init=False)
+
+    def is_gateway_guardrail_deleted(self) -> bool:
+        return False
+
+    def is_gateway_guardrail_missing(self) -> bool:
+        return True
+
+DeleteGatewayGuardrailEntityOutcome: TypeAlias = DeleteGatewayGuardrailEntityGatewayGuardrailDeleted | DeleteGatewayGuardrailEntityGatewayGuardrailMissing
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class DeleteGatewayModelDefinitionEntityInput:
+    request_id: str = field(default_factory=lambda: str(__import__("uuid").uuid4()))
+    model_definition_id: str
+
+DELETE_GATEWAY_MODEL_DEFINITION_ENTITY_PLAN_HASH: Final[str] = "2f004b0fa2710c698cda047e3a7c3da6cf8978a268e364ede3e9cb1b56634c7f"
+@dataclass(frozen=True, slots=True, kw_only=True)
+class DeleteGatewayModelDefinitionEntityGatewayModelDefinitionDeleted:
+    model_def: GatewayModelDefinitionEntity
+    outcome: Literal["GatewayModelDefinitionDeleted"] = field(default="GatewayModelDefinitionDeleted", init=False)
+
+    def is_gateway_model_definition_deleted(self) -> bool:
+        return True
+
+    def is_gateway_model_definition_missing(self) -> bool:
+        return False
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class DeleteGatewayModelDefinitionEntityGatewayModelDefinitionMissing:
+    outcome: Literal["GatewayModelDefinitionMissing"] = field(default="GatewayModelDefinitionMissing", init=False)
+
+    def is_gateway_model_definition_deleted(self) -> bool:
+        return False
+
+    def is_gateway_model_definition_missing(self) -> bool:
+        return True
+
+DeleteGatewayModelDefinitionEntityOutcome: TypeAlias = DeleteGatewayModelDefinitionEntityGatewayModelDefinitionDeleted | DeleteGatewayModelDefinitionEntityGatewayModelDefinitionMissing
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class DeleteGatewaySecretEntityInput:
+    secret_id: str
+    request_id: str = field(default_factory=lambda: str(__import__("uuid").uuid4()))
+
+DELETE_GATEWAY_SECRET_ENTITY_PLAN_HASH: Final[str] = "7ad0801e59f423b7d0b02b582b205c01ec104e11a0562ea1fb43d4605a5a8a6e"
+@dataclass(frozen=True, slots=True, kw_only=True)
+class DeleteGatewaySecretEntityGatewaySecretDeleted:
+    secret: GatewaySecretEntity
+    outcome: Literal["GatewaySecretDeleted"] = field(default="GatewaySecretDeleted", init=False)
+
+    def is_gateway_secret_deleted(self) -> bool:
+        return True
+
+    def is_gateway_secret_missing(self) -> bool:
+        return False
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class DeleteGatewaySecretEntityGatewaySecretMissing:
+    outcome: Literal["GatewaySecretMissing"] = field(default="GatewaySecretMissing", init=False)
+
+    def is_gateway_secret_deleted(self) -> bool:
+        return False
+
+    def is_gateway_secret_missing(self) -> bool:
+        return True
+
+DeleteGatewaySecretEntityOutcome: TypeAlias = DeleteGatewaySecretEntityGatewaySecretDeleted | DeleteGatewaySecretEntityGatewaySecretMissing
+
+@dataclass(frozen=True, slots=True, kw_only=True)
 class DeleteLoggedModelEntityInput:
     model_id: str
     request_id: str = field(default_factory=lambda: str(__import__("uuid").uuid4()))
     experiment_id: Annotated[int, "u64"]
 
-DELETE_LOGGED_MODEL_ENTITY_PLAN_HASH: Final[str] = "b3b4cbb03fecd87305216218c9be33e8873ee1076f968c430fd72af04cb487c6"
+DELETE_LOGGED_MODEL_ENTITY_PLAN_HASH: Final[str] = "f0a9da1b7ce5bfbf834f31c3d31035660ebe1e0b2f0e6c605921530b792ce6f0"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class DeleteLoggedModelEntityLoggedModelDeleted:
     model: LoggedModelEntity
@@ -4113,7 +5061,7 @@ class DeleteMCPAccessEndpointEntityInput:
     request_id: str = field(default_factory=lambda: str(__import__("uuid").uuid4()))
     endpoint_id: str
 
-DELETE_MCPACCESS_ENDPOINT_ENTITY_PLAN_HASH: Final[str] = "cf5c74caec58d87e8daaa07e233f1a5c1359f4e3da3e3596236c5e9a03af2077"
+DELETE_MCPACCESS_ENDPOINT_ENTITY_PLAN_HASH: Final[str] = "a446a1669d61731a2d03319600934801a64ed78f3ec485ee8ff8c81d0e7f0fac"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class DeleteMCPAccessEndpointEntityMCPAccessEndpointDeleted:
     endpoint: MCPAccessEndpointEntity
@@ -4142,7 +5090,7 @@ class DeleteMCPServerEntityInput:
     name: str
     request_id: str = field(default_factory=lambda: str(__import__("uuid").uuid4()))
 
-DELETE_MCPSERVER_ENTITY_PLAN_HASH: Final[str] = "2ae252f5d9b5d0abf663fbd2cfd0344dfa281f1115e470bcda03c0c0381e9fcf"
+DELETE_MCPSERVER_ENTITY_PLAN_HASH: Final[str] = "471490462d6bc38196bfc0eb710921cd1257b53a865cd1c90358e0726ba85f99"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class DeleteMCPServerEntityMCPServerDeleted:
     server: MCPServerEntity
@@ -4172,7 +5120,7 @@ class DeleteModelVersionEntityInput:
     request_id: str = field(default_factory=lambda: str(__import__("uuid").uuid4()))
     version_num: Annotated[int, "u64"]
 
-DELETE_MODEL_VERSION_ENTITY_PLAN_HASH: Final[str] = "24a40bad4393b5c2c2efa7964f1511d45c9450d7338db303c7a7ce3b5185e553"
+DELETE_MODEL_VERSION_ENTITY_PLAN_HASH: Final[str] = "b1aacba7822e006a8454d030d3ae2ecfb4af0e8ae629f10a6d7dcf9d56b1d900"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class DeleteModelVersionEntityModelVersionDeleted:
     model_version: ModelVersionEntity
@@ -4201,7 +5149,7 @@ class DeleteRegisteredModelEntityInput:
     name: str
     request_id: str = field(default_factory=lambda: str(__import__("uuid").uuid4()))
 
-DELETE_REGISTERED_MODEL_ENTITY_PLAN_HASH: Final[str] = "7fabc76a91a985cb8c5925fbdfea5937655ae6761c98f7814f1f018c144912f6"
+DELETE_REGISTERED_MODEL_ENTITY_PLAN_HASH: Final[str] = "939fcbfcd1bf84570ecf4e5fb760b1e1b150047218677d51c29c2318d4704393"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class DeleteRegisteredModelEntityRegisteredModelDeleted:
     model: RegisteredModelEntity
@@ -4256,12 +5204,70 @@ class DeleteRunRunMissing:
 DeleteRunOutcome: TypeAlias = DeleteRunRunDeleted | DeleteRunRunMissing
 
 @dataclass(frozen=True, slots=True, kw_only=True)
+class DeleteScorerEntityInput:
+    scorer_id: str
+    request_id: str = field(default_factory=lambda: str(__import__("uuid").uuid4()))
+
+DELETE_SCORER_ENTITY_PLAN_HASH: Final[str] = "5fb991ebf00468fa879007e0ddc6b4f0b84e36780f08fec63f678b3f3d3a679c"
+@dataclass(frozen=True, slots=True, kw_only=True)
+class DeleteScorerEntityScorerDeleted:
+    scorer: ScorerEntity
+    outcome: Literal["ScorerDeleted"] = field(default="ScorerDeleted", init=False)
+
+    def is_scorer_deleted(self) -> bool:
+        return True
+
+    def is_scorer_missing(self) -> bool:
+        return False
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class DeleteScorerEntityScorerMissing:
+    outcome: Literal["ScorerMissing"] = field(default="ScorerMissing", init=False)
+
+    def is_scorer_deleted(self) -> bool:
+        return False
+
+    def is_scorer_missing(self) -> bool:
+        return True
+
+DeleteScorerEntityOutcome: TypeAlias = DeleteScorerEntityScorerDeleted | DeleteScorerEntityScorerMissing
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class DeleteServerJobEntityInput:
+    job_id: str
+    request_id: str = field(default_factory=lambda: str(__import__("uuid").uuid4()))
+
+DELETE_SERVER_JOB_ENTITY_PLAN_HASH: Final[str] = "07e74e1b6cb6a22a5226ecbded1e1b6c54313c1ced17932beb42fb936d95aa6c"
+@dataclass(frozen=True, slots=True, kw_only=True)
+class DeleteServerJobEntityServerJobDeleted:
+    job: ServerJobEntity
+    outcome: Literal["ServerJobDeleted"] = field(default="ServerJobDeleted", init=False)
+
+    def is_server_job_deleted(self) -> bool:
+        return True
+
+    def is_server_job_missing(self) -> bool:
+        return False
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class DeleteServerJobEntityServerJobMissing:
+    outcome: Literal["ServerJobMissing"] = field(default="ServerJobMissing", init=False)
+
+    def is_server_job_deleted(self) -> bool:
+        return False
+
+    def is_server_job_missing(self) -> bool:
+        return True
+
+DeleteServerJobEntityOutcome: TypeAlias = DeleteServerJobEntityServerJobDeleted | DeleteServerJobEntityServerJobMissing
+
+@dataclass(frozen=True, slots=True, kw_only=True)
 class DeleteTraceInput:
     trace_id: str
     request_id: str = field(default_factory=lambda: str(__import__("uuid").uuid4()))
     experiment_id: Annotated[int, "u64"]
 
-DELETE_TRACE_PLAN_HASH: Final[str] = "b0140928262671831dc78c73c58bc020d708bad24be25267b67939bb867f0bb7"
+DELETE_TRACE_PLAN_HASH: Final[str] = "ca23204312659df959b67d23449fe8eba4701e7dbd61741e1025bd395dd08540"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class DeleteTraceTraceDeleted:
     trace: Trace
@@ -4292,7 +5298,7 @@ class DeleteTraceAssessmentInput:
     assessment_id: str
     experiment_id: Annotated[int, "u64"]
 
-DELETE_TRACE_ASSESSMENT_PLAN_HASH: Final[str] = "52c18b17294121bc56a23382c842e0e2dc2250694633a8ac7218e4708a6ceee2"
+DELETE_TRACE_ASSESSMENT_PLAN_HASH: Final[str] = "563d82b2d0167413c0f9fdaf3a0c273374bd2a1896b7781515d0b64bac02313b"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class DeleteTraceAssessmentTraceAssessmentDeleted:
     assessment: TraceAssessment
@@ -4323,7 +5329,7 @@ class DeleteTraceSpanInput:
     request_id: str = field(default_factory=lambda: str(__import__("uuid").uuid4()))
     experiment_id: Annotated[int, "u64"]
 
-DELETE_TRACE_SPAN_PLAN_HASH: Final[str] = "0e20b683d5d727ce58e47fcd9c7297b031dc3f2ce96560e5833318f568044947"
+DELETE_TRACE_SPAN_PLAN_HASH: Final[str] = "429b9af33761d96cff9a8da13424f54d198e6dd58e3edd4d22214e993d848be6"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class DeleteTraceSpanTraceSpanDeleted:
     span: TraceSpan
@@ -4378,7 +5384,7 @@ class IngestTraceSpansInput:
     cache_read_input_tokens: Annotated[int, "i64"]
     cache_creation_input_tokens: Annotated[int, "i64"]
 
-INGEST_TRACE_SPANS_PLAN_HASH: Final[str] = "093b533d3b67410e5534bbea91333f57d5bdca596dea370109bd7c16379d1936"
+INGEST_TRACE_SPANS_PLAN_HASH: Final[str] = "e2fc2688307ab04a801d3fc1b9a02dd6a091507b05b64ba1a5395b2c84e3205d"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class IngestTraceSpansTraceSpansIngested:
     trace: Trace
@@ -4507,7 +5513,7 @@ class RenameExperimentInput:
     name_digest: bytes
     experiment_id: Annotated[int, "u64"]
 
-RENAME_EXPERIMENT_PLAN_HASH: Final[str] = "68e43b0034df511250ba9888a9902b25b1c7c243130a3cccfe6623be3b6e3f8d"
+RENAME_EXPERIMENT_PLAN_HASH: Final[str] = "09d08a6563af026692a04a34d0e32dc000bed9bf6919563ad5ed8d9aa80179a3"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class RenameExperimentExperimentMissing:
     outcome: Literal["ExperimentMissing"] = field(default="ExperimentMissing", init=False)
@@ -4536,7 +5542,7 @@ class RestoreExperimentInput:
     request_id: str = field(default_factory=lambda: str(__import__("uuid").uuid4()))
     experiment_id: Annotated[int, "u64"]
 
-RESTORE_EXPERIMENT_PLAN_HASH: Final[str] = "e25b8693eb0501ff4fd45394f51685b4d440fb61a9c3ddbb515cc114fe1cb900"
+RESTORE_EXPERIMENT_PLAN_HASH: Final[str] = "9b6773b409c8d7fe6c1b8d0b9f9024e00a5238130a2246382d3e11d99bcb7677"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class RestoreExperimentExperimentMissing:
     outcome: Literal["ExperimentMissing"] = field(default="ExperimentMissing", init=False)
@@ -4602,7 +5608,7 @@ class SetExperimentTagInput:
     experiment_id: Annotated[int, "u64"]
     expected_revision: Annotated[int, "u64"]
 
-SET_EXPERIMENT_TAG_PLAN_HASH: Final[str] = "cad0fc7c6dee721f3252253f8af4c6ce59926c263a084727201d29262d027ab3"
+SET_EXPERIMENT_TAG_PLAN_HASH: Final[str] = "ef2bd5b9d103963fd7219554dea19fb1e984b20b48baaff3acb8b67279f9a424"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SetExperimentTagExperimentStale:
     outcome: Literal["ExperimentStale"] = field(default="ExperimentStale", init=False)
@@ -4752,6 +5758,139 @@ class UpdateRunInfoRunInactive:
 UpdateRunInfoOutcome: TypeAlias = UpdateRunInfoRunStale | UpdateRunInfoRunMissing | UpdateRunInfoRunUpdated | UpdateRunInfoRunInactive
 
 @dataclass(frozen=True, slots=True, kw_only=True)
+class UpsertGatewayBudgetPolicyEntityInput:
+    created_by: str | None
+    request_id: str = field(default_factory=lambda: str(__import__("uuid").uuid4()))
+    budget_unit: str
+    target_scope: str
+    target_value: str | None
+    budget_action: str
+    created_at_ms: Annotated[int, "i64"]
+    duration_unit: str
+    duration_value: Annotated[int, "i64"]
+    last_updated_by: str | None
+    budget_policy_id: str
+    budget_amount_json: str
+    last_updated_at_ms: Annotated[int, "i64"]
+
+UPSERT_GATEWAY_BUDGET_POLICY_ENTITY_PLAN_HASH: Final[str] = "c5bdc573d6d4e01ae83997d6a96e871034d28c99720d9c0ae168b8756bea5616"
+@dataclass(frozen=True, slots=True, kw_only=True)
+class UpsertGatewayBudgetPolicyEntityGatewayBudgetPolicyUpserted:
+    policy: GatewayBudgetPolicyEntity
+    outcome: Literal["GatewayBudgetPolicyUpserted"] = field(default="GatewayBudgetPolicyUpserted", init=False)
+
+    def is_gateway_budget_policy_upserted(self) -> bool:
+        return True
+
+UpsertGatewayBudgetPolicyEntityOutcome: TypeAlias = UpsertGatewayBudgetPolicyEntityGatewayBudgetPolicyUpserted
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class UpsertGatewayEndpointEntityInput:
+    name: str
+    created_by: str | None
+    request_id: str = field(default_factory=lambda: str(__import__("uuid").uuid4()))
+    endpoint_id: str
+    packed_tags: bytes
+    created_at_ms: Annotated[int, "i64"]
+    experiment_id: Annotated[int, "u64"] | None
+    usage_tracking: bool
+    last_updated_by: str | None
+    packed_bindings: bytes
+    routing_strategy: str | None
+    last_updated_at_ms: Annotated[int, "i64"]
+    fallback_config_json: str | None
+    packed_model_mappings: bytes
+    packed_guardrail_configs: bytes
+
+UPSERT_GATEWAY_ENDPOINT_ENTITY_PLAN_HASH: Final[str] = "dc15d9321ad267a34310e255dea425795da3ab171a532d4a77accc90005d79ef"
+@dataclass(frozen=True, slots=True, kw_only=True)
+class UpsertGatewayEndpointEntityGatewayEndpointUpserted:
+    endpoint: GatewayEndpointEntity
+    outcome: Literal["GatewayEndpointUpserted"] = field(default="GatewayEndpointUpserted", init=False)
+
+    def is_gateway_endpoint_upserted(self) -> bool:
+        return True
+
+UpsertGatewayEndpointEntityOutcome: TypeAlias = UpsertGatewayEndpointEntityGatewayEndpointUpserted
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class UpsertGatewayGuardrailEntityInput:
+    name: str
+    stage: str
+    action: str
+    scorer_id: str
+    created_by: str | None
+    request_id: str = field(default_factory=lambda: str(__import__("uuid").uuid4()))
+    guardrail_id: str
+    created_at_ms: Annotated[int, "i64"]
+    scorer_version: Annotated[int, "i64"]
+    last_updated_by: str | None
+    action_endpoint_id: str | None
+    last_updated_at_ms: Annotated[int, "i64"]
+
+UPSERT_GATEWAY_GUARDRAIL_ENTITY_PLAN_HASH: Final[str] = "bfb192627a936656adff27bc2c675481aaafc6e3053edc288b20a8acc9d6e034"
+@dataclass(frozen=True, slots=True, kw_only=True)
+class UpsertGatewayGuardrailEntityGatewayGuardrailUpserted:
+    guardrail: GatewayGuardrailEntity
+    outcome: Literal["GatewayGuardrailUpserted"] = field(default="GatewayGuardrailUpserted", init=False)
+
+    def is_gateway_guardrail_upserted(self) -> bool:
+        return True
+
+UpsertGatewayGuardrailEntityOutcome: TypeAlias = UpsertGatewayGuardrailEntityGatewayGuardrailUpserted
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class UpsertGatewayModelDefinitionEntityInput:
+    name: str
+    provider: str
+    secret_id: str | None
+    created_by: str | None
+    model_name: str
+    request_id: str = field(default_factory=lambda: str(__import__("uuid").uuid4()))
+    created_at_ms: Annotated[int, "i64"]
+    last_updated_by: str | None
+    last_updated_at_ms: Annotated[int, "i64"]
+    model_definition_id: str
+
+UPSERT_GATEWAY_MODEL_DEFINITION_ENTITY_PLAN_HASH: Final[str] = "88773fb5a0f09874724aa313bd00eccaf18334201d9ef40513d63b18a67112bd"
+@dataclass(frozen=True, slots=True, kw_only=True)
+class UpsertGatewayModelDefinitionEntityGatewayModelDefinitionUpserted:
+    model_def: GatewayModelDefinitionEntity
+    outcome: Literal["GatewayModelDefinitionUpserted"] = field(default="GatewayModelDefinitionUpserted", init=False)
+
+    def is_gateway_model_definition_upserted(self) -> bool:
+        return True
+
+UpsertGatewayModelDefinitionEntityOutcome: TypeAlias = UpsertGatewayModelDefinitionEntityGatewayModelDefinitionUpserted
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class UpsertGatewaySecretEntityInput:
+    provider: str | None
+    secret_id: str
+    created_by: str | None
+    request_id: str = field(default_factory=lambda: str(__import__("uuid").uuid4()))
+    kek_version: Annotated[int, "i64"]
+    secret_name: str
+    wrapped_dek: bytes
+    created_at_ms: Annotated[int, "i64"]
+    encrypted_value: bytes
+    last_updated_by: str | None
+    auth_config_json: str | None
+    masked_value_json: str
+    last_updated_at_ms: Annotated[int, "i64"]
+
+UPSERT_GATEWAY_SECRET_ENTITY_PLAN_HASH: Final[str] = "4e30b9cf9d83276094497ceac2b62c37b8f9e5184857972c8c3216849f9eece4"
+@dataclass(frozen=True, slots=True, kw_only=True)
+class UpsertGatewaySecretEntityGatewaySecretUpserted:
+    secret: GatewaySecretEntity
+    outcome: Literal["GatewaySecretUpserted"] = field(default="GatewaySecretUpserted", init=False)
+
+    def is_gateway_secret_upserted(self) -> bool:
+        return True
+
+UpsertGatewaySecretEntityOutcome: TypeAlias = UpsertGatewaySecretEntityGatewaySecretUpserted
+
+@dataclass(frozen=True, slots=True, kw_only=True)
 class UpsertLoggedModelInput:
     name: str
     status: str
@@ -4769,7 +5908,7 @@ class UpsertLoggedModelInput:
     creation_timestamp_ms: Annotated[int, "i64"]
     last_updated_timestamp_ms: Annotated[int, "i64"]
 
-UPSERT_LOGGED_MODEL_PLAN_HASH: Final[str] = "3a518e8dada61483969fc4a02eebdba196b2a55c00c6358939233eb20239fbfb"
+UPSERT_LOGGED_MODEL_PLAN_HASH: Final[str] = "b35659e94114a1bcde508cddd2ff32f9219ac97983dc3013cb4ac31087e61780"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class UpsertLoggedModelLoggedModelUpserted:
     model: LoggedModelEntity
@@ -4794,7 +5933,7 @@ class UpsertMCPAccessEndpointEntityInput:
     last_updated_by: str | None
     last_updated_at_ms: Annotated[int, "i64"]
 
-UPSERT_MCPACCESS_ENDPOINT_ENTITY_PLAN_HASH: Final[str] = "436e8cd9d4445e74611fbd778cf50a4a74c39f6fb1c80d31b8c23fcd1f1b01b7"
+UPSERT_MCPACCESS_ENDPOINT_ENTITY_PLAN_HASH: Final[str] = "db547541101de6de100d221a348d056d1ef55e643f9d53f3c994d7b0cc2d2b95"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class UpsertMCPAccessEndpointEntityMCPAccessEndpointUpserted:
     endpoint: MCPAccessEndpointEntity
@@ -4819,7 +5958,7 @@ class UpsertMCPServerEntityInput:
     last_updated_by: str | None
     last_updated_at_ms: Annotated[int, "i64"]
 
-UPSERT_MCPSERVER_ENTITY_PLAN_HASH: Final[str] = "ecef7d889ab9eff55e0508a4cd77de35202cf62c59fb872ac310e7dfef87b67d"
+UPSERT_MCPSERVER_ENTITY_PLAN_HASH: Final[str] = "a50b4e5fef936e22dd8b60f557e7a6b69deca99e050a21e60a0a132160b8dbb7"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class UpsertMCPServerEntityMCPServerUpserted:
     server: MCPServerEntity
@@ -4850,7 +5989,7 @@ class UpsertMCPServerVersionEntityInput:
     packed_connect_options: bytes
     version_prerelease_sort_key: str
 
-UPSERT_MCPSERVER_VERSION_ENTITY_PLAN_HASH: Final[str] = "028f798bd797de6d9225bb698ace183434ed938c007790a0228a183eb8fe73e0"
+UPSERT_MCPSERVER_VERSION_ENTITY_PLAN_HASH: Final[str] = "3a6db5f6aa6979261a8349589ab6585ca8fc7a62374f22b3e82abba84c1e9ac9"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class UpsertMCPServerVersionEntityMCPServerVersionUpserted:
     server_version: MCPServerVersionEntity
@@ -4879,7 +6018,7 @@ class UpsertModelVersionEntityInput:
     creation_timestamp_ms: Annotated[int, "i64"]
     last_updated_timestamp_ms: Annotated[int, "i64"]
 
-UPSERT_MODEL_VERSION_ENTITY_PLAN_HASH: Final[str] = "b1916c6be76bd46b1e00634f5cfc2efa887478f990516addbf9960adf293f3a3"
+UPSERT_MODEL_VERSION_ENTITY_PLAN_HASH: Final[str] = "ccd99621e1efa6262feac5aa9fe38c40d7c4b6e7c3145499e56a95571e8b0f02"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class UpsertModelVersionEntityModelVersionUpserted:
     model_version: ModelVersionEntity
@@ -4901,7 +6040,7 @@ class UpsertRegisteredModelEntityInput:
     creation_timestamp_ms: Annotated[int, "i64"]
     last_updated_timestamp_ms: Annotated[int, "i64"]
 
-UPSERT_REGISTERED_MODEL_ENTITY_PLAN_HASH: Final[str] = "cf78eafd7d5d8bac43f7724ceb95f3715addab7455e73e5c1ddae712d5cc1ae7"
+UPSERT_REGISTERED_MODEL_ENTITY_PLAN_HASH: Final[str] = "0d5e838f833220809b65dc9069a6f2110f74aa09edde0c51e01be9817ef53a34"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class UpsertRegisteredModelEntityRegisteredModelUpserted:
     model: RegisteredModelEntity
@@ -4926,7 +6065,7 @@ class UpsertRegistryWebhookEntityInput:
     creation_timestamp_ms: Annotated[int, "i64"]
     last_updated_timestamp_ms: Annotated[int, "i64"]
 
-UPSERT_REGISTRY_WEBHOOK_ENTITY_PLAN_HASH: Final[str] = "839c9d05fedc429df0c4eb47c0077576c5e3bf81af70f06646b5f17f2e6339f6"
+UPSERT_REGISTRY_WEBHOOK_ENTITY_PLAN_HASH: Final[str] = "33e25bcd0271b338e5fedb235d43337553c74031a348824a572cda7aebb7d240"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class UpsertRegistryWebhookEntityRegistryWebhookUpserted:
     webhook: RegistryWebhookEntity
@@ -4990,6 +6129,52 @@ class UpsertRunLineageRunLineageUpserted:
 UpsertRunLineageOutcome: TypeAlias = UpsertRunLineageRunMissing | UpsertRunLineageRunInactive | UpsertRunLineageRunLineageUpserted
 
 @dataclass(frozen=True, slots=True, kw_only=True)
+class UpsertScorerEntityInput:
+    scorer_id: str
+    request_id: str = field(default_factory=lambda: str(__import__("uuid").uuid4()))
+    scorer_name: str
+    experiment_id: Annotated[int, "u64"]
+    latest_version: Annotated[int, "i64"]
+    packed_versions: bytes
+    packed_online_config: bytes
+
+UPSERT_SCORER_ENTITY_PLAN_HASH: Final[str] = "77d599412b48abe11d597b603b711d5444b556cdef30e08fabf359855967a149"
+@dataclass(frozen=True, slots=True, kw_only=True)
+class UpsertScorerEntityScorerUpserted:
+    scorer: ScorerEntity
+    outcome: Literal["ScorerUpserted"] = field(default="ScorerUpserted", init=False)
+
+    def is_scorer_upserted(self) -> bool:
+        return True
+
+UpsertScorerEntityOutcome: TypeAlias = UpsertScorerEntityScorerUpserted
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class UpsertServerJobEntityInput:
+    job_id: str
+    job_name: str
+    request_id: str = field(default_factory=lambda: str(__import__("uuid").uuid4()))
+    params_json: str
+    result_text: str | None
+    retry_count: Annotated[int, "i64"]
+    status_code: Annotated[int, "i64"]
+    timeout_json: str | None
+    creation_time_ms: Annotated[int, "i64"]
+    last_update_time_ms: Annotated[int, "i64"]
+    status_details_json: str | None
+
+UPSERT_SERVER_JOB_ENTITY_PLAN_HASH: Final[str] = "246bd2f52d8cd9efd9ebd7b3aa41c4d9f7b53d0bec3ad6faa0d957ef8de18c83"
+@dataclass(frozen=True, slots=True, kw_only=True)
+class UpsertServerJobEntityServerJobUpserted:
+    job: ServerJobEntity
+    outcome: Literal["ServerJobUpserted"] = field(default="ServerJobUpserted", init=False)
+
+    def is_server_job_upserted(self) -> bool:
+        return True
+
+UpsertServerJobEntityOutcome: TypeAlias = UpsertServerJobEntityServerJobUpserted
+
+@dataclass(frozen=True, slots=True, kw_only=True)
 class UpsertTraceInput:
     state: str
     trace_id: str
@@ -5019,7 +6204,7 @@ class UpsertTraceInput:
     cache_read_input_tokens: Annotated[int, "i64"]
     cache_creation_input_tokens: Annotated[int, "i64"]
 
-UPSERT_TRACE_PLAN_HASH: Final[str] = "91c624c550c7af15c7b31155deb3c979fcab5804f8d5f3d8b1239cde915fabec"
+UPSERT_TRACE_PLAN_HASH: Final[str] = "a58559e8aa740b3613efc1ef6878f800fa6ac29e576d8c8d93f99053cd135b2f"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class UpsertTraceTraceUpserted:
     trace: Trace
@@ -5045,7 +6230,7 @@ class UpsertTraceAssessmentInput:
     packed_assessment_json: str
     last_updated_timestamp_ms: Annotated[int, "i64"]
 
-UPSERT_TRACE_ASSESSMENT_PLAN_HASH: Final[str] = "7855553ab960998d83a02f440bddd1c5eb8afdbb1820d07a2a674383e15f0d51"
+UPSERT_TRACE_ASSESSMENT_PLAN_HASH: Final[str] = "78005137130a2cb05e163a8e13e04d25a5f82f43b544e4713312b16b78f60072"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class UpsertTraceAssessmentTraceMissing:
     outcome: Literal["TraceMissing"] = field(default="TraceMissing", init=False)
@@ -5441,6 +6626,96 @@ class RiffDBMLflowClient:
     def get_experiment_by_name_after_commit(self, parameters: GetExperimentByNameParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetExperimentByNameResult]:
         return self.get_experiment_by_name(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
 
+    def get_gateway_budget_policy(self, parameters: GetGatewayBudgetPolicyParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetGatewayBudgetPolicyResult]:
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="GetGatewayBudgetPolicy", plan_hash=GET_GATEWAY_BUDGET_POLICY_QUERY_PLAN_HASH,
+            parameters=encode_record(parameters), options=options,
+        )
+        outcomes = {
+            "Found": GetGatewayBudgetPolicyFound,
+            "Missing": GetGatewayBudgetPolicyMissing,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    def get_gateway_budget_policy_after_commit(self, parameters: GetGatewayBudgetPolicyParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetGatewayBudgetPolicyResult]:
+        return self.get_gateway_budget_policy(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    def get_gateway_endpoint(self, parameters: GetGatewayEndpointParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetGatewayEndpointResult]:
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="GetGatewayEndpoint", plan_hash=GET_GATEWAY_ENDPOINT_QUERY_PLAN_HASH,
+            parameters=encode_record(parameters), options=options,
+        )
+        outcomes = {
+            "Found": GetGatewayEndpointFound,
+            "Missing": GetGatewayEndpointMissing,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    def get_gateway_endpoint_after_commit(self, parameters: GetGatewayEndpointParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetGatewayEndpointResult]:
+        return self.get_gateway_endpoint(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    def get_gateway_guardrail(self, parameters: GetGatewayGuardrailParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetGatewayGuardrailResult]:
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="GetGatewayGuardrail", plan_hash=GET_GATEWAY_GUARDRAIL_QUERY_PLAN_HASH,
+            parameters=encode_record(parameters), options=options,
+        )
+        outcomes = {
+            "Found": GetGatewayGuardrailFound,
+            "Missing": GetGatewayGuardrailMissing,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    def get_gateway_guardrail_after_commit(self, parameters: GetGatewayGuardrailParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetGatewayGuardrailResult]:
+        return self.get_gateway_guardrail(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    def get_gateway_model_definition(self, parameters: GetGatewayModelDefinitionParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetGatewayModelDefinitionResult]:
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="GetGatewayModelDefinition", plan_hash=GET_GATEWAY_MODEL_DEFINITION_QUERY_PLAN_HASH,
+            parameters=encode_record(parameters), options=options,
+        )
+        outcomes = {
+            "Found": GetGatewayModelDefinitionFound,
+            "Missing": GetGatewayModelDefinitionMissing,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    def get_gateway_model_definition_after_commit(self, parameters: GetGatewayModelDefinitionParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetGatewayModelDefinitionResult]:
+        return self.get_gateway_model_definition(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    def get_gateway_secret(self, parameters: GetGatewaySecretParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetGatewaySecretResult]:
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="GetGatewaySecret", plan_hash=GET_GATEWAY_SECRET_QUERY_PLAN_HASH,
+            parameters=encode_record(parameters), options=options,
+        )
+        outcomes = {
+            "Found": GetGatewaySecretFound,
+            "Missing": GetGatewaySecretMissing,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    def get_gateway_secret_after_commit(self, parameters: GetGatewaySecretParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetGatewaySecretResult]:
+        return self.get_gateway_secret(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
     def get_logged_model(self, parameters: GetLoggedModelParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetLoggedModelResult]:
         if options.read_after_commit is None and self._read_after_commit is not None:
             options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
@@ -5646,6 +6921,42 @@ class RiffDBMLflowClient:
     def get_run_lineage_after_commit(self, parameters: GetRunLineageParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetRunLineageResult]:
         return self.get_run_lineage(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
 
+    def get_scorer(self, parameters: GetScorerParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetScorerResult]:
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="GetScorer", plan_hash=GET_SCORER_QUERY_PLAN_HASH,
+            parameters=encode_record(parameters), options=options,
+        )
+        outcomes = {
+            "Found": GetScorerFound,
+            "Missing": GetScorerMissing,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    def get_scorer_after_commit(self, parameters: GetScorerParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetScorerResult]:
+        return self.get_scorer(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    def get_server_job(self, parameters: GetServerJobParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetServerJobResult]:
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="GetServerJob", plan_hash=GET_SERVER_JOB_QUERY_PLAN_HASH,
+            parameters=encode_record(parameters), options=options,
+        )
+        outcomes = {
+            "Found": GetServerJobFound,
+            "Missing": GetServerJobMissing,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    def get_server_job_after_commit(self, parameters: GetServerJobParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetServerJobResult]:
+        return self.get_server_job(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
     def get_trace(self, parameters: GetTraceParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetTraceResult]:
         if options.read_after_commit is None and self._read_after_commit is not None:
             options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
@@ -5663,6 +6974,221 @@ class RiffDBMLflowClient:
 
     def get_trace_after_commit(self, parameters: GetTraceParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetTraceResult]:
         return self.get_trace(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    def list_gateway_budget_policies(self, parameters: ListGatewayBudgetPoliciesParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[ListGatewayBudgetPoliciesResult]:
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 50):
+            raise ValueError("limit must be an integer from 1 through 50")
+        encoded_parameters = encode_record(parameters)
+        generated_cursor = parameters.after
+        if generated_cursor is not None:
+            if options.cursor is not None:
+                raise ValueError("generated cursor conflicts with query options")
+            options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
+        encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="ListGatewayBudgetPolicies", plan_hash=LIST_GATEWAY_BUDGET_POLICIES_QUERY_PLAN_HASH,
+            parameters=encoded_parameters, options=options,
+        )
+        outcomes = {
+            "Found": ListGatewayBudgetPoliciesFound,
+            "IntegrityFailure": ListGatewayBudgetPoliciesIntegrityFailure,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    def list_gateway_budget_policies_after_commit(self, parameters: ListGatewayBudgetPoliciesParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[ListGatewayBudgetPoliciesResult]:
+        return self.list_gateway_budget_policies(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    def list_gateway_budget_policies_pages(self, parameters: ListGatewayBudgetPoliciesParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[ListGatewayBudgetPoliciesResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[ListGatewayBudgetPoliciesResult]] = []
+        for _ in range(max_pages):
+            page_parameters = ListGatewayBudgetPoliciesParams(scope=parameters.scope, limit=parameters.limit, after=None)
+            page = self.list_gateway_budget_policies(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
+
+    def list_gateway_endpoints(self, parameters: ListGatewayEndpointsParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[ListGatewayEndpointsResult]:
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 10):
+            raise ValueError("limit must be an integer from 1 through 10")
+        encoded_parameters = encode_record(parameters)
+        generated_cursor = parameters.after
+        if generated_cursor is not None:
+            if options.cursor is not None:
+                raise ValueError("generated cursor conflicts with query options")
+            options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
+        encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="ListGatewayEndpoints", plan_hash=LIST_GATEWAY_ENDPOINTS_QUERY_PLAN_HASH,
+            parameters=encoded_parameters, options=options,
+        )
+        outcomes = {
+            "Found": ListGatewayEndpointsFound,
+            "IntegrityFailure": ListGatewayEndpointsIntegrityFailure,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    def list_gateway_endpoints_after_commit(self, parameters: ListGatewayEndpointsParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[ListGatewayEndpointsResult]:
+        return self.list_gateway_endpoints(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    def list_gateway_endpoints_pages(self, parameters: ListGatewayEndpointsParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[ListGatewayEndpointsResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[ListGatewayEndpointsResult]] = []
+        for _ in range(max_pages):
+            page_parameters = ListGatewayEndpointsParams(scope=parameters.scope, limit=parameters.limit, after=None)
+            page = self.list_gateway_endpoints(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
+
+    def list_gateway_guardrails(self, parameters: ListGatewayGuardrailsParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[ListGatewayGuardrailsResult]:
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 50):
+            raise ValueError("limit must be an integer from 1 through 50")
+        encoded_parameters = encode_record(parameters)
+        generated_cursor = parameters.after
+        if generated_cursor is not None:
+            if options.cursor is not None:
+                raise ValueError("generated cursor conflicts with query options")
+            options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
+        encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="ListGatewayGuardrails", plan_hash=LIST_GATEWAY_GUARDRAILS_QUERY_PLAN_HASH,
+            parameters=encoded_parameters, options=options,
+        )
+        outcomes = {
+            "Found": ListGatewayGuardrailsFound,
+            "IntegrityFailure": ListGatewayGuardrailsIntegrityFailure,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    def list_gateway_guardrails_after_commit(self, parameters: ListGatewayGuardrailsParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[ListGatewayGuardrailsResult]:
+        return self.list_gateway_guardrails(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    def list_gateway_guardrails_pages(self, parameters: ListGatewayGuardrailsParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[ListGatewayGuardrailsResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[ListGatewayGuardrailsResult]] = []
+        for _ in range(max_pages):
+            page_parameters = ListGatewayGuardrailsParams(scope=parameters.scope, limit=parameters.limit, after=None)
+            page = self.list_gateway_guardrails(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
+
+    def list_gateway_model_definitions(self, parameters: ListGatewayModelDefinitionsParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[ListGatewayModelDefinitionsResult]:
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 50):
+            raise ValueError("limit must be an integer from 1 through 50")
+        encoded_parameters = encode_record(parameters)
+        generated_cursor = parameters.after
+        if generated_cursor is not None:
+            if options.cursor is not None:
+                raise ValueError("generated cursor conflicts with query options")
+            options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
+        encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="ListGatewayModelDefinitions", plan_hash=LIST_GATEWAY_MODEL_DEFINITIONS_QUERY_PLAN_HASH,
+            parameters=encoded_parameters, options=options,
+        )
+        outcomes = {
+            "Found": ListGatewayModelDefinitionsFound,
+            "IntegrityFailure": ListGatewayModelDefinitionsIntegrityFailure,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    def list_gateway_model_definitions_after_commit(self, parameters: ListGatewayModelDefinitionsParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[ListGatewayModelDefinitionsResult]:
+        return self.list_gateway_model_definitions(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    def list_gateway_model_definitions_pages(self, parameters: ListGatewayModelDefinitionsParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[ListGatewayModelDefinitionsResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[ListGatewayModelDefinitionsResult]] = []
+        for _ in range(max_pages):
+            page_parameters = ListGatewayModelDefinitionsParams(scope=parameters.scope, limit=parameters.limit, after=None)
+            page = self.list_gateway_model_definitions(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
+
+    def list_gateway_secrets(self, parameters: ListGatewaySecretsParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[ListGatewaySecretsResult]:
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 10):
+            raise ValueError("limit must be an integer from 1 through 10")
+        encoded_parameters = encode_record(parameters)
+        generated_cursor = parameters.after
+        if generated_cursor is not None:
+            if options.cursor is not None:
+                raise ValueError("generated cursor conflicts with query options")
+            options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
+        encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="ListGatewaySecrets", plan_hash=LIST_GATEWAY_SECRETS_QUERY_PLAN_HASH,
+            parameters=encoded_parameters, options=options,
+        )
+        outcomes = {
+            "Found": ListGatewaySecretsFound,
+            "IntegrityFailure": ListGatewaySecretsIntegrityFailure,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    def list_gateway_secrets_after_commit(self, parameters: ListGatewaySecretsParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[ListGatewaySecretsResult]:
+        return self.list_gateway_secrets(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    def list_gateway_secrets_pages(self, parameters: ListGatewaySecretsParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[ListGatewaySecretsResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[ListGatewaySecretsResult]] = []
+        for _ in range(max_pages):
+            page_parameters = ListGatewaySecretsParams(scope=parameters.scope, limit=parameters.limit, after=None)
+            page = self.list_gateway_secrets(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
 
     def list_mcpaccess_endpoints_by_server(self, parameters: ListMCPAccessEndpointsByServerParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[ListMCPAccessEndpointsByServerResult]:
         if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 50):
@@ -5830,6 +7356,92 @@ class RiffDBMLflowClient:
         for _ in range(max_pages):
             page_parameters = ListRegistryWebhooksParams(scope=parameters.scope, limit=parameters.limit, after=None)
             page = self.list_registry_webhooks(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
+
+    def list_scorers(self, parameters: ListScorersParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[ListScorersResult]:
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 10):
+            raise ValueError("limit must be an integer from 1 through 10")
+        encoded_parameters = encode_record(parameters)
+        generated_cursor = parameters.after
+        if generated_cursor is not None:
+            if options.cursor is not None:
+                raise ValueError("generated cursor conflicts with query options")
+            options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
+        encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="ListScorers", plan_hash=LIST_SCORERS_QUERY_PLAN_HASH,
+            parameters=encoded_parameters, options=options,
+        )
+        outcomes = {
+            "Found": ListScorersFound,
+            "IntegrityFailure": ListScorersIntegrityFailure,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    def list_scorers_after_commit(self, parameters: ListScorersParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[ListScorersResult]:
+        return self.list_scorers(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    def list_scorers_pages(self, parameters: ListScorersParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[ListScorersResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[ListScorersResult]] = []
+        for _ in range(max_pages):
+            page_parameters = ListScorersParams(scope=parameters.scope, limit=parameters.limit, after=None)
+            page = self.list_scorers(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
+
+    def list_server_jobs(self, parameters: ListServerJobsParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[ListServerJobsResult]:
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 10):
+            raise ValueError("limit must be an integer from 1 through 10")
+        encoded_parameters = encode_record(parameters)
+        generated_cursor = parameters.after
+        if generated_cursor is not None:
+            if options.cursor is not None:
+                raise ValueError("generated cursor conflicts with query options")
+            options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
+        encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="ListServerJobs", plan_hash=LIST_SERVER_JOBS_QUERY_PLAN_HASH,
+            parameters=encoded_parameters, options=options,
+        )
+        outcomes = {
+            "Found": ListServerJobsFound,
+            "IntegrityFailure": ListServerJobsIntegrityFailure,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    def list_server_jobs_after_commit(self, parameters: ListServerJobsParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[ListServerJobsResult]:
+        return self.list_server_jobs(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    def list_server_jobs_pages(self, parameters: ListServerJobsParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[ListServerJobsResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[ListServerJobsResult]] = []
+        for _ in range(max_pages):
+            page_parameters = ListServerJobsParams(scope=parameters.scope, limit=parameters.limit, after=None)
+            page = self.list_server_jobs(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
             pages.append(page)
             if not page.next_cursor:
                 break
@@ -7875,6 +9487,111 @@ class RiffDBMLflowClient:
     ) -> CommandBatchResult[DeleteExperimentTagOutcome]:
         return self._transport._command_batch(inputs, options, self.delete_experiment_tag, progress)
 
+    def delete_gateway_budget_policy_entity(self, input: DeleteGatewayBudgetPolicyEntityInput) -> TypedCommandResult[DeleteGatewayBudgetPolicyEntityOutcome]:
+        raw = self._transport._execute_command(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            command_name="DeleteGatewayBudgetPolicyEntity", plan_hash=DELETE_GATEWAY_BUDGET_POLICY_ENTITY_PLAN_HASH,
+            input=encode_record(input), attempts=self._command_attempts,
+        )
+        outcomes = {
+            "GatewayBudgetPolicyDeleted": DeleteGatewayBudgetPolicyEntityGatewayBudgetPolicyDeleted,
+            "GatewayBudgetPolicyMissing": DeleteGatewayBudgetPolicyEntityGatewayBudgetPolicyMissing,
+        }
+        result: TypedCommandResult[DeleteGatewayBudgetPolicyEntityOutcome] = raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        if self._track_causal_writes and result.commit_sequence is not None and result.commit_sequence > 0:
+            self._read_after_commit = result.commit_sequence if self._read_after_commit is None or result.commit_sequence > self._read_after_commit else self._read_after_commit
+        return result
+
+    def delete_gateway_budget_policy_entity_batch(
+        self, inputs: Sequence[DeleteGatewayBudgetPolicyEntityInput], options: CommandBatchOptions,
+        progress: Callable[[CommandBatchProgress], None] | None = None,
+    ) -> CommandBatchResult[DeleteGatewayBudgetPolicyEntityOutcome]:
+        return self._transport._command_batch(inputs, options, self.delete_gateway_budget_policy_entity, progress)
+
+    def delete_gateway_endpoint_entity(self, input: DeleteGatewayEndpointEntityInput) -> TypedCommandResult[DeleteGatewayEndpointEntityOutcome]:
+        raw = self._transport._execute_command(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            command_name="DeleteGatewayEndpointEntity", plan_hash=DELETE_GATEWAY_ENDPOINT_ENTITY_PLAN_HASH,
+            input=encode_record(input), attempts=self._command_attempts,
+        )
+        outcomes = {
+            "GatewayEndpointDeleted": DeleteGatewayEndpointEntityGatewayEndpointDeleted,
+            "GatewayEndpointMissing": DeleteGatewayEndpointEntityGatewayEndpointMissing,
+        }
+        result: TypedCommandResult[DeleteGatewayEndpointEntityOutcome] = raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        if self._track_causal_writes and result.commit_sequence is not None and result.commit_sequence > 0:
+            self._read_after_commit = result.commit_sequence if self._read_after_commit is None or result.commit_sequence > self._read_after_commit else self._read_after_commit
+        return result
+
+    def delete_gateway_endpoint_entity_batch(
+        self, inputs: Sequence[DeleteGatewayEndpointEntityInput], options: CommandBatchOptions,
+        progress: Callable[[CommandBatchProgress], None] | None = None,
+    ) -> CommandBatchResult[DeleteGatewayEndpointEntityOutcome]:
+        return self._transport._command_batch(inputs, options, self.delete_gateway_endpoint_entity, progress)
+
+    def delete_gateway_guardrail_entity(self, input: DeleteGatewayGuardrailEntityInput) -> TypedCommandResult[DeleteGatewayGuardrailEntityOutcome]:
+        raw = self._transport._execute_command(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            command_name="DeleteGatewayGuardrailEntity", plan_hash=DELETE_GATEWAY_GUARDRAIL_ENTITY_PLAN_HASH,
+            input=encode_record(input), attempts=self._command_attempts,
+        )
+        outcomes = {
+            "GatewayGuardrailDeleted": DeleteGatewayGuardrailEntityGatewayGuardrailDeleted,
+            "GatewayGuardrailMissing": DeleteGatewayGuardrailEntityGatewayGuardrailMissing,
+        }
+        result: TypedCommandResult[DeleteGatewayGuardrailEntityOutcome] = raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        if self._track_causal_writes and result.commit_sequence is not None and result.commit_sequence > 0:
+            self._read_after_commit = result.commit_sequence if self._read_after_commit is None or result.commit_sequence > self._read_after_commit else self._read_after_commit
+        return result
+
+    def delete_gateway_guardrail_entity_batch(
+        self, inputs: Sequence[DeleteGatewayGuardrailEntityInput], options: CommandBatchOptions,
+        progress: Callable[[CommandBatchProgress], None] | None = None,
+    ) -> CommandBatchResult[DeleteGatewayGuardrailEntityOutcome]:
+        return self._transport._command_batch(inputs, options, self.delete_gateway_guardrail_entity, progress)
+
+    def delete_gateway_model_definition_entity(self, input: DeleteGatewayModelDefinitionEntityInput) -> TypedCommandResult[DeleteGatewayModelDefinitionEntityOutcome]:
+        raw = self._transport._execute_command(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            command_name="DeleteGatewayModelDefinitionEntity", plan_hash=DELETE_GATEWAY_MODEL_DEFINITION_ENTITY_PLAN_HASH,
+            input=encode_record(input), attempts=self._command_attempts,
+        )
+        outcomes = {
+            "GatewayModelDefinitionDeleted": DeleteGatewayModelDefinitionEntityGatewayModelDefinitionDeleted,
+            "GatewayModelDefinitionMissing": DeleteGatewayModelDefinitionEntityGatewayModelDefinitionMissing,
+        }
+        result: TypedCommandResult[DeleteGatewayModelDefinitionEntityOutcome] = raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        if self._track_causal_writes and result.commit_sequence is not None and result.commit_sequence > 0:
+            self._read_after_commit = result.commit_sequence if self._read_after_commit is None or result.commit_sequence > self._read_after_commit else self._read_after_commit
+        return result
+
+    def delete_gateway_model_definition_entity_batch(
+        self, inputs: Sequence[DeleteGatewayModelDefinitionEntityInput], options: CommandBatchOptions,
+        progress: Callable[[CommandBatchProgress], None] | None = None,
+    ) -> CommandBatchResult[DeleteGatewayModelDefinitionEntityOutcome]:
+        return self._transport._command_batch(inputs, options, self.delete_gateway_model_definition_entity, progress)
+
+    def delete_gateway_secret_entity(self, input: DeleteGatewaySecretEntityInput) -> TypedCommandResult[DeleteGatewaySecretEntityOutcome]:
+        raw = self._transport._execute_command(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            command_name="DeleteGatewaySecretEntity", plan_hash=DELETE_GATEWAY_SECRET_ENTITY_PLAN_HASH,
+            input=encode_record(input), attempts=self._command_attempts,
+        )
+        outcomes = {
+            "GatewaySecretDeleted": DeleteGatewaySecretEntityGatewaySecretDeleted,
+            "GatewaySecretMissing": DeleteGatewaySecretEntityGatewaySecretMissing,
+        }
+        result: TypedCommandResult[DeleteGatewaySecretEntityOutcome] = raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        if self._track_causal_writes and result.commit_sequence is not None and result.commit_sequence > 0:
+            self._read_after_commit = result.commit_sequence if self._read_after_commit is None or result.commit_sequence > self._read_after_commit else self._read_after_commit
+        return result
+
+    def delete_gateway_secret_entity_batch(
+        self, inputs: Sequence[DeleteGatewaySecretEntityInput], options: CommandBatchOptions,
+        progress: Callable[[CommandBatchProgress], None] | None = None,
+    ) -> CommandBatchResult[DeleteGatewaySecretEntityOutcome]:
+        return self._transport._command_batch(inputs, options, self.delete_gateway_secret_entity, progress)
+
     def delete_logged_model_entity(self, input: DeleteLoggedModelEntityInput) -> TypedCommandResult[DeleteLoggedModelEntityOutcome]:
         raw = self._transport._execute_command(
             contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
@@ -8000,6 +9717,48 @@ class RiffDBMLflowClient:
         progress: Callable[[CommandBatchProgress], None] | None = None,
     ) -> CommandBatchResult[DeleteRunOutcome]:
         return self._transport._command_batch(inputs, options, self.delete_run, progress)
+
+    def delete_scorer_entity(self, input: DeleteScorerEntityInput) -> TypedCommandResult[DeleteScorerEntityOutcome]:
+        raw = self._transport._execute_command(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            command_name="DeleteScorerEntity", plan_hash=DELETE_SCORER_ENTITY_PLAN_HASH,
+            input=encode_record(input), attempts=self._command_attempts,
+        )
+        outcomes = {
+            "ScorerDeleted": DeleteScorerEntityScorerDeleted,
+            "ScorerMissing": DeleteScorerEntityScorerMissing,
+        }
+        result: TypedCommandResult[DeleteScorerEntityOutcome] = raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        if self._track_causal_writes and result.commit_sequence is not None and result.commit_sequence > 0:
+            self._read_after_commit = result.commit_sequence if self._read_after_commit is None or result.commit_sequence > self._read_after_commit else self._read_after_commit
+        return result
+
+    def delete_scorer_entity_batch(
+        self, inputs: Sequence[DeleteScorerEntityInput], options: CommandBatchOptions,
+        progress: Callable[[CommandBatchProgress], None] | None = None,
+    ) -> CommandBatchResult[DeleteScorerEntityOutcome]:
+        return self._transport._command_batch(inputs, options, self.delete_scorer_entity, progress)
+
+    def delete_server_job_entity(self, input: DeleteServerJobEntityInput) -> TypedCommandResult[DeleteServerJobEntityOutcome]:
+        raw = self._transport._execute_command(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            command_name="DeleteServerJobEntity", plan_hash=DELETE_SERVER_JOB_ENTITY_PLAN_HASH,
+            input=encode_record(input), attempts=self._command_attempts,
+        )
+        outcomes = {
+            "ServerJobDeleted": DeleteServerJobEntityServerJobDeleted,
+            "ServerJobMissing": DeleteServerJobEntityServerJobMissing,
+        }
+        result: TypedCommandResult[DeleteServerJobEntityOutcome] = raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        if self._track_causal_writes and result.commit_sequence is not None and result.commit_sequence > 0:
+            self._read_after_commit = result.commit_sequence if self._read_after_commit is None or result.commit_sequence > self._read_after_commit else self._read_after_commit
+        return result
+
+    def delete_server_job_entity_batch(
+        self, inputs: Sequence[DeleteServerJobEntityInput], options: CommandBatchOptions,
+        progress: Callable[[CommandBatchProgress], None] | None = None,
+    ) -> CommandBatchResult[DeleteServerJobEntityOutcome]:
+        return self._transport._command_batch(inputs, options, self.delete_server_job_entity, progress)
 
     def delete_trace(self, input: DeleteTraceInput) -> TypedCommandResult[DeleteTraceOutcome]:
         raw = self._transport._execute_command(
@@ -8317,6 +10076,106 @@ class RiffDBMLflowClient:
     ) -> CommandBatchResult[UpdateRunInfoOutcome]:
         return self._transport._command_batch(inputs, options, self.update_run_info, progress)
 
+    def upsert_gateway_budget_policy_entity(self, input: UpsertGatewayBudgetPolicyEntityInput) -> TypedCommandResult[UpsertGatewayBudgetPolicyEntityOutcome]:
+        raw = self._transport._execute_command(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            command_name="UpsertGatewayBudgetPolicyEntity", plan_hash=UPSERT_GATEWAY_BUDGET_POLICY_ENTITY_PLAN_HASH,
+            input=encode_record(input), attempts=self._command_attempts,
+        )
+        outcomes = {
+            "GatewayBudgetPolicyUpserted": UpsertGatewayBudgetPolicyEntityGatewayBudgetPolicyUpserted,
+        }
+        result: TypedCommandResult[UpsertGatewayBudgetPolicyEntityOutcome] = raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        if self._track_causal_writes and result.commit_sequence is not None and result.commit_sequence > 0:
+            self._read_after_commit = result.commit_sequence if self._read_after_commit is None or result.commit_sequence > self._read_after_commit else self._read_after_commit
+        return result
+
+    def upsert_gateway_budget_policy_entity_batch(
+        self, inputs: Sequence[UpsertGatewayBudgetPolicyEntityInput], options: CommandBatchOptions,
+        progress: Callable[[CommandBatchProgress], None] | None = None,
+    ) -> CommandBatchResult[UpsertGatewayBudgetPolicyEntityOutcome]:
+        return self._transport._command_batch(inputs, options, self.upsert_gateway_budget_policy_entity, progress)
+
+    def upsert_gateway_endpoint_entity(self, input: UpsertGatewayEndpointEntityInput) -> TypedCommandResult[UpsertGatewayEndpointEntityOutcome]:
+        raw = self._transport._execute_command(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            command_name="UpsertGatewayEndpointEntity", plan_hash=UPSERT_GATEWAY_ENDPOINT_ENTITY_PLAN_HASH,
+            input=encode_record(input), attempts=self._command_attempts,
+        )
+        outcomes = {
+            "GatewayEndpointUpserted": UpsertGatewayEndpointEntityGatewayEndpointUpserted,
+        }
+        result: TypedCommandResult[UpsertGatewayEndpointEntityOutcome] = raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        if self._track_causal_writes and result.commit_sequence is not None and result.commit_sequence > 0:
+            self._read_after_commit = result.commit_sequence if self._read_after_commit is None or result.commit_sequence > self._read_after_commit else self._read_after_commit
+        return result
+
+    def upsert_gateway_endpoint_entity_batch(
+        self, inputs: Sequence[UpsertGatewayEndpointEntityInput], options: CommandBatchOptions,
+        progress: Callable[[CommandBatchProgress], None] | None = None,
+    ) -> CommandBatchResult[UpsertGatewayEndpointEntityOutcome]:
+        return self._transport._command_batch(inputs, options, self.upsert_gateway_endpoint_entity, progress)
+
+    def upsert_gateway_guardrail_entity(self, input: UpsertGatewayGuardrailEntityInput) -> TypedCommandResult[UpsertGatewayGuardrailEntityOutcome]:
+        raw = self._transport._execute_command(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            command_name="UpsertGatewayGuardrailEntity", plan_hash=UPSERT_GATEWAY_GUARDRAIL_ENTITY_PLAN_HASH,
+            input=encode_record(input), attempts=self._command_attempts,
+        )
+        outcomes = {
+            "GatewayGuardrailUpserted": UpsertGatewayGuardrailEntityGatewayGuardrailUpserted,
+        }
+        result: TypedCommandResult[UpsertGatewayGuardrailEntityOutcome] = raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        if self._track_causal_writes and result.commit_sequence is not None and result.commit_sequence > 0:
+            self._read_after_commit = result.commit_sequence if self._read_after_commit is None or result.commit_sequence > self._read_after_commit else self._read_after_commit
+        return result
+
+    def upsert_gateway_guardrail_entity_batch(
+        self, inputs: Sequence[UpsertGatewayGuardrailEntityInput], options: CommandBatchOptions,
+        progress: Callable[[CommandBatchProgress], None] | None = None,
+    ) -> CommandBatchResult[UpsertGatewayGuardrailEntityOutcome]:
+        return self._transport._command_batch(inputs, options, self.upsert_gateway_guardrail_entity, progress)
+
+    def upsert_gateway_model_definition_entity(self, input: UpsertGatewayModelDefinitionEntityInput) -> TypedCommandResult[UpsertGatewayModelDefinitionEntityOutcome]:
+        raw = self._transport._execute_command(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            command_name="UpsertGatewayModelDefinitionEntity", plan_hash=UPSERT_GATEWAY_MODEL_DEFINITION_ENTITY_PLAN_HASH,
+            input=encode_record(input), attempts=self._command_attempts,
+        )
+        outcomes = {
+            "GatewayModelDefinitionUpserted": UpsertGatewayModelDefinitionEntityGatewayModelDefinitionUpserted,
+        }
+        result: TypedCommandResult[UpsertGatewayModelDefinitionEntityOutcome] = raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        if self._track_causal_writes and result.commit_sequence is not None and result.commit_sequence > 0:
+            self._read_after_commit = result.commit_sequence if self._read_after_commit is None or result.commit_sequence > self._read_after_commit else self._read_after_commit
+        return result
+
+    def upsert_gateway_model_definition_entity_batch(
+        self, inputs: Sequence[UpsertGatewayModelDefinitionEntityInput], options: CommandBatchOptions,
+        progress: Callable[[CommandBatchProgress], None] | None = None,
+    ) -> CommandBatchResult[UpsertGatewayModelDefinitionEntityOutcome]:
+        return self._transport._command_batch(inputs, options, self.upsert_gateway_model_definition_entity, progress)
+
+    def upsert_gateway_secret_entity(self, input: UpsertGatewaySecretEntityInput) -> TypedCommandResult[UpsertGatewaySecretEntityOutcome]:
+        raw = self._transport._execute_command(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            command_name="UpsertGatewaySecretEntity", plan_hash=UPSERT_GATEWAY_SECRET_ENTITY_PLAN_HASH,
+            input=encode_record(input), attempts=self._command_attempts,
+        )
+        outcomes = {
+            "GatewaySecretUpserted": UpsertGatewaySecretEntityGatewaySecretUpserted,
+        }
+        result: TypedCommandResult[UpsertGatewaySecretEntityOutcome] = raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        if self._track_causal_writes and result.commit_sequence is not None and result.commit_sequence > 0:
+            self._read_after_commit = result.commit_sequence if self._read_after_commit is None or result.commit_sequence > self._read_after_commit else self._read_after_commit
+        return result
+
+    def upsert_gateway_secret_entity_batch(
+        self, inputs: Sequence[UpsertGatewaySecretEntityInput], options: CommandBatchOptions,
+        progress: Callable[[CommandBatchProgress], None] | None = None,
+    ) -> CommandBatchResult[UpsertGatewaySecretEntityOutcome]:
+        return self._transport._command_batch(inputs, options, self.upsert_gateway_secret_entity, progress)
+
     def upsert_logged_model(self, input: UpsertLoggedModelInput) -> TypedCommandResult[UpsertLoggedModelOutcome]:
         raw = self._transport._execute_command(
             contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
@@ -8478,6 +10337,46 @@ class RiffDBMLflowClient:
         progress: Callable[[CommandBatchProgress], None] | None = None,
     ) -> CommandBatchResult[UpsertRunLineageOutcome]:
         return self._transport._command_batch(inputs, options, self.upsert_run_lineage, progress)
+
+    def upsert_scorer_entity(self, input: UpsertScorerEntityInput) -> TypedCommandResult[UpsertScorerEntityOutcome]:
+        raw = self._transport._execute_command(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            command_name="UpsertScorerEntity", plan_hash=UPSERT_SCORER_ENTITY_PLAN_HASH,
+            input=encode_record(input), attempts=self._command_attempts,
+        )
+        outcomes = {
+            "ScorerUpserted": UpsertScorerEntityScorerUpserted,
+        }
+        result: TypedCommandResult[UpsertScorerEntityOutcome] = raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        if self._track_causal_writes and result.commit_sequence is not None and result.commit_sequence > 0:
+            self._read_after_commit = result.commit_sequence if self._read_after_commit is None or result.commit_sequence > self._read_after_commit else self._read_after_commit
+        return result
+
+    def upsert_scorer_entity_batch(
+        self, inputs: Sequence[UpsertScorerEntityInput], options: CommandBatchOptions,
+        progress: Callable[[CommandBatchProgress], None] | None = None,
+    ) -> CommandBatchResult[UpsertScorerEntityOutcome]:
+        return self._transport._command_batch(inputs, options, self.upsert_scorer_entity, progress)
+
+    def upsert_server_job_entity(self, input: UpsertServerJobEntityInput) -> TypedCommandResult[UpsertServerJobEntityOutcome]:
+        raw = self._transport._execute_command(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            command_name="UpsertServerJobEntity", plan_hash=UPSERT_SERVER_JOB_ENTITY_PLAN_HASH,
+            input=encode_record(input), attempts=self._command_attempts,
+        )
+        outcomes = {
+            "ServerJobUpserted": UpsertServerJobEntityServerJobUpserted,
+        }
+        result: TypedCommandResult[UpsertServerJobEntityOutcome] = raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        if self._track_causal_writes and result.commit_sequence is not None and result.commit_sequence > 0:
+            self._read_after_commit = result.commit_sequence if self._read_after_commit is None or result.commit_sequence > self._read_after_commit else self._read_after_commit
+        return result
+
+    def upsert_server_job_entity_batch(
+        self, inputs: Sequence[UpsertServerJobEntityInput], options: CommandBatchOptions,
+        progress: Callable[[CommandBatchProgress], None] | None = None,
+    ) -> CommandBatchResult[UpsertServerJobEntityOutcome]:
+        return self._transport._command_batch(inputs, options, self.upsert_server_job_entity, progress)
 
     def upsert_trace(self, input: UpsertTraceInput) -> TypedCommandResult[UpsertTraceOutcome]:
         raw = self._transport._execute_command(
@@ -8866,6 +10765,96 @@ class AsyncRiffDBMLflowClient:
     async def get_experiment_by_name_after_commit(self, parameters: GetExperimentByNameParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetExperimentByNameResult]:
         return await self.get_experiment_by_name(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
 
+    async def get_gateway_budget_policy(self, parameters: GetGatewayBudgetPolicyParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetGatewayBudgetPolicyResult]:
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = await self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="GetGatewayBudgetPolicy", plan_hash=GET_GATEWAY_BUDGET_POLICY_QUERY_PLAN_HASH,
+            parameters=encode_record(parameters), options=options,
+        )
+        outcomes = {
+            "Found": GetGatewayBudgetPolicyFound,
+            "Missing": GetGatewayBudgetPolicyMissing,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    async def get_gateway_budget_policy_after_commit(self, parameters: GetGatewayBudgetPolicyParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetGatewayBudgetPolicyResult]:
+        return await self.get_gateway_budget_policy(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    async def get_gateway_endpoint(self, parameters: GetGatewayEndpointParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetGatewayEndpointResult]:
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = await self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="GetGatewayEndpoint", plan_hash=GET_GATEWAY_ENDPOINT_QUERY_PLAN_HASH,
+            parameters=encode_record(parameters), options=options,
+        )
+        outcomes = {
+            "Found": GetGatewayEndpointFound,
+            "Missing": GetGatewayEndpointMissing,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    async def get_gateway_endpoint_after_commit(self, parameters: GetGatewayEndpointParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetGatewayEndpointResult]:
+        return await self.get_gateway_endpoint(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    async def get_gateway_guardrail(self, parameters: GetGatewayGuardrailParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetGatewayGuardrailResult]:
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = await self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="GetGatewayGuardrail", plan_hash=GET_GATEWAY_GUARDRAIL_QUERY_PLAN_HASH,
+            parameters=encode_record(parameters), options=options,
+        )
+        outcomes = {
+            "Found": GetGatewayGuardrailFound,
+            "Missing": GetGatewayGuardrailMissing,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    async def get_gateway_guardrail_after_commit(self, parameters: GetGatewayGuardrailParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetGatewayGuardrailResult]:
+        return await self.get_gateway_guardrail(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    async def get_gateway_model_definition(self, parameters: GetGatewayModelDefinitionParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetGatewayModelDefinitionResult]:
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = await self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="GetGatewayModelDefinition", plan_hash=GET_GATEWAY_MODEL_DEFINITION_QUERY_PLAN_HASH,
+            parameters=encode_record(parameters), options=options,
+        )
+        outcomes = {
+            "Found": GetGatewayModelDefinitionFound,
+            "Missing": GetGatewayModelDefinitionMissing,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    async def get_gateway_model_definition_after_commit(self, parameters: GetGatewayModelDefinitionParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetGatewayModelDefinitionResult]:
+        return await self.get_gateway_model_definition(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    async def get_gateway_secret(self, parameters: GetGatewaySecretParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetGatewaySecretResult]:
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = await self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="GetGatewaySecret", plan_hash=GET_GATEWAY_SECRET_QUERY_PLAN_HASH,
+            parameters=encode_record(parameters), options=options,
+        )
+        outcomes = {
+            "Found": GetGatewaySecretFound,
+            "Missing": GetGatewaySecretMissing,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    async def get_gateway_secret_after_commit(self, parameters: GetGatewaySecretParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetGatewaySecretResult]:
+        return await self.get_gateway_secret(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
     async def get_logged_model(self, parameters: GetLoggedModelParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetLoggedModelResult]:
         if options.read_after_commit is None and self._read_after_commit is not None:
             options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
@@ -9071,6 +11060,42 @@ class AsyncRiffDBMLflowClient:
     async def get_run_lineage_after_commit(self, parameters: GetRunLineageParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetRunLineageResult]:
         return await self.get_run_lineage(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
 
+    async def get_scorer(self, parameters: GetScorerParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetScorerResult]:
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = await self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="GetScorer", plan_hash=GET_SCORER_QUERY_PLAN_HASH,
+            parameters=encode_record(parameters), options=options,
+        )
+        outcomes = {
+            "Found": GetScorerFound,
+            "Missing": GetScorerMissing,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    async def get_scorer_after_commit(self, parameters: GetScorerParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetScorerResult]:
+        return await self.get_scorer(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    async def get_server_job(self, parameters: GetServerJobParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetServerJobResult]:
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = await self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="GetServerJob", plan_hash=GET_SERVER_JOB_QUERY_PLAN_HASH,
+            parameters=encode_record(parameters), options=options,
+        )
+        outcomes = {
+            "Found": GetServerJobFound,
+            "Missing": GetServerJobMissing,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    async def get_server_job_after_commit(self, parameters: GetServerJobParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetServerJobResult]:
+        return await self.get_server_job(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
     async def get_trace(self, parameters: GetTraceParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetTraceResult]:
         if options.read_after_commit is None and self._read_after_commit is not None:
             options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
@@ -9088,6 +11113,221 @@ class AsyncRiffDBMLflowClient:
 
     async def get_trace_after_commit(self, parameters: GetTraceParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetTraceResult]:
         return await self.get_trace(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    async def list_gateway_budget_policies(self, parameters: ListGatewayBudgetPoliciesParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[ListGatewayBudgetPoliciesResult]:
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 50):
+            raise ValueError("limit must be an integer from 1 through 50")
+        encoded_parameters = encode_record(parameters)
+        generated_cursor = parameters.after
+        if generated_cursor is not None:
+            if options.cursor is not None:
+                raise ValueError("generated cursor conflicts with query options")
+            options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
+        encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = await self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="ListGatewayBudgetPolicies", plan_hash=LIST_GATEWAY_BUDGET_POLICIES_QUERY_PLAN_HASH,
+            parameters=encoded_parameters, options=options,
+        )
+        outcomes = {
+            "Found": ListGatewayBudgetPoliciesFound,
+            "IntegrityFailure": ListGatewayBudgetPoliciesIntegrityFailure,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    async def list_gateway_budget_policies_after_commit(self, parameters: ListGatewayBudgetPoliciesParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[ListGatewayBudgetPoliciesResult]:
+        return await self.list_gateway_budget_policies(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    async def list_gateway_budget_policies_pages(self, parameters: ListGatewayBudgetPoliciesParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[ListGatewayBudgetPoliciesResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[ListGatewayBudgetPoliciesResult]] = []
+        for _ in range(max_pages):
+            page_parameters = ListGatewayBudgetPoliciesParams(scope=parameters.scope, limit=parameters.limit, after=None)
+            page = await self.list_gateway_budget_policies(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
+
+    async def list_gateway_endpoints(self, parameters: ListGatewayEndpointsParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[ListGatewayEndpointsResult]:
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 10):
+            raise ValueError("limit must be an integer from 1 through 10")
+        encoded_parameters = encode_record(parameters)
+        generated_cursor = parameters.after
+        if generated_cursor is not None:
+            if options.cursor is not None:
+                raise ValueError("generated cursor conflicts with query options")
+            options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
+        encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = await self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="ListGatewayEndpoints", plan_hash=LIST_GATEWAY_ENDPOINTS_QUERY_PLAN_HASH,
+            parameters=encoded_parameters, options=options,
+        )
+        outcomes = {
+            "Found": ListGatewayEndpointsFound,
+            "IntegrityFailure": ListGatewayEndpointsIntegrityFailure,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    async def list_gateway_endpoints_after_commit(self, parameters: ListGatewayEndpointsParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[ListGatewayEndpointsResult]:
+        return await self.list_gateway_endpoints(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    async def list_gateway_endpoints_pages(self, parameters: ListGatewayEndpointsParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[ListGatewayEndpointsResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[ListGatewayEndpointsResult]] = []
+        for _ in range(max_pages):
+            page_parameters = ListGatewayEndpointsParams(scope=parameters.scope, limit=parameters.limit, after=None)
+            page = await self.list_gateway_endpoints(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
+
+    async def list_gateway_guardrails(self, parameters: ListGatewayGuardrailsParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[ListGatewayGuardrailsResult]:
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 50):
+            raise ValueError("limit must be an integer from 1 through 50")
+        encoded_parameters = encode_record(parameters)
+        generated_cursor = parameters.after
+        if generated_cursor is not None:
+            if options.cursor is not None:
+                raise ValueError("generated cursor conflicts with query options")
+            options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
+        encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = await self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="ListGatewayGuardrails", plan_hash=LIST_GATEWAY_GUARDRAILS_QUERY_PLAN_HASH,
+            parameters=encoded_parameters, options=options,
+        )
+        outcomes = {
+            "Found": ListGatewayGuardrailsFound,
+            "IntegrityFailure": ListGatewayGuardrailsIntegrityFailure,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    async def list_gateway_guardrails_after_commit(self, parameters: ListGatewayGuardrailsParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[ListGatewayGuardrailsResult]:
+        return await self.list_gateway_guardrails(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    async def list_gateway_guardrails_pages(self, parameters: ListGatewayGuardrailsParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[ListGatewayGuardrailsResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[ListGatewayGuardrailsResult]] = []
+        for _ in range(max_pages):
+            page_parameters = ListGatewayGuardrailsParams(scope=parameters.scope, limit=parameters.limit, after=None)
+            page = await self.list_gateway_guardrails(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
+
+    async def list_gateway_model_definitions(self, parameters: ListGatewayModelDefinitionsParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[ListGatewayModelDefinitionsResult]:
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 50):
+            raise ValueError("limit must be an integer from 1 through 50")
+        encoded_parameters = encode_record(parameters)
+        generated_cursor = parameters.after
+        if generated_cursor is not None:
+            if options.cursor is not None:
+                raise ValueError("generated cursor conflicts with query options")
+            options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
+        encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = await self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="ListGatewayModelDefinitions", plan_hash=LIST_GATEWAY_MODEL_DEFINITIONS_QUERY_PLAN_HASH,
+            parameters=encoded_parameters, options=options,
+        )
+        outcomes = {
+            "Found": ListGatewayModelDefinitionsFound,
+            "IntegrityFailure": ListGatewayModelDefinitionsIntegrityFailure,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    async def list_gateway_model_definitions_after_commit(self, parameters: ListGatewayModelDefinitionsParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[ListGatewayModelDefinitionsResult]:
+        return await self.list_gateway_model_definitions(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    async def list_gateway_model_definitions_pages(self, parameters: ListGatewayModelDefinitionsParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[ListGatewayModelDefinitionsResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[ListGatewayModelDefinitionsResult]] = []
+        for _ in range(max_pages):
+            page_parameters = ListGatewayModelDefinitionsParams(scope=parameters.scope, limit=parameters.limit, after=None)
+            page = await self.list_gateway_model_definitions(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
+
+    async def list_gateway_secrets(self, parameters: ListGatewaySecretsParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[ListGatewaySecretsResult]:
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 10):
+            raise ValueError("limit must be an integer from 1 through 10")
+        encoded_parameters = encode_record(parameters)
+        generated_cursor = parameters.after
+        if generated_cursor is not None:
+            if options.cursor is not None:
+                raise ValueError("generated cursor conflicts with query options")
+            options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
+        encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = await self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="ListGatewaySecrets", plan_hash=LIST_GATEWAY_SECRETS_QUERY_PLAN_HASH,
+            parameters=encoded_parameters, options=options,
+        )
+        outcomes = {
+            "Found": ListGatewaySecretsFound,
+            "IntegrityFailure": ListGatewaySecretsIntegrityFailure,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    async def list_gateway_secrets_after_commit(self, parameters: ListGatewaySecretsParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[ListGatewaySecretsResult]:
+        return await self.list_gateway_secrets(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    async def list_gateway_secrets_pages(self, parameters: ListGatewaySecretsParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[ListGatewaySecretsResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[ListGatewaySecretsResult]] = []
+        for _ in range(max_pages):
+            page_parameters = ListGatewaySecretsParams(scope=parameters.scope, limit=parameters.limit, after=None)
+            page = await self.list_gateway_secrets(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
 
     async def list_mcpaccess_endpoints_by_server(self, parameters: ListMCPAccessEndpointsByServerParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[ListMCPAccessEndpointsByServerResult]:
         if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 50):
@@ -9255,6 +11495,92 @@ class AsyncRiffDBMLflowClient:
         for _ in range(max_pages):
             page_parameters = ListRegistryWebhooksParams(scope=parameters.scope, limit=parameters.limit, after=None)
             page = await self.list_registry_webhooks(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
+
+    async def list_scorers(self, parameters: ListScorersParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[ListScorersResult]:
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 10):
+            raise ValueError("limit must be an integer from 1 through 10")
+        encoded_parameters = encode_record(parameters)
+        generated_cursor = parameters.after
+        if generated_cursor is not None:
+            if options.cursor is not None:
+                raise ValueError("generated cursor conflicts with query options")
+            options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
+        encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = await self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="ListScorers", plan_hash=LIST_SCORERS_QUERY_PLAN_HASH,
+            parameters=encoded_parameters, options=options,
+        )
+        outcomes = {
+            "Found": ListScorersFound,
+            "IntegrityFailure": ListScorersIntegrityFailure,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    async def list_scorers_after_commit(self, parameters: ListScorersParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[ListScorersResult]:
+        return await self.list_scorers(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    async def list_scorers_pages(self, parameters: ListScorersParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[ListScorersResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[ListScorersResult]] = []
+        for _ in range(max_pages):
+            page_parameters = ListScorersParams(scope=parameters.scope, limit=parameters.limit, after=None)
+            page = await self.list_scorers(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
+
+    async def list_server_jobs(self, parameters: ListServerJobsParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[ListServerJobsResult]:
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 10):
+            raise ValueError("limit must be an integer from 1 through 10")
+        encoded_parameters = encode_record(parameters)
+        generated_cursor = parameters.after
+        if generated_cursor is not None:
+            if options.cursor is not None:
+                raise ValueError("generated cursor conflicts with query options")
+            options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
+        encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = await self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="ListServerJobs", plan_hash=LIST_SERVER_JOBS_QUERY_PLAN_HASH,
+            parameters=encoded_parameters, options=options,
+        )
+        outcomes = {
+            "Found": ListServerJobsFound,
+            "IntegrityFailure": ListServerJobsIntegrityFailure,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    async def list_server_jobs_after_commit(self, parameters: ListServerJobsParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[ListServerJobsResult]:
+        return await self.list_server_jobs(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    async def list_server_jobs_pages(self, parameters: ListServerJobsParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[ListServerJobsResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[ListServerJobsResult]] = []
+        for _ in range(max_pages):
+            page_parameters = ListServerJobsParams(scope=parameters.scope, limit=parameters.limit, after=None)
+            page = await self.list_server_jobs(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
             pages.append(page)
             if not page.next_cursor:
                 break
@@ -11300,6 +13626,111 @@ class AsyncRiffDBMLflowClient:
     ) -> CommandBatchResult[DeleteExperimentTagOutcome]:
         return await self._transport._command_batch(inputs, options, self.delete_experiment_tag, progress)
 
+    async def delete_gateway_budget_policy_entity(self, input: DeleteGatewayBudgetPolicyEntityInput) -> TypedCommandResult[DeleteGatewayBudgetPolicyEntityOutcome]:
+        raw = await self._transport._execute_command(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            command_name="DeleteGatewayBudgetPolicyEntity", plan_hash=DELETE_GATEWAY_BUDGET_POLICY_ENTITY_PLAN_HASH,
+            input=encode_record(input), attempts=self._command_attempts,
+        )
+        outcomes = {
+            "GatewayBudgetPolicyDeleted": DeleteGatewayBudgetPolicyEntityGatewayBudgetPolicyDeleted,
+            "GatewayBudgetPolicyMissing": DeleteGatewayBudgetPolicyEntityGatewayBudgetPolicyMissing,
+        }
+        result: TypedCommandResult[DeleteGatewayBudgetPolicyEntityOutcome] = raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        if self._track_causal_writes and result.commit_sequence is not None and result.commit_sequence > 0:
+            self._read_after_commit = result.commit_sequence if self._read_after_commit is None or result.commit_sequence > self._read_after_commit else self._read_after_commit
+        return result
+
+    async def delete_gateway_budget_policy_entity_batch(
+        self, inputs: Sequence[DeleteGatewayBudgetPolicyEntityInput], options: CommandBatchOptions,
+        progress: Callable[[CommandBatchProgress], None] | None = None,
+    ) -> CommandBatchResult[DeleteGatewayBudgetPolicyEntityOutcome]:
+        return await self._transport._command_batch(inputs, options, self.delete_gateway_budget_policy_entity, progress)
+
+    async def delete_gateway_endpoint_entity(self, input: DeleteGatewayEndpointEntityInput) -> TypedCommandResult[DeleteGatewayEndpointEntityOutcome]:
+        raw = await self._transport._execute_command(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            command_name="DeleteGatewayEndpointEntity", plan_hash=DELETE_GATEWAY_ENDPOINT_ENTITY_PLAN_HASH,
+            input=encode_record(input), attempts=self._command_attempts,
+        )
+        outcomes = {
+            "GatewayEndpointDeleted": DeleteGatewayEndpointEntityGatewayEndpointDeleted,
+            "GatewayEndpointMissing": DeleteGatewayEndpointEntityGatewayEndpointMissing,
+        }
+        result: TypedCommandResult[DeleteGatewayEndpointEntityOutcome] = raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        if self._track_causal_writes and result.commit_sequence is not None and result.commit_sequence > 0:
+            self._read_after_commit = result.commit_sequence if self._read_after_commit is None or result.commit_sequence > self._read_after_commit else self._read_after_commit
+        return result
+
+    async def delete_gateway_endpoint_entity_batch(
+        self, inputs: Sequence[DeleteGatewayEndpointEntityInput], options: CommandBatchOptions,
+        progress: Callable[[CommandBatchProgress], None] | None = None,
+    ) -> CommandBatchResult[DeleteGatewayEndpointEntityOutcome]:
+        return await self._transport._command_batch(inputs, options, self.delete_gateway_endpoint_entity, progress)
+
+    async def delete_gateway_guardrail_entity(self, input: DeleteGatewayGuardrailEntityInput) -> TypedCommandResult[DeleteGatewayGuardrailEntityOutcome]:
+        raw = await self._transport._execute_command(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            command_name="DeleteGatewayGuardrailEntity", plan_hash=DELETE_GATEWAY_GUARDRAIL_ENTITY_PLAN_HASH,
+            input=encode_record(input), attempts=self._command_attempts,
+        )
+        outcomes = {
+            "GatewayGuardrailDeleted": DeleteGatewayGuardrailEntityGatewayGuardrailDeleted,
+            "GatewayGuardrailMissing": DeleteGatewayGuardrailEntityGatewayGuardrailMissing,
+        }
+        result: TypedCommandResult[DeleteGatewayGuardrailEntityOutcome] = raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        if self._track_causal_writes and result.commit_sequence is not None and result.commit_sequence > 0:
+            self._read_after_commit = result.commit_sequence if self._read_after_commit is None or result.commit_sequence > self._read_after_commit else self._read_after_commit
+        return result
+
+    async def delete_gateway_guardrail_entity_batch(
+        self, inputs: Sequence[DeleteGatewayGuardrailEntityInput], options: CommandBatchOptions,
+        progress: Callable[[CommandBatchProgress], None] | None = None,
+    ) -> CommandBatchResult[DeleteGatewayGuardrailEntityOutcome]:
+        return await self._transport._command_batch(inputs, options, self.delete_gateway_guardrail_entity, progress)
+
+    async def delete_gateway_model_definition_entity(self, input: DeleteGatewayModelDefinitionEntityInput) -> TypedCommandResult[DeleteGatewayModelDefinitionEntityOutcome]:
+        raw = await self._transport._execute_command(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            command_name="DeleteGatewayModelDefinitionEntity", plan_hash=DELETE_GATEWAY_MODEL_DEFINITION_ENTITY_PLAN_HASH,
+            input=encode_record(input), attempts=self._command_attempts,
+        )
+        outcomes = {
+            "GatewayModelDefinitionDeleted": DeleteGatewayModelDefinitionEntityGatewayModelDefinitionDeleted,
+            "GatewayModelDefinitionMissing": DeleteGatewayModelDefinitionEntityGatewayModelDefinitionMissing,
+        }
+        result: TypedCommandResult[DeleteGatewayModelDefinitionEntityOutcome] = raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        if self._track_causal_writes and result.commit_sequence is not None and result.commit_sequence > 0:
+            self._read_after_commit = result.commit_sequence if self._read_after_commit is None or result.commit_sequence > self._read_after_commit else self._read_after_commit
+        return result
+
+    async def delete_gateway_model_definition_entity_batch(
+        self, inputs: Sequence[DeleteGatewayModelDefinitionEntityInput], options: CommandBatchOptions,
+        progress: Callable[[CommandBatchProgress], None] | None = None,
+    ) -> CommandBatchResult[DeleteGatewayModelDefinitionEntityOutcome]:
+        return await self._transport._command_batch(inputs, options, self.delete_gateway_model_definition_entity, progress)
+
+    async def delete_gateway_secret_entity(self, input: DeleteGatewaySecretEntityInput) -> TypedCommandResult[DeleteGatewaySecretEntityOutcome]:
+        raw = await self._transport._execute_command(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            command_name="DeleteGatewaySecretEntity", plan_hash=DELETE_GATEWAY_SECRET_ENTITY_PLAN_HASH,
+            input=encode_record(input), attempts=self._command_attempts,
+        )
+        outcomes = {
+            "GatewaySecretDeleted": DeleteGatewaySecretEntityGatewaySecretDeleted,
+            "GatewaySecretMissing": DeleteGatewaySecretEntityGatewaySecretMissing,
+        }
+        result: TypedCommandResult[DeleteGatewaySecretEntityOutcome] = raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        if self._track_causal_writes and result.commit_sequence is not None and result.commit_sequence > 0:
+            self._read_after_commit = result.commit_sequence if self._read_after_commit is None or result.commit_sequence > self._read_after_commit else self._read_after_commit
+        return result
+
+    async def delete_gateway_secret_entity_batch(
+        self, inputs: Sequence[DeleteGatewaySecretEntityInput], options: CommandBatchOptions,
+        progress: Callable[[CommandBatchProgress], None] | None = None,
+    ) -> CommandBatchResult[DeleteGatewaySecretEntityOutcome]:
+        return await self._transport._command_batch(inputs, options, self.delete_gateway_secret_entity, progress)
+
     async def delete_logged_model_entity(self, input: DeleteLoggedModelEntityInput) -> TypedCommandResult[DeleteLoggedModelEntityOutcome]:
         raw = await self._transport._execute_command(
             contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
@@ -11425,6 +13856,48 @@ class AsyncRiffDBMLflowClient:
         progress: Callable[[CommandBatchProgress], None] | None = None,
     ) -> CommandBatchResult[DeleteRunOutcome]:
         return await self._transport._command_batch(inputs, options, self.delete_run, progress)
+
+    async def delete_scorer_entity(self, input: DeleteScorerEntityInput) -> TypedCommandResult[DeleteScorerEntityOutcome]:
+        raw = await self._transport._execute_command(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            command_name="DeleteScorerEntity", plan_hash=DELETE_SCORER_ENTITY_PLAN_HASH,
+            input=encode_record(input), attempts=self._command_attempts,
+        )
+        outcomes = {
+            "ScorerDeleted": DeleteScorerEntityScorerDeleted,
+            "ScorerMissing": DeleteScorerEntityScorerMissing,
+        }
+        result: TypedCommandResult[DeleteScorerEntityOutcome] = raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        if self._track_causal_writes and result.commit_sequence is not None and result.commit_sequence > 0:
+            self._read_after_commit = result.commit_sequence if self._read_after_commit is None or result.commit_sequence > self._read_after_commit else self._read_after_commit
+        return result
+
+    async def delete_scorer_entity_batch(
+        self, inputs: Sequence[DeleteScorerEntityInput], options: CommandBatchOptions,
+        progress: Callable[[CommandBatchProgress], None] | None = None,
+    ) -> CommandBatchResult[DeleteScorerEntityOutcome]:
+        return await self._transport._command_batch(inputs, options, self.delete_scorer_entity, progress)
+
+    async def delete_server_job_entity(self, input: DeleteServerJobEntityInput) -> TypedCommandResult[DeleteServerJobEntityOutcome]:
+        raw = await self._transport._execute_command(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            command_name="DeleteServerJobEntity", plan_hash=DELETE_SERVER_JOB_ENTITY_PLAN_HASH,
+            input=encode_record(input), attempts=self._command_attempts,
+        )
+        outcomes = {
+            "ServerJobDeleted": DeleteServerJobEntityServerJobDeleted,
+            "ServerJobMissing": DeleteServerJobEntityServerJobMissing,
+        }
+        result: TypedCommandResult[DeleteServerJobEntityOutcome] = raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        if self._track_causal_writes and result.commit_sequence is not None and result.commit_sequence > 0:
+            self._read_after_commit = result.commit_sequence if self._read_after_commit is None or result.commit_sequence > self._read_after_commit else self._read_after_commit
+        return result
+
+    async def delete_server_job_entity_batch(
+        self, inputs: Sequence[DeleteServerJobEntityInput], options: CommandBatchOptions,
+        progress: Callable[[CommandBatchProgress], None] | None = None,
+    ) -> CommandBatchResult[DeleteServerJobEntityOutcome]:
+        return await self._transport._command_batch(inputs, options, self.delete_server_job_entity, progress)
 
     async def delete_trace(self, input: DeleteTraceInput) -> TypedCommandResult[DeleteTraceOutcome]:
         raw = await self._transport._execute_command(
@@ -11742,6 +14215,106 @@ class AsyncRiffDBMLflowClient:
     ) -> CommandBatchResult[UpdateRunInfoOutcome]:
         return await self._transport._command_batch(inputs, options, self.update_run_info, progress)
 
+    async def upsert_gateway_budget_policy_entity(self, input: UpsertGatewayBudgetPolicyEntityInput) -> TypedCommandResult[UpsertGatewayBudgetPolicyEntityOutcome]:
+        raw = await self._transport._execute_command(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            command_name="UpsertGatewayBudgetPolicyEntity", plan_hash=UPSERT_GATEWAY_BUDGET_POLICY_ENTITY_PLAN_HASH,
+            input=encode_record(input), attempts=self._command_attempts,
+        )
+        outcomes = {
+            "GatewayBudgetPolicyUpserted": UpsertGatewayBudgetPolicyEntityGatewayBudgetPolicyUpserted,
+        }
+        result: TypedCommandResult[UpsertGatewayBudgetPolicyEntityOutcome] = raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        if self._track_causal_writes and result.commit_sequence is not None and result.commit_sequence > 0:
+            self._read_after_commit = result.commit_sequence if self._read_after_commit is None or result.commit_sequence > self._read_after_commit else self._read_after_commit
+        return result
+
+    async def upsert_gateway_budget_policy_entity_batch(
+        self, inputs: Sequence[UpsertGatewayBudgetPolicyEntityInput], options: CommandBatchOptions,
+        progress: Callable[[CommandBatchProgress], None] | None = None,
+    ) -> CommandBatchResult[UpsertGatewayBudgetPolicyEntityOutcome]:
+        return await self._transport._command_batch(inputs, options, self.upsert_gateway_budget_policy_entity, progress)
+
+    async def upsert_gateway_endpoint_entity(self, input: UpsertGatewayEndpointEntityInput) -> TypedCommandResult[UpsertGatewayEndpointEntityOutcome]:
+        raw = await self._transport._execute_command(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            command_name="UpsertGatewayEndpointEntity", plan_hash=UPSERT_GATEWAY_ENDPOINT_ENTITY_PLAN_HASH,
+            input=encode_record(input), attempts=self._command_attempts,
+        )
+        outcomes = {
+            "GatewayEndpointUpserted": UpsertGatewayEndpointEntityGatewayEndpointUpserted,
+        }
+        result: TypedCommandResult[UpsertGatewayEndpointEntityOutcome] = raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        if self._track_causal_writes and result.commit_sequence is not None and result.commit_sequence > 0:
+            self._read_after_commit = result.commit_sequence if self._read_after_commit is None or result.commit_sequence > self._read_after_commit else self._read_after_commit
+        return result
+
+    async def upsert_gateway_endpoint_entity_batch(
+        self, inputs: Sequence[UpsertGatewayEndpointEntityInput], options: CommandBatchOptions,
+        progress: Callable[[CommandBatchProgress], None] | None = None,
+    ) -> CommandBatchResult[UpsertGatewayEndpointEntityOutcome]:
+        return await self._transport._command_batch(inputs, options, self.upsert_gateway_endpoint_entity, progress)
+
+    async def upsert_gateway_guardrail_entity(self, input: UpsertGatewayGuardrailEntityInput) -> TypedCommandResult[UpsertGatewayGuardrailEntityOutcome]:
+        raw = await self._transport._execute_command(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            command_name="UpsertGatewayGuardrailEntity", plan_hash=UPSERT_GATEWAY_GUARDRAIL_ENTITY_PLAN_HASH,
+            input=encode_record(input), attempts=self._command_attempts,
+        )
+        outcomes = {
+            "GatewayGuardrailUpserted": UpsertGatewayGuardrailEntityGatewayGuardrailUpserted,
+        }
+        result: TypedCommandResult[UpsertGatewayGuardrailEntityOutcome] = raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        if self._track_causal_writes and result.commit_sequence is not None and result.commit_sequence > 0:
+            self._read_after_commit = result.commit_sequence if self._read_after_commit is None or result.commit_sequence > self._read_after_commit else self._read_after_commit
+        return result
+
+    async def upsert_gateway_guardrail_entity_batch(
+        self, inputs: Sequence[UpsertGatewayGuardrailEntityInput], options: CommandBatchOptions,
+        progress: Callable[[CommandBatchProgress], None] | None = None,
+    ) -> CommandBatchResult[UpsertGatewayGuardrailEntityOutcome]:
+        return await self._transport._command_batch(inputs, options, self.upsert_gateway_guardrail_entity, progress)
+
+    async def upsert_gateway_model_definition_entity(self, input: UpsertGatewayModelDefinitionEntityInput) -> TypedCommandResult[UpsertGatewayModelDefinitionEntityOutcome]:
+        raw = await self._transport._execute_command(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            command_name="UpsertGatewayModelDefinitionEntity", plan_hash=UPSERT_GATEWAY_MODEL_DEFINITION_ENTITY_PLAN_HASH,
+            input=encode_record(input), attempts=self._command_attempts,
+        )
+        outcomes = {
+            "GatewayModelDefinitionUpserted": UpsertGatewayModelDefinitionEntityGatewayModelDefinitionUpserted,
+        }
+        result: TypedCommandResult[UpsertGatewayModelDefinitionEntityOutcome] = raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        if self._track_causal_writes and result.commit_sequence is not None and result.commit_sequence > 0:
+            self._read_after_commit = result.commit_sequence if self._read_after_commit is None or result.commit_sequence > self._read_after_commit else self._read_after_commit
+        return result
+
+    async def upsert_gateway_model_definition_entity_batch(
+        self, inputs: Sequence[UpsertGatewayModelDefinitionEntityInput], options: CommandBatchOptions,
+        progress: Callable[[CommandBatchProgress], None] | None = None,
+    ) -> CommandBatchResult[UpsertGatewayModelDefinitionEntityOutcome]:
+        return await self._transport._command_batch(inputs, options, self.upsert_gateway_model_definition_entity, progress)
+
+    async def upsert_gateway_secret_entity(self, input: UpsertGatewaySecretEntityInput) -> TypedCommandResult[UpsertGatewaySecretEntityOutcome]:
+        raw = await self._transport._execute_command(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            command_name="UpsertGatewaySecretEntity", plan_hash=UPSERT_GATEWAY_SECRET_ENTITY_PLAN_HASH,
+            input=encode_record(input), attempts=self._command_attempts,
+        )
+        outcomes = {
+            "GatewaySecretUpserted": UpsertGatewaySecretEntityGatewaySecretUpserted,
+        }
+        result: TypedCommandResult[UpsertGatewaySecretEntityOutcome] = raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        if self._track_causal_writes and result.commit_sequence is not None and result.commit_sequence > 0:
+            self._read_after_commit = result.commit_sequence if self._read_after_commit is None or result.commit_sequence > self._read_after_commit else self._read_after_commit
+        return result
+
+    async def upsert_gateway_secret_entity_batch(
+        self, inputs: Sequence[UpsertGatewaySecretEntityInput], options: CommandBatchOptions,
+        progress: Callable[[CommandBatchProgress], None] | None = None,
+    ) -> CommandBatchResult[UpsertGatewaySecretEntityOutcome]:
+        return await self._transport._command_batch(inputs, options, self.upsert_gateway_secret_entity, progress)
+
     async def upsert_logged_model(self, input: UpsertLoggedModelInput) -> TypedCommandResult[UpsertLoggedModelOutcome]:
         raw = await self._transport._execute_command(
             contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
@@ -11903,6 +14476,46 @@ class AsyncRiffDBMLflowClient:
         progress: Callable[[CommandBatchProgress], None] | None = None,
     ) -> CommandBatchResult[UpsertRunLineageOutcome]:
         return await self._transport._command_batch(inputs, options, self.upsert_run_lineage, progress)
+
+    async def upsert_scorer_entity(self, input: UpsertScorerEntityInput) -> TypedCommandResult[UpsertScorerEntityOutcome]:
+        raw = await self._transport._execute_command(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            command_name="UpsertScorerEntity", plan_hash=UPSERT_SCORER_ENTITY_PLAN_HASH,
+            input=encode_record(input), attempts=self._command_attempts,
+        )
+        outcomes = {
+            "ScorerUpserted": UpsertScorerEntityScorerUpserted,
+        }
+        result: TypedCommandResult[UpsertScorerEntityOutcome] = raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        if self._track_causal_writes and result.commit_sequence is not None and result.commit_sequence > 0:
+            self._read_after_commit = result.commit_sequence if self._read_after_commit is None or result.commit_sequence > self._read_after_commit else self._read_after_commit
+        return result
+
+    async def upsert_scorer_entity_batch(
+        self, inputs: Sequence[UpsertScorerEntityInput], options: CommandBatchOptions,
+        progress: Callable[[CommandBatchProgress], None] | None = None,
+    ) -> CommandBatchResult[UpsertScorerEntityOutcome]:
+        return await self._transport._command_batch(inputs, options, self.upsert_scorer_entity, progress)
+
+    async def upsert_server_job_entity(self, input: UpsertServerJobEntityInput) -> TypedCommandResult[UpsertServerJobEntityOutcome]:
+        raw = await self._transport._execute_command(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            command_name="UpsertServerJobEntity", plan_hash=UPSERT_SERVER_JOB_ENTITY_PLAN_HASH,
+            input=encode_record(input), attempts=self._command_attempts,
+        )
+        outcomes = {
+            "ServerJobUpserted": UpsertServerJobEntityServerJobUpserted,
+        }
+        result: TypedCommandResult[UpsertServerJobEntityOutcome] = raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        if self._track_causal_writes and result.commit_sequence is not None and result.commit_sequence > 0:
+            self._read_after_commit = result.commit_sequence if self._read_after_commit is None or result.commit_sequence > self._read_after_commit else self._read_after_commit
+        return result
+
+    async def upsert_server_job_entity_batch(
+        self, inputs: Sequence[UpsertServerJobEntityInput], options: CommandBatchOptions,
+        progress: Callable[[CommandBatchProgress], None] | None = None,
+    ) -> CommandBatchResult[UpsertServerJobEntityOutcome]:
+        return await self._transport._command_batch(inputs, options, self.upsert_server_job_entity, progress)
 
     async def upsert_trace(self, input: UpsertTraceInput) -> TypedCommandResult[UpsertTraceOutcome]:
         raw = await self._transport._execute_command(

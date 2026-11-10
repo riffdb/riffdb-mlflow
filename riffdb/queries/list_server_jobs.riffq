@@ -1,0 +1,20 @@
+query ListServerJobs(
+    $scope: ServerJobEntity.scope,
+    $limit: Limit<10> = 10,
+    $after: Cursor?,
+) {
+    many jobs from ServerJobEntity
+        where scope == $scope
+        order by creation_time_ms asc, job_id asc
+        take $limit after $after
+        else IntegrityFailure
+
+    return Found {
+        jobs: jobs {
+            job_id creation_time_ms job_name params_json timeout_json
+            status_code result_text retry_count last_update_time_ms
+            status_details_json
+        }
+    }
+    outcomes Found | IntegrityFailure
+}

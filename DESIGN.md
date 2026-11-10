@@ -2,36 +2,38 @@
 
 ## Compatibility target
 
-`riffdb-mlflow` (`0.2.1`) pins **MLflow `3.15.1`** and **RiffDB `0.2.1`** and
+`riffdb-mlflow` (`0.2.2`) pins **MLflow `3.15.1`** and **RiffDB `0.2.1`** and
 registers the `riffdb` URI scheme in both official MLflow entry-point groups:
 
 - `mlflow.tracking_store` → `riffdb_mlflow.store:RiffDBTrackingStore`
 - `mlflow.model_registry_store` → `riffdb_mlflow.registry_store:RiffDBModelRegistryStore`
 
 The package implements the tracking, tracing, evaluation assessment, columnar
-trace metrics, logged-model, MCP server registry, model registry, prompt
-registry, and registry webhook backends. Artifact payloads remain in the
-artifact repository named by MLflow's `artifact_uri` argument (or default to
-`_MLFLOW_SERVER_ARTIFACT_ROOT` / `./mlruns` when `artifact_uri` is omitted).
+trace metrics, logged-model, MCP server registry, UI-managed AI Gateway,
+gateway guardrails, evaluation scorers & online scoring, model registry, prompt
+registry, registry webhook, and server-side job store (`RiffDBJobStore`)
+backends. Artifact payloads remain in the artifact repository named by MLflow's
+`artifact_uri` argument (or default to `_MLFLOW_SERVER_ARTIFACT_ROOT` /
+`./mlruns` when `artifact_uri` is omitted).
 
-MLflow 3.15.1's tracking `AbstractStore` has sixteen abstract methods and its
-model registry `AbstractStore` has twenty-one abstract methods. The
-compatibility gate in `tests/test_surface.py` records both abstract surfaces as
-well as the concrete extended surfaces (`TraceInfo`/`Span`, `Assessment`,
-`LoggedModel`, `MCPServerRegistryMixin`, `Prompt`, and `Webhook`) and fails
-when a pinned upstream upgrade changes the surface.
+MLflow 3.15.1's tracking `AbstractStore` has sixteen abstract methods, its
+model registry `AbstractStore` has twenty-one abstract methods, and its
+`AbstractJobStore` has twelve abstract methods. The compatibility gate in
+`tests/test_surface.py` records all three abstract surfaces as well as the
+concrete extended surfaces (`TraceInfo`/`Span`, `Assessment`, `LoggedModel`,
+`MCPServerRegistryMixin`, `GatewayStoreMixin`, `Scorer`, `Prompt`, and
+`Webhook`) and fails when a pinned upstream upgrade changes the surface.
 
-Two MLflow 3.15 features are gated upstream by explicit `SqlAlchemyStore` or
-SQL URI checks in MLflow itself rather than store polymorphism:
-
-1. **UI-managed AI Gateway** (`mlflow/server/gateway_api.py::_validate_store`
-   rejects any non-`SqlAlchemyStore` backend). `RiffDBTrackingStore` overrides
-   every `GatewayStoreMixin` method to raise an explicit `MlflowException`
-   (`FEATURE_DISABLED`) directing users to the standalone config-file gateway
-   (`riffdb-mlflow[gateway]`).
-2. **Server-side Job Execution** (`mlflow.server.jobs` requires a SQLAlchemy
-   database URI scheme and disables background server job workers when started
-   with `riffdb://<database>`).
+Because upstream MLflow 3.15 hardcodes `isinstance(store, SqlAlchemyStore)` or
+SQL URI scheme checks in four places (`mlflow.server.gateway_api._validate_store`,
+`mlflow.store.tracking.gateway.config_resolver`, `mlflow.server.jobs.utils._check_requirements`,
+and `mlflow.server.handlers._get_job_store`), `riffdb-mlflow` installs a
+lightweight `sys.meta_path` import hook (`riffdb_mlflow._mlflow_hooks`,
+autoloaded via `riffdb_mlflow_autoload.pth` on Python startup in both the
+`mlflow server` parent process and spawned Huey job-runner child processes)
+that delegates `riffdb://` URIs and `RiffDBTrackingStore` instances to
+`RiffDBGatewayAndScorerMixin` and `RiffDBJobStore` while leaving all non-RiffDB
+stores untouched.
 
 The Python floor for processes loading `riffdb-mlflow` directly is **3.13**,
 matching the published `cp313-abi3` RiffDB Python driver. HTTP clients talking
@@ -52,11 +54,14 @@ to `mlflow server` over REST are unaffected and support Python 3.10–3.13.
 | Logged Models | Full `LoggedModel` lifecycle, params, tags, and search |
 | Model & Prompt Registry | Registered models, versions, stage transitions, aliases, tags, prompt registry (`create_prompt`, `create_prompt_version`, `search_prompts`), and registry webhooks |
 | MCP Server Registry | MCP servers, versions, aliases, tags, and access endpoints via `RiffDBMCPServerRegistryMixin` |
+| AI Gateway & Guardrails | Encrypted secrets (`KEKManager` + `SecretCache`), model definitions, endpoints, mappings, tags, resource bindings, budget policies, budget window spend, guardrails, and live invocation config resolution via `RiffDBGatewayAndScorerMixin` |
+| Scorers & Online Scoring | Versioned scorer CRUD, gateway endpoint binding resolution, online scoring configs, active online scorers, and completed session discovery |
+| Server Job Store | Atomic job lifecycle transitions (`PENDING` → `RUNNING` → `SUCCEEDED`/`FAILED`/`TIMEOUT`/`CANCELED`), retry/reset, filtering, and deletion via `RiffDBJobStore(AbstractJobStore)` |
 | Authorization | Role-based contract policy through the compiled `MLflowTrackingServer` profile, never Python filtering |
 
 The SQL store is the behavioral reference. RiffDB is not treated as SQL and
 the adapter does not emulate SQL transactions; it exposes equivalent MLflow
-semantics through 36 compiled RiffDB commands and 64 named RiffQL queries.
+semantics through 50 compiled RiffDB commands and 78 named RiffQL queries.
 
 ## Configuration
 

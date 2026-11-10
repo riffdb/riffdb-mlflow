@@ -1,9 +1,9 @@
 # riffdb-mlflow
 
-`riffdb-mlflow` (`0.2.1`) is a compiled RiffDB tracking-store and model-registry
-plugin for **MLflow 3.15.1** targeting **RiffDB 0.2.1**. It is an out-of-tree
-integration: no MLflow-specific code, vocabulary, routes, or schemas belong in
-the RiffDB repository.
+`riffdb-mlflow` (`0.2.2`) is a compiled RiffDB tracking-store, model-registry,
+and server job-store plugin for **MLflow 3.15.1** targeting **RiffDB 0.2.1**.
+It is an out-of-tree integration: no MLflow-specific code, vocabulary, routes,
+or schemas belong in the RiffDB repository.
 
 ## Supported MLflow 3.15.1 Surface
 
@@ -23,16 +23,17 @@ The package registers the `riffdb` scheme in both official MLflow plugin groups:
 | **Prompt Registry** (`create_prompt`, `search_prompts`, etc.) | Supported | All 16 concrete Prompt Registry methods on `mlflow.store.model_registry.AbstractStore` backed by `RiffDBModelRegistryStore` registered-model and model-version primitives. |
 | **Registry Webhooks** (`create_webhook`, `list_webhooks`, etc.) | Supported | All 6 webhook lifecycle and event-filtering methods on `RiffDBModelRegistryStore`. |
 | **MCP Server Registry** (`MCPServerRegistryMixin`) | Supported | Implemented on `RiffDBTrackingStore` (`create_mcp_server`, `search_mcp_servers`, versions, aliases, tags, and access endpoints), backing `/ajax-api/3.0/mlflow/mcp-servers` and the MLflow 3.15 MCP Registry UI. |
-| **UI-Managed AI Gateway** (`GatewayStoreMixin`) | Unsupported (Upstream SQL check) | Upstream `mlflow.server.gateway_api._validate_store` rejects any non-`SqlAlchemyStore` tracking backend. Use the standalone config-based gateway via `riffdb-mlflow[gateway]` (`mlflow gateway start --config-path ...`). |
-| **Server-Side Job Runner** (`mlflow.server.jobs`) | Unsupported (Upstream SQL check) | Upstream MLflow server job execution requires a SQLAlchemy database URI (`postgresql://`, `sqlite://`, etc.) and disables background server jobs (such as server-side judge/scorer runs) when started with `riffdb://<db>`. |
+| **UI-Managed AI Gateway & Guardrails** (`GatewayStoreMixin`) | Supported | All 36 `GatewayStoreMixin` methods (secrets with envelope KEK encryption and `SecretCache`, model definitions, endpoints, model mappings, fallback/routing configs, endpoint tags, resource bindings, budget policies, budget window spend, and gateway guardrails) plus live `/gateway/<endpoint>/mlflow/invocations` `config_resolver` dispatch. |
+| **Scorers & Online Scoring** (`register_scorer`, `OnlineScoringConfig`) | Supported | Versioned scorer registration with automatic gateway endpoint-name-to-ID binding, `get_scorer`, `list_scorers`, `list_scorer_versions`, `delete_scorer`, `upsert_online_scoring_config`, `get_active_online_scorers`, and `find_completed_sessions`. |
+| **Server-Side Job Runner** (`RiffDBJobStore` / `mlflow.server.jobs`) | Supported | Full 12-method `AbstractJobStore` implementation (`create_job`, `start_job`, `reset_job`, `finish_job`, `mark_job_timed_out`, `fail_job`, `retry_or_fail_job`, `list_jobs`, `get_job`, `cancel_job`, `update_status_details`, `delete_jobs`) automatically wired into `mlflow server` and Huey job workers when `--backend-store-uri` is `riffdb://<db>`. |
 
 ## Python Version Boundary & Optional Extras
 
-- **Tracking Server / Direct `riffdb://` Store Process (`Python 3.13+`)**: The
-  compiled RiffDB driver wheel targets `cp313-abi3`, so any process that loads
+- **Tracking Server / Direct `riffdb://` Store Process (`Python 3.11+`)**: The
+  compiled RiffDB driver wheel targets `cp311-abi3`, so any process that loads
   `riffdb-mlflow` directly (such as `mlflow server` or a client using
-  `MlflowClient(tracking_uri="riffdb://<db>")`) must run **Python 3.13 or newer**.
-- **HTTP Tracking Clients (`Python 3.10–3.13`)**: Standard MLflow training and
+  `MlflowClient(tracking_uri="riffdb://<db>")`) supports **Python 3.11 or newer** (`3.11`, `3.12`, `3.13`, `3.14`).
+- **HTTP Tracking Clients (`Python 3.10+`)**: Standard MLflow training and
   serving workloads that connect to the tracking server over HTTP/HTTPS
   (`MLFLOW_TRACKING_URI=http://...`) do **not** install `riffdb-mlflow` and can
   run on any Python version supported by MLflow (`3.10+`).

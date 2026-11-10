@@ -2926,7 +2926,7 @@ wheels = [
 
 [[package]]
 name = "riffdb-mlflow"
-version = "0.2.1"
+version = "0.2.2"
 source = { editable = "." }
 dependencies = [
     { name = "mlflow" },
@@ -2957,11 +2957,11 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "boto3", marker = "extra == 'aws'", specifier = ">=1.28" },
-    { name = "mlflow", specifier = "==3.15.1" },
-    { name = "mlflow", extras = ["extras"], marker = "extra == 'extras'", specifier = "==3.15.1" },
-    { name = "mlflow", extras = ["gateway"], marker = "extra == 'gateway'", specifier = "==3.15.1" },
-    { name = "mlflow", extras = ["genai"], marker = "extra == 'genai'", specifier = "==3.15.1" },
-    { name = "riffdb", specifier = "==0.2.1" },
+    { name = "mlflow", specifier = "~=3.15.1" },
+    { name = "mlflow", extras = ["extras"], marker = "extra == 'extras'", specifier = "~=3.15.1" },
+    { name = "mlflow", extras = ["gateway"], marker = "extra == 'gateway'", specifier = "~=3.15.1" },
+    { name = "mlflow", extras = ["genai"], marker = "extra == 'genai'", specifier = "~=3.15.1" },
+    { name = "riffdb", specifier = "~=0.2.1" },
 ]
 provides-extras = ["gateway", "genai", "extras", "aws"]
 

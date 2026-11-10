@@ -1277,6 +1277,180 @@ def _verify_extended_tracking_store(store: object, exp_id: str, run_id: str) -> 
     reg_store.delete_registered_model("fraud-detector")
     reg_store.delete_registered_model("system-greeting")
 
+    # 8. AI Gateway (GatewayStoreMixin + config_resolver), Scorers, Online Scoring, and Guardrails
+    os.environ.setdefault("MLFLOW_CRYPTO_KEK_PASSPHRASE", "riffdb-conformance-kek-passphrase")
+    from mlflow.entities import (
+        GatewayEndpointModelConfig,
+        GatewayEndpointTag,
+        RoutingStrategy,
+    )
+    from mlflow.entities.gateway_budget_policy import (
+        BudgetAction,
+        BudgetDuration,
+        BudgetDurationUnit,
+        BudgetTargetScope,
+        BudgetUnit,
+    )
+    from mlflow.entities.gateway_endpoint import GatewayModelLinkageType
+    from mlflow.entities.gateway_guardrail import GuardrailAction, GuardrailStage
+    from mlflow.store.tracking.gateway.config_resolver import (
+        get_endpoint_config,
+        get_resource_endpoint_configs,
+    )
+
+    gw_secret = s.create_gateway_secret(
+        secret_name="openai-prod-key",
+        secret_value={"api_key": "sk-test-secret-value-123456"},
+        provider="openai",
+        auth_config={"auth_mode": "api_key"},
+        created_by="conformance",
+    )
+    if gw_secret.secret_name != "openai-prod-key":
+        raise RuntimeError("create_gateway_secret failed")
+
+    gw_model_def = s.create_gateway_model_definition(
+        name="gpt-4o-primary",
+        secret_id=gw_secret.secret_id,
+        provider="openai",
+        model_name="gpt-4o",
+        created_by="conformance",
+    )
+    if gw_model_def.secret_name != "openai-prod-key":
+        raise RuntimeError("create_gateway_model_definition failed")
+
+    gw_endpoint = s.create_gateway_endpoint(
+        name="chat-prod",
+        model_configs=[
+            GatewayEndpointModelConfig(
+                model_definition_id=gw_model_def.model_definition_id,
+                linkage_type=GatewayModelLinkageType.PRIMARY,
+                weight=1.0,
+            )
+        ],
+        routing_strategy=RoutingStrategy.REQUEST_BASED_TRAFFIC_SPLIT,
+        experiment_id=exp_id,
+        usage_tracking=True,
+        created_by="conformance",
+    )
+    if gw_endpoint.name != "chat-prod" or len(gw_endpoint.model_mappings) != 1:
+        raise RuntimeError("create_gateway_endpoint failed")
+
+    s.set_gateway_endpoint_tag(gw_endpoint.endpoint_id, GatewayEndpointTag(key="env", value="prod"))
+    resolved_cfg = get_endpoint_config("chat-prod", store=s)  # type: ignore[arg-type]
+    if (
+        resolved_cfg.endpoint_id != gw_endpoint.endpoint_id
+        or len(resolved_cfg.models) != 1
+        or resolved_cfg.models[0].secret_value != {"api_key": "sk-test-secret-value-123456"}
+    ):
+        raise RuntimeError("get_endpoint_config failed to decrypt gateway secret")
+
+    bp = s.create_budget_policy(
+        budget_unit=BudgetUnit.USD,
+        budget_amount=100.0,
+        duration=BudgetDuration(unit=BudgetDurationUnit.DAYS, value=30),
+        target_scope=BudgetTargetScope.ENDPOINT,
+        target_value=gw_endpoint.endpoint_id,
+        budget_action=BudgetAction.REJECT,
+        created_by="conformance",
+    )
+    if bp.budget_amount != 100.0 or len(s.list_budget_policies()) != 1:
+        raise RuntimeError("create/list_budget_policies failed")
+    s.delete_budget_policy(bp.budget_policy_id)
+
+    scorer_ver = s.register_scorer(
+        experiment_id=exp_id,
+        name="safety-judge",
+        serialized_scorer=json.dumps(
+            {
+                "name": "safety-judge",
+                "instructions_judge_pydantic_data": {
+                    "instructions": "Evaluate response safety.",
+                    "model": "gateway:/chat-prod",
+                },
+            }
+        ),
+    )
+    if scorer_ver.scorer_version != 1 or scorer_ver.scorer_id is None:
+        raise RuntimeError("register_scorer failed")
+
+    res_cfgs = get_resource_endpoint_configs("scorer", scorer_ver.scorer_id, store=s)  # type: ignore[arg-type]
+    if len(res_cfgs) != 1 or res_cfgs[0].endpoint_id != gw_endpoint.endpoint_id:
+        raise RuntimeError("get_resource_endpoint_configs failed for bound scorer")
+
+    online_cfg = s.upsert_online_scoring_config(
+        experiment_id=exp_id,
+        scorer_name="safety-judge",
+        sample_rate=0.5,
+    )
+    if online_cfg.sample_rate != 0.5 or len(s.get_active_online_scorers()) != 1:
+        raise RuntimeError("online scoring config registration failed")
+
+    guardrail = s.create_gateway_guardrail(
+        name="safety-input-guard",
+        scorer_id=scorer_ver.scorer_id,
+        scorer_version=scorer_ver.scorer_version,
+        stage=GuardrailStage.BEFORE,
+        action=GuardrailAction.VALIDATION,
+        created_by="conformance",
+    )
+    gr_cfg = s.add_guardrail_to_endpoint(
+        endpoint_id=gw_endpoint.endpoint_id,
+        guardrail_id=guardrail.guardrail_id,
+        execution_order=1,
+    )
+    if (
+        gr_cfg.guardrail is None
+        or gr_cfg.guardrail.guardrail_id != guardrail.guardrail_id
+        or len(s.list_endpoint_guardrail_configs(gw_endpoint.endpoint_id)) != 1
+    ):
+        raise RuntimeError("endpoint guardrail configuration failed")
+
+    s.remove_guardrail_from_endpoint(gw_endpoint.endpoint_id, guardrail.guardrail_id)
+    s.delete_gateway_guardrail(guardrail.guardrail_id)
+    s.delete_scorer(exp_id, "safety-judge")
+    s.delete_gateway_endpoint(gw_endpoint.endpoint_id)
+    s.delete_gateway_model_definition(gw_model_def.model_definition_id)
+    s.delete_gateway_secret(gw_secret.secret_id)
+
+    # 9. Server Job Store (RiffDBJobStore)
+    from mlflow.entities._job_status import JobStatus
+
+    from riffdb_mlflow.job_store import RiffDBJobStore
+
+    job_store = RiffDBJobStore(f"riffdb://{s.database}")
+    job_store._transport = s._transport
+    job_store._client = s._client
+
+    job = job_store.create_job(
+        job_name="online_scoring_eval",
+        params=json.dumps({"experiment_id": exp_id, "batch_size": 10}),
+        timeout=60.0,
+    )
+    if job.status != JobStatus.PENDING:
+        raise RuntimeError("create_job did not initialize PENDING status")
+    job_store.start_job(job.job_id)
+    job_store.update_status_details(job.job_id, {"worker_pid": 12345})
+    job_store.finish_job(job.job_id, json.dumps({"evaluated": 10}))
+    finished_job = job_store.get_job(job.job_id)
+    if (
+        finished_job.status != JobStatus.SUCCEEDED
+        or finished_job.parsed_result != {"evaluated": 10}
+        or finished_job.status_details != {"worker_pid": 12345}
+    ):
+        raise RuntimeError("RiffDBJobStore lifecycle verification failed")
+    listed_jobs = list(
+        job_store.list_jobs(
+            job_name="online_scoring_eval",
+            statuses=[JobStatus.SUCCEEDED],
+            params={"experiment_id": exp_id},
+        )
+    )
+    if [j.job_id for j in listed_jobs] != [job.job_id]:
+        raise RuntimeError("RiffDBJobStore list_jobs failed")
+    deleted_jobs = job_store.delete_jobs(job_ids=[job.job_id])
+    if deleted_jobs != [job.job_id]:
+        raise RuntimeError("RiffDBJobStore delete_jobs failed")
+
 
 def main() -> None:
     if len(sys.argv) != 4:

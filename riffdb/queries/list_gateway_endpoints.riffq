@@ -1,0 +1,21 @@
+query ListGatewayEndpoints(
+    $scope: GatewayEndpointEntity.scope,
+    $limit: Limit<10> = 10,
+    $after: Cursor?,
+) {
+    many endpoints from GatewayEndpointEntity
+        where scope == $scope
+        order by endpoint_id asc
+        take $limit after $after
+        else IntegrityFailure
+
+    return Found {
+        endpoints: endpoints {
+            endpoint_id name routing_strategy fallback_config_json experiment_id
+            usage_tracking packed_model_mappings packed_tags packed_bindings
+            packed_guardrail_configs created_at_ms last_updated_at_ms
+            created_by last_updated_by
+        }
+    }
+    outcomes Found | IntegrityFailure
+}

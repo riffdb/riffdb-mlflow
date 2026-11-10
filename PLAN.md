@@ -22,8 +22,8 @@ Status: complete (`v0.2.1`).
   traces, spans, assessments, columnar projections, logged models, registered
   models, model versions, registry webhooks, and MCP server registry entities
   with explicit bounds and indexes in `riffdb/contract.riff`.
-- Compile every mutation as a named command (36 commands) and every read as a
-  named RiffQL query (64 queries).
+- Compile every mutation as a named command (50 commands) and every read as a
+  named RiffQL query (78 queries).
 - Generate and verify `riffdb.application.json`, `riffdb.application.lock.json`,
   and `src/riffdb_mlflow/generated/client.py`.
 
@@ -70,14 +70,30 @@ Status: complete (`v0.2.1`).
   Registry Webhook methods.
 - Implement `RiffDBMCPServerRegistryMixin` on `RiffDBTrackingStore` covering
   MCP servers, versions, aliases, tags, and access endpoints.
-- Override `GatewayStoreMixin` methods on `RiffDBTrackingStore` to fail with a
-  clear `MlflowException` explaining upstream MLflow's `SqlAlchemyStore` gate.
 
-## WP-007 — Live RiffDB 0.2.1 conformance and release verification
+## WP-007 — UI-Managed AI Gateway, Scorers, Online Scoring, and Server Job Store
 
-Status: complete (`v0.2.1`).
+Status: complete (`v0.2.2`).
+
+- Extend `riffdb/contract.riff` and `riffdb/queries/*.riffq` with compiled
+  entities, commands, and queries for Gateway Secrets, Model Definitions,
+  Endpoints, Budget Policies, Guardrails, Scorers, and Server Jobs (50 commands,
+  78 queries total).
+- Implement `RiffDBGatewayAndScorerMixin` covering all 36 `GatewayStoreMixin`
+  methods, live invocation `config_resolver` methods (`get_endpoint_config`,
+  `get_resource_endpoint_configs`), and all Scorer & Online Scoring methods.
+- Implement `RiffDBJobStore(AbstractJobStore)` covering all 12 job-store
+  methods and install `riffdb_mlflow._mlflow_hooks` (autoloaded via
+  `riffdb_mlflow_autoload.pth`) so `mlflow server` and Huey job workers
+  automatically support `riffdb://<database>` for UI AI Gateway and background
+  server jobs.
+
+## WP-008 — Live RiffDB 0.2.1 conformance and release verification
+
+Status: complete (`v0.2.2`).
 
 - Verify cold columnar projection readiness and full tracking, tracing,
-  analytics, logged-model, experiment UI filter, MCP server registry, model
+  analytics, logged-model, experiment UI filter, MCP server registry, AI
+  Gateway, Scorers, Online Scoring, Guardrails, Server Job Store, model
   registry, prompt registry, and webhook workflows over real RiffDB `0.2.1`
   loopback via `make check` and `make conformance`.

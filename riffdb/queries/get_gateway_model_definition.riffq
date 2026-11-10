@@ -1,0 +1,17 @@
+query GetGatewayModelDefinition(
+    $scope: GatewayModelDefinitionEntity.scope,
+    $model_definition_id: GatewayModelDefinitionEntity.model_definition_id,
+) {
+    one model_def from GatewayModelDefinitionEntity
+        where scope == $scope
+          && model_definition_id == $model_definition_id
+        else Missing
+
+    return Found {
+        model_def: model_def {
+            model_definition_id name secret_id provider model_name
+            created_at_ms last_updated_at_ms created_by last_updated_by
+        }
+    }
+    outcomes Found | Missing
+}

@@ -49,7 +49,6 @@ from mlflow.protos.databricks_pb2 import (
     RESOURCE_DOES_NOT_EXIST,
 )
 from mlflow.store.entities.paged_list import PagedList
-from mlflow.store.tracking.abstract_store import AbstractStore
 from mlflow.tracing.constant import (
     AssessmentMetricDimensionKey,
     AssessmentMetricKey,
@@ -354,7 +353,7 @@ def _linear_percentile(sorted_values: list[float], percentile: float) -> float |
     return float(sorted_values[lower_idx] * (1.0 - weight) + sorted_values[upper_idx] * weight)
 
 
-class RiffDBExtendedStoreMixin(RiffDBMCPServerRegistryMixin, AbstractStore):
+class RiffDBExtendedStoreMixin(RiffDBMCPServerRegistryMixin):
     _trace_experiment_map: dict[str, int]
     _model_experiment_map: dict[str, int]
 

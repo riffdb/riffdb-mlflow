@@ -4,11 +4,13 @@ import inspect
 
 import pytest
 from mlflow.exceptions import MlflowException
+from mlflow.store.jobs.abstract_store import AbstractJobStore
 from mlflow.store.model_registry.abstract_store import AbstractStore as ModelRegistryAbstractStore
 from mlflow.store.tracking.abstract_store import AbstractStore
 from mlflow.store.tracking.gateway.abstract_mixin import GatewayStoreMixin
 from mlflow.store.tracking.mcp_server_registry.abstract_mixin import MCPServerRegistryMixin
 
+from riffdb_mlflow.job_store import RiffDBJobStore
 from riffdb_mlflow.registry_store import RiffDBModelRegistryStore
 from riffdb_mlflow.store import RiffDBTrackingStore
 
@@ -175,11 +177,62 @@ def test_extended_mlflow_3_15_tracking_surface_is_implemented() -> None:
             assert method is not mcp_base, f"{method_name} must override MCPServerRegistryMixin"
 
 
-def test_gateway_mixin_methods_raise_explicit_mlflow_exception() -> None:
-    store = RiffDBTrackingStore("riffdb://mlflow-development", "s3://artifacts")
+def test_gateway_and_scorer_methods_are_implemented() -> None:
     for name, _member in inspect.getmembers(GatewayStoreMixin, predicate=inspect.isfunction):
         if name.startswith("_"):
             continue
-        method = getattr(store, name)
-        with pytest.raises(MlflowException, match="SQLAlchemy tracking store"):
-            method()
+        method = getattr(RiffDBTrackingStore, name, None)
+        assert callable(method), f"Missing {name} on RiffDBTrackingStore"
+        base_method = getattr(GatewayStoreMixin, name, None)
+        assert method is not base_method, f"{name} must override GatewayStoreMixin"
+
+    for scorer_or_resolver_method in (
+        "get_endpoint_config",
+        "get_resource_endpoint_configs",
+        "register_scorer",
+        "get_scorer",
+        "delete_scorer",
+        "list_scorers",
+        "list_scorers_across_experiments",
+        "list_scorer_versions",
+        "upsert_online_scoring_config",
+        "get_online_scoring_configs",
+        "get_active_online_scorers",
+        "find_completed_sessions",
+        "resolve_endpoint_in_scorer",
+    ):
+        method = getattr(RiffDBTrackingStore, scorer_or_resolver_method, None)
+        assert callable(method), f"Missing {scorer_or_resolver_method} on RiffDBTrackingStore"
+        base_abstract = getattr(AbstractStore, scorer_or_resolver_method, None)
+        if base_abstract is not None:
+            assert method is not base_abstract, (
+                f"{scorer_or_resolver_method} must override AbstractStore"
+            )
+
+
+def test_job_store_and_mlflow_hooks(monkeypatch: pytest.MonkeyPatch) -> None:
+    declared_job_methods = {
+        name
+        for name, member in inspect.getmembers(AbstractJobStore, predicate=inspect.isfunction)
+        if getattr(member, "__isabstractmethod__", False)
+    }
+    assert len(declared_job_methods) == 12
+    job_store = RiffDBJobStore("riffdb://mlflow-development")
+    assert job_store.database == "mlflow-development"
+    for method_name in declared_job_methods:
+        method = getattr(RiffDBJobStore, method_name, None)
+        assert callable(method)
+        assert method is not getattr(AbstractJobStore, method_name, None)
+
+    import mlflow.server.gateway_api as gateway_api
+    import mlflow.server.handlers as handlers
+    import mlflow.server.jobs.utils as jobs_utils
+
+    tracking_store = RiffDBTrackingStore("riffdb://mlflow-development", "s3://artifacts")
+    gateway_api._validate_store(tracking_store)
+    jobs_utils._check_requirements("riffdb://mlflow-development")
+
+    monkeypatch.setattr(handlers, "_job_store", None)
+    resolved_job_store = handlers._get_job_store("riffdb://mlflow-development")
+    assert isinstance(resolved_job_store, RiffDBJobStore)
+    assert resolved_job_store.database == "mlflow-development"

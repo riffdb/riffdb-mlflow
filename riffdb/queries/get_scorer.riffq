@@ -1,0 +1,17 @@
+query GetScorer(
+    $scope: ScorerEntity.scope,
+    $scorer_id: ScorerEntity.scorer_id,
+) {
+    one scorer from ScorerEntity
+        where scope == $scope
+          && scorer_id == $scorer_id
+        else Missing
+
+    return Found {
+        scorer: scorer {
+            scorer_id experiment_id scorer_name latest_version
+            packed_versions packed_online_config
+        }
+    }
+    outcomes Found | Missing
+}
