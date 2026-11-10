@@ -7,12 +7,12 @@ name = "riffdb-mlflow"
 version = "0.2.2"
 description = "Compiled RiffDB tracking, model-registry, AI gateway, and job store adapter for MLflow"
 readme = "README.md"
-requires-python = ">=3.13"
+requires-python = ">=3.11"
 license = { text = "MIT OR Apache-2.0" }
 authors = [{ name = "RiffDB contributors" }]
 dependencies = [
   "mlflow~=3.15.1",
-  "riffdb~=0.2.1",
+  "riffdb~=0.2.2",
 ]
 
 [project.optional-dependencies]

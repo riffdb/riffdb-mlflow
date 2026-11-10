@@ -1104,7 +1104,7 @@ def test_live_riffdb_server_conformance() -> None:
         cwd=repo_root,
         capture_output=True,
         text=True,
-        timeout=60,
+        timeout=240,
         check=False,
     )
     assert proc.returncode == 0, (

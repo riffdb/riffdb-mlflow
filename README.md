@@ -1,7 +1,7 @@
 # riffdb-mlflow
 
 `riffdb-mlflow` (`0.2.2`) is a compiled RiffDB tracking-store, model-registry,
-and server job-store plugin for **MLflow 3.15.1** targeting **RiffDB 0.2.1**.
+and server job-store plugin for **MLflow 3.15.1** targeting **RiffDB 0.2.2**.
 It is an out-of-tree integration: no MLflow-specific code, vocabulary, routes,
 or schemas belong in the RiffDB repository.
 
@@ -17,7 +17,7 @@ The package registers the `riffdb` scheme in both official MLflow plugin groups:
 | **Experiments & Runs** (`AbstractStore`) | Supported | Atomic experiment/run creation with tags, lifecycle transitions, `=`, `!=`, `LIKE`, `ILIKE`, `IS NULL`, and `IS NOT NULL` experiment search (including MLflow 3.15 UI gateway-tag filters), bounded atomic `log_batch` (IEEE-754 metrics, parameters, tags), `get_metric_history`, `log_inputs`, `log_outputs`, and `record_logged_model`. |
 | **Traces & Out-of-Order Spans** (`TraceInfo`, `Span`) | Supported | `start_trace`, `get_trace_info`, `batch_get_traces`, `log_spans`, `log_spans_async`, `ingest_spans_out_of_order`, `search_traces`, `delete_traces`, `set_trace_tag`, `delete_trace_tag`, `link_traces_to_run`, `unlink_traces_from_run`, and `link_prompts_to_trace`. |
 | **Assessments** (`Feedback`, `Expectation`) | Supported | `create_assessment`, `get_assessment`, `update_assessment`, and `delete_assessment`. |
-| **Columnar Trace Metrics & Rollups** (`query_trace_metrics`) | Supported | Contract-declared scalar columnar projections (`TraceAnalytics`, `SpanAnalytics`, `AssessmentAnalytics`) and event-driven rollups (`SpanModelRollup`) queried via `source projected` in RiffQL. Cold projections report ready on fresh RiffDB `0.2.1+` databases prior to first analytical query. |
+| **Columnar Trace Metrics & Rollups** (`query_trace_metrics`) | Supported | Contract-declared scalar columnar projections (`TraceAnalytics`, `SpanAnalytics`, `AssessmentAnalytics`) and event-driven rollups (`SpanModelRollup`) queried via `source projected` in RiffQL. Cold projections report ready on fresh RiffDB `0.2.2+` databases prior to first analytical query. |
 | **Logged Models** (`LoggedModel`) | Supported | `create_logged_model`, `get_logged_model`, `delete_logged_model`, `finalize_logged_model`, `set_logged_model_tags`, `delete_logged_model_tag`, `log_logged_model_params`, and `search_logged_models`. |
 | **Model Registry** (`mlflow.model_registry_store`) | Supported | All 21 abstract methods on `mlflow.store.model_registry.AbstractStore`: registered models, model versions, stages, aliases, tags, and download URIs. Works automatically when `--registry-store-uri` defaults to `--backend-store-uri riffdb://<db>`. |
 | **Prompt Registry** (`create_prompt`, `search_prompts`, etc.) | Supported | All 16 concrete Prompt Registry methods on `mlflow.store.model_registry.AbstractStore` backed by `RiffDBModelRegistryStore` registered-model and model-version primitives. |
@@ -50,7 +50,7 @@ pip install "riffdb-mlflow[gateway,genai,extras,aws]"
 
 ## Deploying the Application & Provisioning Credentials
 
-Deploy the compiled application lock to a RiffDB `0.2.1+` server and provision
+Deploy the compiled application lock to a RiffDB `0.2.2+` server and provision
 the `MLflowTrackingServer` role. When running from a read-only checkout or
 installed package environment, pass `--deployment-dir` and `--credential-output`
 so deployment state and mode-`0600` role credentials are written to an external

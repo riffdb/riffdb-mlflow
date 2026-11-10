@@ -2,7 +2,7 @@
 
 ## Compatibility target
 
-`riffdb-mlflow` (`0.2.2`) pins **MLflow `3.15.1`** and **RiffDB `0.2.1`** and
+`riffdb-mlflow` (`0.2.2`) pins **MLflow `3.15.1`** and **RiffDB `0.2.2`** and
 registers the `riffdb` URI scheme in both official MLflow entry-point groups:
 
 - `mlflow.tracking_store` → `riffdb_mlflow.store:RiffDBTrackingStore`
@@ -50,7 +50,7 @@ to `mlflow server` over REST are unaffected and support Python 3.10–3.13.
 | Tags | Last-write-wins set and exact deletion semantics |
 | Inputs & Outputs | Atomic dataset/model input and output associations with deterministic bounded encoding |
 | Traces & Spans | Out-of-order span ingestion (`init_or_mutate`), trace tags, run/prompt links, search, and assessments |
-| Trace Analytics | Contract-declared scalar columnar projections (`TraceAnalytics`, `SpanAnalytics`, `AssessmentAnalytics`) and event-driven rollups (`SpanModelRollup`). Cold projections report ready prior to first demand in RiffDB `0.2.1+` |
+| Trace Analytics | Contract-declared scalar columnar projections (`TraceAnalytics`, `SpanAnalytics`, `AssessmentAnalytics`) and event-driven rollups (`SpanModelRollup`). Cold projections report ready prior to first demand in RiffDB `0.2.2+` |
 | Logged Models | Full `LoggedModel` lifecycle, params, tags, and search |
 | Model & Prompt Registry | Registered models, versions, stage transitions, aliases, tags, prompt registry (`create_prompt`, `create_prompt_version`, `search_prompts`), and registry webhooks |
 | MCP Server Registry | MCP servers, versions, aliases, tags, and access endpoints via `RiffDBMCPServerRegistryMixin` |

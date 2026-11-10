@@ -4269,7 +4269,6 @@ class SearchRegisteredModelsIntegrityFailure:
 SearchRegisteredModelsResult: TypeAlias = SearchRegisteredModelsFound | SearchRegisteredModelsIntegrityFailure
 
 SEARCH_RUNS_QUERY_PLAN_HASH: Final[str] = "28e3cfb80455ecbe79b7ec768da9c82589cf66d654b5e288a33f1c8f4ec82713"
-SEARCH_RUNS_EXPERIMENT_IDS_MAX_ITEMS: Final[int] = 1000
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchRunsParams:
@@ -4324,7 +4323,6 @@ class SearchRunsIntegrityFailure:
 SearchRunsResult: TypeAlias = SearchRunsFound | SearchRunsIntegrityFailure
 
 SEARCH_RUNS_BY_LIFECYCLE_QUERY_PLAN_HASH: Final[str] = "03cfb0e4f5e88335046ca57aa8d4f6c1912a606a22e11d48dc3e59780c6f2f5e"
-SEARCH_RUNS_BY_LIFECYCLE_EXPERIMENT_IDS_MAX_ITEMS: Final[int] = 1000
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchRunsByLifecycleParams:
@@ -6442,6 +6440,9 @@ class RiffDBMLflowClient:
         items = tuple(dict.fromkeys(parameters.trace_ids))
         if not items:
             raise ValueError("trace_ids must contain at least 1 item")
+        if len(items) > max_pages * BATCH_GET_TRACE_ASSESSMENTS_TRACE_IDS_MAX_ITEMS:
+            raise ValueError("batch_get_trace_assessments_all exceeded max_pages (1..=1024)")
+        items = tuple(sorted(items, key=lambda item: (len(item.encode("utf-8")), item.encode("utf-8"))))
         pinned_head = options.read_after_commit if options.read_after_commit is not None else self._read_after_commit
         highest_head = 0
         merged: list[BatchGetTraceAssessmentsFoundAssessments] = []
@@ -6520,6 +6521,9 @@ class RiffDBMLflowClient:
         items = tuple(dict.fromkeys(parameters.trace_ids))
         if not items:
             raise ValueError("trace_ids must contain at least 1 item")
+        if len(items) > max_pages * BATCH_GET_TRACE_SPANS_TRACE_IDS_MAX_ITEMS:
+            raise ValueError("batch_get_trace_spans_all exceeded max_pages (1..=1024)")
+        items = tuple(sorted(items, key=lambda item: (len(item.encode("utf-8")), item.encode("utf-8"))))
         pinned_head = options.read_after_commit if options.read_after_commit is not None else self._read_after_commit
         highest_head = 0
         merged: list[BatchGetTraceSpansFoundSpans] = []
@@ -9057,41 +9061,6 @@ class RiffDBMLflowClient:
             cursor = page.next_cursor
         return pages
 
-    def search_runs_all(self, parameters: SearchRunsParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchRunsFound]:
-        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
-            raise ValueError("max_pages must be an integer from 1 through 1024")
-        if options.cursor is not None or parameters.after is not None:
-            raise ValueError("search_runs_all does not accept an initial cursor")
-        items = tuple(dict.fromkeys(parameters.experiment_ids))
-        if not items:
-            raise ValueError("experiment_ids must contain at least 1 item")
-        pinned_head = options.read_after_commit if options.read_after_commit is not None else self._read_after_commit
-        highest_head = 0
-        merged: list[SearchRunsFoundRuns] = []
-        latest_page: TypedQueryResult[SearchRunsResult] | None = None
-        pages_remaining = max_pages
-        for offset in range(0, len(items), SEARCH_RUNS_EXPERIMENT_IDS_MAX_ITEMS):
-            chunk = items[offset:offset + SEARCH_RUNS_EXPERIMENT_IDS_MAX_ITEMS]
-            chunk_cursor: str | None = None
-            while True:
-                if pages_remaining < 1:
-                    raise ValueError("search_runs_all exceeded max_pages (1..=1024)")
-                pages_remaining -= 1
-                chunk_parameters = SearchRunsParams(experiment_ids=chunk, limit=parameters.limit, after=None)
-                page = self.search_runs(chunk_parameters, QueryOptions(cursor=chunk_cursor, read_after_commit=pinned_head, consistency=options.consistency))
-                found = page.value.unwrap_found()
-                merged.extend(found.runs)
-                latest_page = page
-                if page.application_head > highest_head:
-                    highest_head = page.application_head
-                if pinned_head is None or page.application_head > pinned_head:
-                    pinned_head = page.application_head
-                if not page.next_cursor:
-                    break
-                chunk_cursor = page.next_cursor
-        assert latest_page is not None
-        return TypedQueryResult(identity=latest_page.identity, value=SearchRunsFound(runs=tuple(merged)), application_head=highest_head, next_cursor=None)
-
     def search_runs_by_lifecycle(self, parameters: SearchRunsByLifecycleParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchRunsByLifecycleResult]:
         if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 2):
             raise ValueError("limit must be an integer from 1 through 2")
@@ -9134,41 +9103,6 @@ class RiffDBMLflowClient:
                 break
             cursor = page.next_cursor
         return pages
-
-    def search_runs_by_lifecycle_all(self, parameters: SearchRunsByLifecycleParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchRunsByLifecycleFound]:
-        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
-            raise ValueError("max_pages must be an integer from 1 through 1024")
-        if options.cursor is not None or parameters.after is not None:
-            raise ValueError("search_runs_by_lifecycle_all does not accept an initial cursor")
-        items = tuple(dict.fromkeys(parameters.experiment_ids))
-        if not items:
-            raise ValueError("experiment_ids must contain at least 1 item")
-        pinned_head = options.read_after_commit if options.read_after_commit is not None else self._read_after_commit
-        highest_head = 0
-        merged: list[SearchRunsByLifecycleFoundRuns] = []
-        latest_page: TypedQueryResult[SearchRunsByLifecycleResult] | None = None
-        pages_remaining = max_pages
-        for offset in range(0, len(items), SEARCH_RUNS_BY_LIFECYCLE_EXPERIMENT_IDS_MAX_ITEMS):
-            chunk = items[offset:offset + SEARCH_RUNS_BY_LIFECYCLE_EXPERIMENT_IDS_MAX_ITEMS]
-            chunk_cursor: str | None = None
-            while True:
-                if pages_remaining < 1:
-                    raise ValueError("search_runs_by_lifecycle_all exceeded max_pages (1..=1024)")
-                pages_remaining -= 1
-                chunk_parameters = SearchRunsByLifecycleParams(experiment_ids=chunk, lifecycle_stage=parameters.lifecycle_stage, limit=parameters.limit, after=None)
-                page = self.search_runs_by_lifecycle(chunk_parameters, QueryOptions(cursor=chunk_cursor, read_after_commit=pinned_head, consistency=options.consistency))
-                found = page.value.unwrap_found()
-                merged.extend(found.runs)
-                latest_page = page
-                if page.application_head > highest_head:
-                    highest_head = page.application_head
-                if pinned_head is None or page.application_head > pinned_head:
-                    pinned_head = page.application_head
-                if not page.next_cursor:
-                    break
-                chunk_cursor = page.next_cursor
-        assert latest_page is not None
-        return TypedQueryResult(identity=latest_page.identity, value=SearchRunsByLifecycleFound(runs=tuple(merged)), application_head=highest_head, next_cursor=None)
 
     def search_traces(self, parameters: SearchTracesParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchTracesResult]:
         if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 50):
@@ -10581,6 +10515,9 @@ class AsyncRiffDBMLflowClient:
         items = tuple(dict.fromkeys(parameters.trace_ids))
         if not items:
             raise ValueError("trace_ids must contain at least 1 item")
+        if len(items) > max_pages * BATCH_GET_TRACE_ASSESSMENTS_TRACE_IDS_MAX_ITEMS:
+            raise ValueError("batch_get_trace_assessments_all exceeded max_pages (1..=1024)")
+        items = tuple(sorted(items, key=lambda item: (len(item.encode("utf-8")), item.encode("utf-8"))))
         pinned_head = options.read_after_commit if options.read_after_commit is not None else self._read_after_commit
         highest_head = 0
         merged: list[BatchGetTraceAssessmentsFoundAssessments] = []
@@ -10659,6 +10596,9 @@ class AsyncRiffDBMLflowClient:
         items = tuple(dict.fromkeys(parameters.trace_ids))
         if not items:
             raise ValueError("trace_ids must contain at least 1 item")
+        if len(items) > max_pages * BATCH_GET_TRACE_SPANS_TRACE_IDS_MAX_ITEMS:
+            raise ValueError("batch_get_trace_spans_all exceeded max_pages (1..=1024)")
+        items = tuple(sorted(items, key=lambda item: (len(item.encode("utf-8")), item.encode("utf-8"))))
         pinned_head = options.read_after_commit if options.read_after_commit is not None else self._read_after_commit
         highest_head = 0
         merged: list[BatchGetTraceSpansFoundSpans] = []
@@ -13196,41 +13136,6 @@ class AsyncRiffDBMLflowClient:
             cursor = page.next_cursor
         return pages
 
-    async def search_runs_all(self, parameters: SearchRunsParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchRunsFound]:
-        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
-            raise ValueError("max_pages must be an integer from 1 through 1024")
-        if options.cursor is not None or parameters.after is not None:
-            raise ValueError("search_runs_all does not accept an initial cursor")
-        items = tuple(dict.fromkeys(parameters.experiment_ids))
-        if not items:
-            raise ValueError("experiment_ids must contain at least 1 item")
-        pinned_head = options.read_after_commit if options.read_after_commit is not None else self._read_after_commit
-        highest_head = 0
-        merged: list[SearchRunsFoundRuns] = []
-        latest_page: TypedQueryResult[SearchRunsResult] | None = None
-        pages_remaining = max_pages
-        for offset in range(0, len(items), SEARCH_RUNS_EXPERIMENT_IDS_MAX_ITEMS):
-            chunk = items[offset:offset + SEARCH_RUNS_EXPERIMENT_IDS_MAX_ITEMS]
-            chunk_cursor: str | None = None
-            while True:
-                if pages_remaining < 1:
-                    raise ValueError("search_runs_all exceeded max_pages (1..=1024)")
-                pages_remaining -= 1
-                chunk_parameters = SearchRunsParams(experiment_ids=chunk, limit=parameters.limit, after=None)
-                page = await self.search_runs(chunk_parameters, QueryOptions(cursor=chunk_cursor, read_after_commit=pinned_head, consistency=options.consistency))
-                found = page.value.unwrap_found()
-                merged.extend(found.runs)
-                latest_page = page
-                if page.application_head > highest_head:
-                    highest_head = page.application_head
-                if pinned_head is None or page.application_head > pinned_head:
-                    pinned_head = page.application_head
-                if not page.next_cursor:
-                    break
-                chunk_cursor = page.next_cursor
-        assert latest_page is not None
-        return TypedQueryResult(identity=latest_page.identity, value=SearchRunsFound(runs=tuple(merged)), application_head=highest_head, next_cursor=None)
-
     async def search_runs_by_lifecycle(self, parameters: SearchRunsByLifecycleParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchRunsByLifecycleResult]:
         if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 2):
             raise ValueError("limit must be an integer from 1 through 2")
@@ -13273,41 +13178,6 @@ class AsyncRiffDBMLflowClient:
                 break
             cursor = page.next_cursor
         return pages
-
-    async def search_runs_by_lifecycle_all(self, parameters: SearchRunsByLifecycleParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchRunsByLifecycleFound]:
-        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
-            raise ValueError("max_pages must be an integer from 1 through 1024")
-        if options.cursor is not None or parameters.after is not None:
-            raise ValueError("search_runs_by_lifecycle_all does not accept an initial cursor")
-        items = tuple(dict.fromkeys(parameters.experiment_ids))
-        if not items:
-            raise ValueError("experiment_ids must contain at least 1 item")
-        pinned_head = options.read_after_commit if options.read_after_commit is not None else self._read_after_commit
-        highest_head = 0
-        merged: list[SearchRunsByLifecycleFoundRuns] = []
-        latest_page: TypedQueryResult[SearchRunsByLifecycleResult] | None = None
-        pages_remaining = max_pages
-        for offset in range(0, len(items), SEARCH_RUNS_BY_LIFECYCLE_EXPERIMENT_IDS_MAX_ITEMS):
-            chunk = items[offset:offset + SEARCH_RUNS_BY_LIFECYCLE_EXPERIMENT_IDS_MAX_ITEMS]
-            chunk_cursor: str | None = None
-            while True:
-                if pages_remaining < 1:
-                    raise ValueError("search_runs_by_lifecycle_all exceeded max_pages (1..=1024)")
-                pages_remaining -= 1
-                chunk_parameters = SearchRunsByLifecycleParams(experiment_ids=chunk, lifecycle_stage=parameters.lifecycle_stage, limit=parameters.limit, after=None)
-                page = await self.search_runs_by_lifecycle(chunk_parameters, QueryOptions(cursor=chunk_cursor, read_after_commit=pinned_head, consistency=options.consistency))
-                found = page.value.unwrap_found()
-                merged.extend(found.runs)
-                latest_page = page
-                if page.application_head > highest_head:
-                    highest_head = page.application_head
-                if pinned_head is None or page.application_head > pinned_head:
-                    pinned_head = page.application_head
-                if not page.next_cursor:
-                    break
-                chunk_cursor = page.next_cursor
-        assert latest_page is not None
-        return TypedQueryResult(identity=latest_page.identity, value=SearchRunsByLifecycleFound(runs=tuple(merged)), application_head=highest_head, next_cursor=None)
 
     async def search_traces(self, parameters: SearchTracesParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchTracesResult]:
         if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 50):
