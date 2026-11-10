@@ -1,0 +1,19 @@
+query SearchMCPServers(
+    $scope: MCPServerEntity.scope,
+    $limit: Limit<25> = 25,
+    $after: Cursor?,
+) {
+    many servers from MCPServerEntity
+        where scope == $scope
+        order by name asc
+        take $limit after $after
+        else IntegrityFailure
+
+    return Found {
+        servers: servers {
+            name display_name description packed_icons packed_tags packed_aliases
+            created_by last_updated_by created_at_ms last_updated_at_ms
+        }
+    }
+    outcomes Found | IntegrityFailure
+}

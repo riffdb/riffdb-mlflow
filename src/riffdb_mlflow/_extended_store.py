@@ -63,6 +63,7 @@ from mlflow.utils.mlflow_tags import MLFLOW_LOGGED_MODELS
 from mlflow.utils.uri import append_to_uri_path
 from riffdb_application import Timestamp
 
+from riffdb_mlflow._mcp_registry import RiffDBMCPServerRegistryMixin
 from riffdb_mlflow.generated.client import (
     AggregateSpanAnalyticsByModelFound,
     AggregateSpanAnalyticsByModelParams,
@@ -353,7 +354,7 @@ def _linear_percentile(sorted_values: list[float], percentile: float) -> float |
     return float(sorted_values[lower_idx] * (1.0 - weight) + sorted_values[upper_idx] * weight)
 
 
-class RiffDBExtendedStoreMixin(AbstractStore):
+class RiffDBExtendedStoreMixin(RiffDBMCPServerRegistryMixin, AbstractStore):
     _trace_experiment_map: dict[str, int]
     _model_experiment_map: dict[str, int]
 

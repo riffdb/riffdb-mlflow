@@ -28,6 +28,7 @@ contract RiffDBMLflow version 1 {
     field creation_time: timestamp
     field last_update_time: timestamp
     field packed_tags: bytes<900000>
+    field is_gateway: bool
     field revision: u64
     unique by_name (scope, name)
     index by_id (scope, experiment_id)
@@ -87,8 +88,10 @@ contract RiffDBMLflow version 1 {
     key (scope: string<32>, experiment_id: u64, tag_key: string<250>)
     field value: string<5000>
     field value_digest: bytes<32>
+    field value_hash: u64
     index by_tag_key (scope, tag_key, experiment_id)
     index by_tag_digest (scope, tag_key, value_digest, experiment_id)
+    index by_tag_hash (scope, tag_key, value_hash, experiment_id)
     pattern_index by_value_binary_pattern(
       value,
       profile binary_utf8_v1,
@@ -286,6 +289,107 @@ contract RiffDBMLflow version 1 {
     delete_policy no_inbound
   }
 
+  entity RegisteredModelEntity {
+    key (scope: string<32>, name: string<256>)
+    field creation_timestamp_ms: i64
+    field last_updated_timestamp_ms: i64
+    field description: optional<string<5000>>
+    field packed_tags: bytes<65536>
+    field packed_aliases: bytes<16384>
+    field latest_version: u64
+    index by_name (scope, name)
+    index by_update (scope, last_updated_timestamp_ms, name)
+    delete_policy no_inbound
+  }
+
+  entity ModelVersionEntity {
+    key (scope: string<32>, name: string<256>, version_num: u64)
+    field creation_timestamp_ms: i64
+    field last_updated_timestamp_ms: i64
+    field description: optional<string<5000>>
+    field user_id: optional<string<256>>
+    field current_stage: string<32>
+    field source_path: string<2000>
+    field storage_location: string<2000>
+    field run_id: optional<string<32>>
+    field run_link: optional<string<2000>>
+    field status: string<32>
+    field status_message: optional<string<500>>
+    field packed_tags: bytes<65536>
+    index by_model_version (scope, name, version_num)
+    index by_update (scope, last_updated_timestamp_ms, name, version_num)
+    delete_policy no_inbound
+  }
+
+  entity RegistryWebhookEntity {
+    key (scope: string<32>, webhook_id: string<64>)
+    field name: string<256>
+    field description: optional<string<1000>>
+    field url: string<2000>
+    field status: string<32>
+    field secret: optional<string<1000>>
+    field packed_events: bytes<4096>
+    field creation_timestamp_ms: i64
+    field last_updated_timestamp_ms: i64
+    field deleted_timestamp_ms: optional<i64>
+    index by_creation (scope, creation_timestamp_ms, webhook_id)
+    delete_policy no_inbound
+  }
+
+  entity MCPServerEntity {
+    key (scope: string<32>, name: string<256>)
+    field display_name: optional<string<256>>
+    field description: optional<string<5000>>
+    field packed_icons: bytes<16384>
+    field packed_tags: bytes<16384>
+    field packed_aliases: bytes<16384>
+    field created_by: optional<string<256>>
+    field last_updated_by: optional<string<256>>
+    field created_at_ms: i64
+    field last_updated_at_ms: i64
+    index by_name (scope, name)
+    index by_created (scope, created_at_ms, name)
+    index by_updated (scope, last_updated_at_ms, name)
+    delete_policy no_inbound
+  }
+
+  entity MCPServerVersionEntity {
+    key (scope: string<32>, name: string<256>, server_version: string<128>)
+    field version_major: i64
+    field version_minor: i64
+    field version_patch: i64
+    field version_prerelease_sort_key: string<256>
+    field server_json: string<65536>
+    field status: string<32>
+    field packed_tools: bytes<65536>
+    field packed_tags: bytes<16384>
+    field packed_connect_options: bytes<16384>
+    field source_url: optional<string<2000>>
+    field created_by: optional<string<256>>
+    field last_updated_by: optional<string<256>>
+    field created_at_ms: i64
+    field last_updated_at_ms: i64
+    index by_server_created (scope, name, created_at_ms, server_version)
+    index by_all_created (scope, created_at_ms, name, server_version)
+    delete_policy no_inbound
+  }
+
+  entity MCPAccessEndpointEntity {
+    key (scope: string<32>, endpoint_id: string<64>)
+    field server_name: string<256>
+    field url: string<2000>
+    field transport_type: string<64>
+    field server_version: optional<string<128>>
+    field server_alias: optional<string<128>>
+    field created_by: optional<string<256>>
+    field last_updated_by: optional<string<256>>
+    field created_at_ms: i64
+    field last_updated_at_ms: i64
+    index by_id (scope, endpoint_id)
+    index by_server_id (scope, server_name, endpoint_id)
+    delete_policy no_inbound
+  }
+
   event SpanObserved {
     experiment_id: u64
     span_type: string<64>
@@ -396,6 +500,32 @@ contract RiffDBMLflow version 1 {
     conflict_key (experiment_id, model_id)
   }
 
+  aggregate RegisteredModels {
+    root RegisteredModelEntity
+    child ModelVersionEntity
+    partition_by scope
+    conflict_key (scope, name)
+  }
+
+  aggregate RegistryWebhooks {
+    root RegistryWebhookEntity
+    partition_by scope
+    conflict_key (scope, webhook_id)
+  }
+
+  aggregate MCPServers {
+    root MCPServerEntity
+    child MCPServerVersionEntity
+    partition_by scope
+    conflict_key (scope, name)
+  }
+
+  aggregate MCPAccessEndpoints {
+    root MCPAccessEndpointEntity
+    partition_by scope
+    conflict_key (scope, endpoint_id)
+  }
+
   command CreateExperiment {
     input request_id: string<128>
     input experiment_id: u64
@@ -403,6 +533,7 @@ contract RiffDBMLflow version 1 {
     input name_digest: bytes<32>
     input artifact_location: optional<string<8000>>
     input packed_tags: bytes<900000>
+    input is_gateway: bool
     service now: transaction_time
     idempotency_key request_id
     create Experiment("global", experiment_id) as experiment else ExperimentExists {}
@@ -413,6 +544,7 @@ contract RiffDBMLflow version 1 {
     set experiment.creation_time = now
     set experiment.last_update_time = now
     set experiment.packed_tags = packed_tags
+    set experiment.is_gateway = is_gateway
     set experiment.revision = 0
     return ExperimentCreated { experiment: experiment }
   }
@@ -424,6 +556,7 @@ contract RiffDBMLflow version 1 {
     input name_digest: bytes<32>
     input artifact_location: optional<string<8000>>
     input packed_tags: bytes<900000>
+    input is_gateway: bool
     input tags: list<ExperimentTag, 1..128> aggregate_bytes <= 900000
     service now: transaction_time
     idempotency_key request_id
@@ -433,6 +566,7 @@ contract RiffDBMLflow version 1 {
         else ExperimentTagExists {}
       set tag.value = candidate.value
       set tag.value_digest = candidate.value_digest
+      set tag.value_hash = candidate.value_hash
     }
     set experiment.name = name
     set experiment.name_digest = name_digest
@@ -441,6 +575,7 @@ contract RiffDBMLflow version 1 {
     set experiment.creation_time = now
     set experiment.last_update_time = now
     set experiment.packed_tags = packed_tags
+    set experiment.is_gateway = is_gateway
     set experiment.revision = 0
     return ExperimentCreated { experiment: experiment }
   }
@@ -490,7 +625,9 @@ contract RiffDBMLflow version 1 {
     input tag_key: string<250>
     input value: string<5000>
     input value_digest: bytes<32>
+    input value_hash: u64
     input packed_tags: bytes<900000>
+    input is_gateway: bool
     input expected_revision: u64
     service now: transaction_time
     idempotency_key request_id
@@ -498,12 +635,15 @@ contract RiffDBMLflow version 1 {
     init_or_mutate ExperimentTag("global", experiment_id, tag_key) as tag initialize {
       value: value,
       value_digest: value_digest,
+      value_hash: value_hash,
     }
     require current_revision: experiment.revision == expected_revision else ExperimentStale {}
     require active: experiment.lifecycle_stage == LifecycleStage.Active else ExperimentInactive {}
     set tag.value = value
     set tag.value_digest = value_digest
+    set tag.value_hash = value_hash
     set experiment.packed_tags = packed_tags
+    set experiment.is_gateway = is_gateway
     set experiment.last_update_time = now
     set experiment.revision = experiment.revision + 1
     return ExperimentTagSet { experiment: experiment }
@@ -514,6 +654,7 @@ contract RiffDBMLflow version 1 {
     input experiment_id: u64
     input tag_key: string<250>
     input packed_tags: bytes<900000>
+    input is_gateway: bool
     input expected_revision: u64
     service now: transaction_time
     idempotency_key request_id
@@ -522,6 +663,7 @@ contract RiffDBMLflow version 1 {
     require current_revision: experiment.revision == expected_revision else ExperimentStale {}
     require active: experiment.lifecycle_stage == LifecycleStage.Active else ExperimentInactive {}
     set experiment.packed_tags = packed_tags
+    set experiment.is_gateway = is_gateway
     set experiment.last_update_time = now
     set experiment.revision = experiment.revision + 1
     return ExperimentTagDeleted { experiment: experiment }
@@ -1172,5 +1314,354 @@ contract RiffDBMLflow version 1 {
     mutate LoggedModelEntity(experiment_id, model_id) as model else LoggedModelMissing {}
     overwrite model.lifecycle_stage = LifecycleStage.Deleted
     return LoggedModelDeleted { model: model }
+  }
+
+  command CreateRegisteredModelEntity {
+    input request_id: string<128>
+    input name: string<256>
+    input creation_timestamp_ms: i64
+    input last_updated_timestamp_ms: i64
+    input description: optional<string<5000>>
+    input packed_tags: bytes<65536>
+    input packed_aliases: bytes<16384>
+    input latest_version: u64
+    idempotency_key request_id
+    create RegisteredModelEntity("global", name) as model else RegisteredModelExists {}
+    set model.creation_timestamp_ms = creation_timestamp_ms
+    set model.last_updated_timestamp_ms = last_updated_timestamp_ms
+    set model.description = description
+    set model.packed_tags = packed_tags
+    set model.packed_aliases = packed_aliases
+    set model.latest_version = latest_version
+    return RegisteredModelCreated { model: model }
+  }
+
+  command UpsertRegisteredModelEntity {
+    input request_id: string<128>
+    input name: string<256>
+    input creation_timestamp_ms: i64
+    input last_updated_timestamp_ms: i64
+    input description: optional<string<5000>>
+    input packed_tags: bytes<65536>
+    input packed_aliases: bytes<16384>
+    input latest_version: u64
+    idempotency_key request_id
+    init_or_mutate RegisteredModelEntity("global", name) as model initialize {
+      creation_timestamp_ms: creation_timestamp_ms,
+      last_updated_timestamp_ms: last_updated_timestamp_ms,
+      description: description,
+      packed_tags: packed_tags,
+      packed_aliases: packed_aliases,
+      latest_version: latest_version,
+    }
+    overwrite model.creation_timestamp_ms = creation_timestamp_ms
+    overwrite model.last_updated_timestamp_ms = last_updated_timestamp_ms
+    overwrite model.description = description
+    overwrite model.packed_tags = packed_tags
+    overwrite model.packed_aliases = packed_aliases
+    overwrite model.latest_version = latest_version
+    return RegisteredModelUpserted { model: model }
+  }
+
+  command DeleteRegisteredModelEntity {
+    input request_id: string<128>
+    input name: string<256>
+    idempotency_key request_id
+    delete RegisteredModelEntity("global", name) as model else RegisteredModelMissing {}
+    return RegisteredModelDeleted { model: model }
+  }
+
+  command UpsertModelVersionEntity {
+    input request_id: string<128>
+    input name: string<256>
+    input version_num: u64
+    input creation_timestamp_ms: i64
+    input last_updated_timestamp_ms: i64
+    input description: optional<string<5000>>
+    input user_id: optional<string<256>>
+    input current_stage: string<32>
+    input source_path: string<2000>
+    input storage_location: string<2000>
+    input run_id: optional<string<32>>
+    input run_link: optional<string<2000>>
+    input status: string<32>
+    input status_message: optional<string<500>>
+    input packed_tags: bytes<65536>
+    idempotency_key request_id
+    init_or_mutate ModelVersionEntity("global", name, version_num) as mv initialize {
+      creation_timestamp_ms: creation_timestamp_ms,
+      last_updated_timestamp_ms: last_updated_timestamp_ms,
+      description: description,
+      user_id: user_id,
+      current_stage: current_stage,
+      source_path: source_path,
+      storage_location: storage_location,
+      run_id: run_id,
+      run_link: run_link,
+      status: status,
+      status_message: status_message,
+      packed_tags: packed_tags,
+    }
+    overwrite mv.creation_timestamp_ms = creation_timestamp_ms
+    overwrite mv.last_updated_timestamp_ms = last_updated_timestamp_ms
+    overwrite mv.description = description
+    overwrite mv.user_id = user_id
+    overwrite mv.current_stage = current_stage
+    overwrite mv.source_path = source_path
+    overwrite mv.storage_location = storage_location
+    overwrite mv.run_id = run_id
+    overwrite mv.run_link = run_link
+    overwrite mv.status = status
+    overwrite mv.status_message = status_message
+    overwrite mv.packed_tags = packed_tags
+    return ModelVersionUpserted { model_version: mv }
+  }
+
+  command DeleteModelVersionEntity {
+    input request_id: string<128>
+    input name: string<256>
+    input version_num: u64
+    idempotency_key request_id
+    delete ModelVersionEntity("global", name, version_num) as mv else ModelVersionMissing {}
+    return ModelVersionDeleted { model_version: mv }
+  }
+
+  command UpsertRegistryWebhookEntity {
+    input request_id: string<128>
+    input webhook_id: string<64>
+    input name: string<256>
+    input description: optional<string<1000>>
+    input url: string<2000>
+    input status: string<32>
+    input secret: optional<string<1000>>
+    input packed_events: bytes<4096>
+    input creation_timestamp_ms: i64
+    input last_updated_timestamp_ms: i64
+    input deleted_timestamp_ms: optional<i64>
+    idempotency_key request_id
+    init_or_mutate RegistryWebhookEntity("global", webhook_id) as webhook initialize {
+      name: name,
+      description: description,
+      url: url,
+      status: status,
+      secret: secret,
+      packed_events: packed_events,
+      creation_timestamp_ms: creation_timestamp_ms,
+      last_updated_timestamp_ms: last_updated_timestamp_ms,
+      deleted_timestamp_ms: deleted_timestamp_ms,
+    }
+    overwrite webhook.name = name
+    overwrite webhook.description = description
+    overwrite webhook.url = url
+    overwrite webhook.status = status
+    overwrite webhook.secret = secret
+    overwrite webhook.packed_events = packed_events
+    overwrite webhook.creation_timestamp_ms = creation_timestamp_ms
+    overwrite webhook.last_updated_timestamp_ms = last_updated_timestamp_ms
+    overwrite webhook.deleted_timestamp_ms = deleted_timestamp_ms
+    return RegistryWebhookUpserted { webhook: webhook }
+  }
+
+  command CreateMCPServerEntity {
+    input request_id: string<128>
+    input name: string<256>
+    input display_name: optional<string<256>>
+    input description: optional<string<5000>>
+    input packed_icons: bytes<16384>
+    input packed_tags: bytes<16384>
+    input packed_aliases: bytes<16384>
+    input created_by: optional<string<256>>
+    input last_updated_by: optional<string<256>>
+    input created_at_ms: i64
+    input last_updated_at_ms: i64
+    idempotency_key request_id
+    create MCPServerEntity("global", name) as server else MCPServerExists {}
+    set server.display_name = display_name
+    set server.description = description
+    set server.packed_icons = packed_icons
+    set server.packed_tags = packed_tags
+    set server.packed_aliases = packed_aliases
+    set server.created_by = created_by
+    set server.last_updated_by = last_updated_by
+    set server.created_at_ms = created_at_ms
+    set server.last_updated_at_ms = last_updated_at_ms
+    return MCPServerCreated { server: server }
+  }
+
+  command UpsertMCPServerEntity {
+    input request_id: string<128>
+    input name: string<256>
+    input display_name: optional<string<256>>
+    input description: optional<string<5000>>
+    input packed_icons: bytes<16384>
+    input packed_tags: bytes<16384>
+    input packed_aliases: bytes<16384>
+    input created_by: optional<string<256>>
+    input last_updated_by: optional<string<256>>
+    input created_at_ms: i64
+    input last_updated_at_ms: i64
+    idempotency_key request_id
+    init_or_mutate MCPServerEntity("global", name) as server initialize {
+      display_name: display_name,
+      description: description,
+      packed_icons: packed_icons,
+      packed_tags: packed_tags,
+      packed_aliases: packed_aliases,
+      created_by: created_by,
+      last_updated_by: last_updated_by,
+      created_at_ms: created_at_ms,
+      last_updated_at_ms: last_updated_at_ms,
+    }
+    overwrite server.display_name = display_name
+    overwrite server.description = description
+    overwrite server.packed_icons = packed_icons
+    overwrite server.packed_tags = packed_tags
+    overwrite server.packed_aliases = packed_aliases
+    overwrite server.created_by = created_by
+    overwrite server.last_updated_by = last_updated_by
+    overwrite server.created_at_ms = created_at_ms
+    overwrite server.last_updated_at_ms = last_updated_at_ms
+    return MCPServerUpserted { server: server }
+  }
+
+  command DeleteMCPServerEntity {
+    input request_id: string<128>
+    input name: string<256>
+    idempotency_key request_id
+    delete MCPServerEntity("global", name) as server else MCPServerMissing {}
+    return MCPServerDeleted { server: server }
+  }
+
+  command CreateMCPServerVersionEntity {
+    input request_id: string<128>
+    input name: string<256>
+    input server_version: string<128>
+    input version_major: i64
+    input version_minor: i64
+    input version_patch: i64
+    input version_prerelease_sort_key: string<256>
+    input server_json: string<65536>
+    input status: string<32>
+    input packed_tools: bytes<65536>
+    input packed_tags: bytes<16384>
+    input packed_connect_options: bytes<16384>
+    input source_url: optional<string<2000>>
+    input created_by: optional<string<256>>
+    input last_updated_by: optional<string<256>>
+    input created_at_ms: i64
+    input last_updated_at_ms: i64
+    idempotency_key request_id
+    create MCPServerVersionEntity("global", name, server_version) as sv else MCPServerVersionExists {}
+    set sv.version_major = version_major
+    set sv.version_minor = version_minor
+    set sv.version_patch = version_patch
+    set sv.version_prerelease_sort_key = version_prerelease_sort_key
+    set sv.server_json = server_json
+    set sv.status = status
+    set sv.packed_tools = packed_tools
+    set sv.packed_tags = packed_tags
+    set sv.packed_connect_options = packed_connect_options
+    set sv.source_url = source_url
+    set sv.created_by = created_by
+    set sv.last_updated_by = last_updated_by
+    set sv.created_at_ms = created_at_ms
+    set sv.last_updated_at_ms = last_updated_at_ms
+    return MCPServerVersionCreated { server_version: sv }
+  }
+
+  command UpsertMCPServerVersionEntity {
+    input request_id: string<128>
+    input name: string<256>
+    input server_version: string<128>
+    input version_major: i64
+    input version_minor: i64
+    input version_patch: i64
+    input version_prerelease_sort_key: string<256>
+    input server_json: string<65536>
+    input status: string<32>
+    input packed_tools: bytes<65536>
+    input packed_tags: bytes<16384>
+    input packed_connect_options: bytes<16384>
+    input source_url: optional<string<2000>>
+    input created_by: optional<string<256>>
+    input last_updated_by: optional<string<256>>
+    input created_at_ms: i64
+    input last_updated_at_ms: i64
+    idempotency_key request_id
+    init_or_mutate MCPServerVersionEntity("global", name, server_version) as sv initialize {
+      version_major: version_major,
+      version_minor: version_minor,
+      version_patch: version_patch,
+      version_prerelease_sort_key: version_prerelease_sort_key,
+      server_json: server_json,
+      status: status,
+      packed_tools: packed_tools,
+      packed_tags: packed_tags,
+      packed_connect_options: packed_connect_options,
+      source_url: source_url,
+      created_by: created_by,
+      last_updated_by: last_updated_by,
+      created_at_ms: created_at_ms,
+      last_updated_at_ms: last_updated_at_ms,
+    }
+    overwrite sv.version_major = version_major
+    overwrite sv.version_minor = version_minor
+    overwrite sv.version_patch = version_patch
+    overwrite sv.version_prerelease_sort_key = version_prerelease_sort_key
+    overwrite sv.server_json = server_json
+    overwrite sv.status = status
+    overwrite sv.packed_tools = packed_tools
+    overwrite sv.packed_tags = packed_tags
+    overwrite sv.packed_connect_options = packed_connect_options
+    overwrite sv.source_url = source_url
+    overwrite sv.created_by = created_by
+    overwrite sv.last_updated_by = last_updated_by
+    overwrite sv.created_at_ms = created_at_ms
+    overwrite sv.last_updated_at_ms = last_updated_at_ms
+    return MCPServerVersionUpserted { server_version: sv }
+  }
+
+  command UpsertMCPAccessEndpointEntity {
+    input request_id: string<128>
+    input endpoint_id: string<64>
+    input server_name: string<256>
+    input url: string<2000>
+    input transport_type: string<64>
+    input server_version: optional<string<128>>
+    input server_alias: optional<string<128>>
+    input created_by: optional<string<256>>
+    input last_updated_by: optional<string<256>>
+    input created_at_ms: i64
+    input last_updated_at_ms: i64
+    idempotency_key request_id
+    init_or_mutate MCPAccessEndpointEntity("global", endpoint_id) as endpoint initialize {
+      server_name: server_name,
+      url: url,
+      transport_type: transport_type,
+      server_version: server_version,
+      server_alias: server_alias,
+      created_by: created_by,
+      last_updated_by: last_updated_by,
+      created_at_ms: created_at_ms,
+      last_updated_at_ms: last_updated_at_ms,
+    }
+    overwrite endpoint.server_name = server_name
+    overwrite endpoint.url = url
+    overwrite endpoint.transport_type = transport_type
+    overwrite endpoint.server_version = server_version
+    overwrite endpoint.server_alias = server_alias
+    overwrite endpoint.created_by = created_by
+    overwrite endpoint.last_updated_by = last_updated_by
+    overwrite endpoint.created_at_ms = created_at_ms
+    overwrite endpoint.last_updated_at_ms = last_updated_at_ms
+    return MCPAccessEndpointUpserted { endpoint: endpoint }
+  }
+
+  command DeleteMCPAccessEndpointEntity {
+    input request_id: string<128>
+    input endpoint_id: string<64>
+    idempotency_key request_id
+    delete MCPAccessEndpointEntity("global", endpoint_id) as endpoint else MCPAccessEndpointMissing {}
+    return MCPAccessEndpointDeleted { endpoint: endpoint }
   }
 }

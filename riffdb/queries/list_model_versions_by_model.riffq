@@ -1,0 +1,22 @@
+query ListModelVersionsByModel(
+    $scope: ModelVersionEntity.scope,
+    $name: ModelVersionEntity.name,
+    $limit: Limit<25> = 25,
+    $after: Cursor?,
+) {
+    many versions from ModelVersionEntity
+        where scope == $scope
+          && name == $name
+        order by version_num desc
+        take $limit after $after
+        else IntegrityFailure
+
+    return Found {
+        versions: versions {
+            name version_num creation_timestamp_ms last_updated_timestamp_ms
+            description user_id current_stage source_path storage_location
+            run_id run_link status status_message packed_tags
+        }
+    }
+    outcomes Found | IntegrityFailure
+}

@@ -1,0 +1,17 @@
+query GetMCPServer(
+    $scope: MCPServerEntity.scope,
+    $name: MCPServerEntity.name,
+) {
+    one server from MCPServerEntity
+        where scope == $scope
+          && name == $name
+        else Missing
+
+    return Found {
+        server: server {
+            name display_name description packed_icons packed_tags packed_aliases
+            created_by last_updated_by created_at_ms last_updated_at_ms
+        }
+    }
+    outcomes Found | Missing
+}

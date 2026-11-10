@@ -50,6 +50,7 @@ class FakeExperimentClient:
             creation_time=Timestamp(seconds=1_800_000_000, nanos=123_000_000),
             last_update_time=Timestamp(seconds=1_800_000_000, nanos=123_000_000),
             packed_tags=command.packed_tags,
+            is_gateway=getattr(command, "is_gateway", False),
             revision=0,
         )
         self.rows[command.experiment_id] = row
@@ -133,6 +134,7 @@ class FakeExperimentClient:
             creation_time=row.creation_time,
             last_update_time=Timestamp(seconds=1_800_000_001, nanos=0),
             packed_tags=row.packed_tags,
+            is_gateway=row.is_gateway,
             revision=row.revision + 1,
         )
         self.rows[command.experiment_id] = updated
@@ -150,6 +152,7 @@ class FakeExperimentClient:
             creation_time=row.creation_time,
             last_update_time=Timestamp(seconds=1_800_000_001, nanos=0),
             packed_tags=row.packed_tags,
+            is_gateway=row.is_gateway,
             revision=row.revision + 1,
         )
 
@@ -167,6 +170,7 @@ class RecordingSearchClient:
                 creation_time=Timestamp(seconds=1_800_000_000 + index, nanos=0),
                 last_update_time=Timestamp(seconds=1_800_000_000 + index, nanos=0),
                 packed_tags=b"{}",
+                is_gateway=False,
                 revision=0,
             )
             for index in range(count)
@@ -188,6 +192,36 @@ class RecordingSearchClient:
 
     def search_experiments_by_two_tags(self, parameters: Any) -> SimpleNamespace:
         return self._page("SearchExperimentsByTwoTags", parameters)
+
+    def search_experiments_by_tag_is_null(self, parameters: Any) -> SimpleNamespace:
+        return self._page("SearchExperimentsByTagIsNull", parameters)
+
+    def search_experiments_by_tag_is_not_null(self, parameters: Any) -> SimpleNamespace:
+        return self._page("SearchExperimentsByTagIsNotNull", parameters)
+
+    def search_experiments_by_tag_not_equal(self, parameters: Any) -> SimpleNamespace:
+        return self._page("SearchExperimentsByTagNotEqual", parameters)
+
+    def search_experiments_by_name_not_equal(self, parameters: Any) -> SimpleNamespace:
+        return self._page("SearchExperimentsByNameNotEqual", parameters)
+
+    def search_experiments_by_name_ilike_and_gateway_is_null(
+        self, parameters: Any
+    ) -> SimpleNamespace:
+        return self._page("SearchExperimentsByNameILikeAndGatewayIsNull", parameters)
+
+    def search_experiments_by_tag_and_gateway_is_null(self, parameters: Any) -> SimpleNamespace:
+        return self._page("SearchExperimentsByTagAndGatewayIsNull", parameters)
+
+    def search_experiments_by_tag_is_not_null_and_gateway_is_null(
+        self, parameters: Any
+    ) -> SimpleNamespace:
+        return self._page("SearchExperimentsByTagIsNotNullAndGatewayIsNull", parameters)
+
+    def search_experiments_by_name_ilike_and_tag_and_gateway_is_null(
+        self, parameters: Any
+    ) -> SimpleNamespace:
+        return self._page("SearchExperimentsByNameILikeAndTagAndGatewayIsNull", parameters)
 
 
 @pytest.fixture
@@ -234,6 +268,18 @@ def test_default_experiment_is_initialized_once(store: RiffDBTrackingStore) -> N
     assert second.experiment_id == first.experiment_id
     assert second.creation_time == first.creation_time
     assert set(store._client.rows) == {0}  # type: ignore[union-attr]
+
+
+def test_default_artifact_root_falls_back_when_omitted(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("_MLFLOW_SERVER_ARTIFACT_ROOT", raising=False)
+    store = RiffDBTrackingStore("riffdb://mlflow-development")
+    store._client = FakeExperimentClient()
+    assert store.artifact_uri is not None
+    assert store.artifact_uri.endswith("/mlruns") or "mlruns" in store.artifact_uri
+    default_exp = store.get_experiment("0")
+    assert default_exp.artifact_location.endswith("/0")
 
 
 def test_duplicate_name_and_missing_id_map_to_mlflow_errors(
@@ -288,3 +334,52 @@ def test_two_exact_tag_filters_dispatch_one_compiled_intersection() -> None:
     assert parameters.first_value_digest == RiffDBTrackingStore._digest("research")
     assert parameters.second_tag_key == "stage"
     assert parameters.second_value_digest == RiffDBTrackingStore._digest("prod")
+
+
+def test_mlflow_ui_gateway_is_null_and_extended_experiment_filters_dispatch() -> None:
+    client = RecordingSearchClient(1)
+    store = RiffDBTrackingStore("riffdb://mlflow-development", "s3://artifacts")
+    store._client = client
+    store._default_ready = True
+
+    # 1. Default MLflow 3.15 UI filter: tags.`mlflow.experiment.isGateway` IS NULL
+    store.search_experiments(
+        max_results=10,
+        filter_string="tags.`mlflow.experiment.isGateway` IS NULL",
+    )
+    assert client.calls[-1][0] == "SearchExperimentsByTagIsNull"
+    assert client.calls[-1][1].tag_key == "mlflow.experiment.isGateway"
+
+    # 2. UI search bar + gateway filter
+    store.search_experiments(
+        max_results=10,
+        filter_string="name ILIKE '%train%' AND tags.`mlflow.experiment.isGateway` IS NULL",
+    )
+    assert client.calls[-1][0] == "SearchExperimentsByNameILikeAndGatewayIsNull"
+    assert client.calls[-1][1].pattern == "%train%"
+
+    # 3. UI tag filter + gateway filter
+    store.search_experiments(
+        max_results=10,
+        filter_string="tags.team = 'research' AND tags.`mlflow.experiment.isGateway` IS NULL",
+    )
+    assert client.calls[-1][0] == "SearchExperimentsByTagAndGatewayIsNull"
+    assert client.calls[-1][1].tag_key == "team"
+
+    # 4. UI search bar + tag filter + gateway filter (3 predicates)
+    store.search_experiments(
+        max_results=10,
+        filter_string=(
+            "name ILIKE '%train%' AND tags.team = 'research' "
+            "AND tags.`mlflow.experiment.isGateway` IS NULL"
+        ),
+    )
+    assert client.calls[-1][0] == "SearchExperimentsByNameILikeAndTagAndGatewayIsNull"
+
+    # 5. IS NOT NULL, != on tag, != on name
+    store.search_experiments(max_results=10, filter_string="tags.team IS NOT NULL")
+    assert client.calls[-1][0] == "SearchExperimentsByTagIsNotNull"
+    store.search_experiments(max_results=10, filter_string="tags.team != 'staging'")
+    assert client.calls[-1][0] == "SearchExperimentsByTagNotEqual"
+    store.search_experiments(max_results=10, filter_string="name != 'Default'")
+    assert client.calls[-1][0] == "SearchExperimentsByNameNotEqual"

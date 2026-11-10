@@ -36,11 +36,15 @@ from mlflow.protos.databricks_pb2 import (
     RESOURCE_DOES_NOT_EXIST,
 )
 from mlflow.store.entities.paged_list import PagedList
-from mlflow.store.tracking import SEARCH_MAX_RESULTS_DEFAULT, SEARCH_MAX_RESULTS_THRESHOLD
-from mlflow.utils.mlflow_tags import MLFLOW_RUN_NAME
+from mlflow.store.tracking import (
+    DEFAULT_LOCAL_FILE_AND_ARTIFACT_PATH,
+    SEARCH_MAX_RESULTS_DEFAULT,
+    SEARCH_MAX_RESULTS_THRESHOLD,
+)
+from mlflow.utils.mlflow_tags import MLFLOW_EXPERIMENT_IS_GATEWAY, MLFLOW_RUN_NAME
 from mlflow.utils.name_utils import _generate_random_name
 from mlflow.utils.search_utils import SearchExperimentsUtils, SearchUtils
-from mlflow.utils.uri import append_to_uri_path
+from mlflow.utils.uri import append_to_uri_path, resolve_uri_if_local
 from mlflow.utils.validation import (
     _validate_batch_log_data,
     _validate_batch_log_limits,
@@ -63,7 +67,7 @@ from riffdb_application import (
 )
 
 from riffdb_mlflow._extended_store import RiffDBExtendedStoreMixin
-from riffdb_mlflow.config import StoreConfig
+from riffdb_mlflow.config import ConnectionConfig, StoreConfig
 from riffdb_mlflow.generated.client import (
     CreateExperimentExperimentCreated,
     CreateExperimentExperimentExists,
@@ -118,12 +122,32 @@ from riffdb_mlflow.generated.client import (
     RiffDBMLflowClient,
     RunDataKind,
     RunDatum,
+    SearchExperimentsByNameAndTagIsNullParams,
+    SearchExperimentsByNameAndTagParams,
+    SearchExperimentsByNameILikeAndGatewayIsNullParams,
+    SearchExperimentsByNameILikeAndTagAndGatewayIsNullParams,
+    SearchExperimentsByNameILikeAndTagIsNotNullParams,
+    SearchExperimentsByNameILikeAndTagParams,
     SearchExperimentsByNameILikeParams,
+    SearchExperimentsByNameLikeAndGatewayIsNullParams,
+    SearchExperimentsByNameLikeAndTagParams,
     SearchExperimentsByNameLikeParams,
+    SearchExperimentsByNameNotEqualAndTagIsNullParams,
+    SearchExperimentsByNameNotEqualParams,
     SearchExperimentsByNameParams,
+    SearchExperimentsByTagAndGatewayIsNullParams,
+    SearchExperimentsByTagAndTagIsNotNullParams,
     SearchExperimentsByTagILikeParams,
+    SearchExperimentsByTagIsNotNullAndGatewayIsNullParams,
+    SearchExperimentsByTagIsNotNullParams,
+    SearchExperimentsByTagIsNullParams,
     SearchExperimentsByTagLikeParams,
+    SearchExperimentsByTagNotEqualAndGatewayIsNullParams,
+    SearchExperimentsByTagNotEqualParams,
     SearchExperimentsByTagParams,
+    SearchExperimentsByTwoTagsILikeParams,
+    SearchExperimentsByTwoTagsIsNullParams,
+    SearchExperimentsByTwoTagsNotEqualParams,
     SearchExperimentsByTwoTagsParams,
     SearchExperimentsParams,
     SearchRunsByLifecycleParams,
@@ -174,7 +198,17 @@ class RiffDBTrackingStore(RiffDBExtendedStoreMixin):
     def __init__(self, store_uri: str, artifact_uri: str | None = None) -> None:
         super().__init__()  # type: ignore[no-untyped-call]
         self._config = StoreConfig.from_uri(store_uri)
-        self._artifact_uri = artifact_uri
+        if artifact_uri is None:
+            default_root = os.environ.get(
+                "_MLFLOW_SERVER_ARTIFACT_ROOT", DEFAULT_LOCAL_FILE_AND_ARTIFACT_PATH
+            )
+            self._artifact_uri: str | None = str(
+                resolve_uri_if_local(default_root)  # type: ignore[no-untyped-call]
+            )
+        else:
+            self._artifact_uri = str(
+                resolve_uri_if_local(artifact_uri)  # type: ignore[no-untyped-call]
+            )
         self._transport: SyncApplicationTransport | None = None
         self._client: Any | None = None
         self._default_ready = False
@@ -197,34 +231,17 @@ class RiffDBTrackingStore(RiffDBExtendedStoreMixin):
 
     def _application(self) -> Any:
         if self._client is None:
-            required = {
-                name: os.environ.get(name)
-                for name in (
-                    "RIFFDB_MLFLOW_ENDPOINT",
-                    "RIFFDB_MLFLOW_TRUST_ROOT",
-                    "RIFFDB_MLFLOW_SERVER_NAME",
-                    "RIFFDB_MLFLOW_CREDENTIAL_FILE",
-                )
-            }
-            missing = sorted(name for name, value in required.items() if not value)
-            if missing:
-                raise MlflowException(
-                    "Missing required RiffDB MLflow connection configuration: "
-                    + ", ".join(missing),
-                    error_code=INVALID_PARAMETER_VALUE,
-                )
-            credential = BearerCredential.from_protected_file(
-                required["RIFFDB_MLFLOW_CREDENTIAL_FILE"]  # type: ignore[arg-type]
-            )
+            conn = ConnectionConfig.from_env()
+            credential = BearerCredential.from_protected_file(conn.credential_file)
             if os.environ.get("RIFFDB_TENANT") == "":
                 os.environ.pop("RIFFDB_TENANT", None)
             metadata = CallMetadata.authenticated(credential).with_database(
                 DatabaseAlias(self.database)
             )
             tls = VerifiedTlsConfig(
-                endpoint=required["RIFFDB_MLFLOW_ENDPOINT"],  # type: ignore[arg-type]
-                trust_root=required["RIFFDB_MLFLOW_TRUST_ROOT"],  # type: ignore[arg-type]
-                server_name=required["RIFFDB_MLFLOW_SERVER_NAME"],  # type: ignore[arg-type]
+                endpoint=conn.endpoint,
+                trust_root=conn.trust_root,
+                server_name=conn.server_name,
             )
             self._transport = SyncApplicationTransport.connect_verified_tls(tls, metadata)
             self._client = RiffDBMLflowClient(self._transport, AttemptBudget(3))
@@ -243,6 +260,7 @@ class RiffDBTrackingStore(RiffDBExtendedStoreMixin):
                 name_digest=self._digest(_DEFAULT_EXPERIMENT_NAME),
                 artifact_location=artifact_location,
                 packed_tags=self._encode_tags(None),
+                is_gateway=False,
             )
         )
         if not isinstance(
@@ -268,6 +286,16 @@ class RiffDBTrackingStore(RiffDBExtendedStoreMixin):
     @staticmethod
     def _digest(value: str) -> bytes:
         return sha256(value.encode("utf-8")).digest()
+
+    @staticmethod
+    def _hash64(value: str) -> int:
+        return int.from_bytes(sha256(value.encode("utf-8")).digest()[:8], "big")
+
+    @staticmethod
+    def _is_gateway_tags(tags: Any) -> bool:
+        return any(
+            getattr(tag, "key", None) == MLFLOW_EXPERIMENT_IS_GATEWAY for tag in (tags or ())
+        )
 
     @staticmethod
     def _encode_tags(tags: Any) -> bytes:
@@ -309,6 +337,7 @@ class RiffDBTrackingStore(RiffDBExtendedStoreMixin):
                     tag_key=tag.key,
                     value=tag.value,
                     value_digest=cls._digest(tag.value),
+                    value_hash=cls._hash64(tag.value),
                 )
             )
         return tuple(rows)
@@ -709,6 +738,256 @@ class RiffDBTrackingStore(RiffDBExtendedStoreMixin):
         return ExperimentOrder[f"{prefix}_{direction}_ID_{tie}"]
 
     @classmethod
+    def _dispatch_two_experiment_filters(
+        cls,
+        client: Any,
+        first: dict[str, Any],
+        second: dict[str, Any],
+        lifecycle_stages: tuple[LifecycleStage, ...],
+        order: ExperimentOrder,
+        limit: int,
+        cursor: str | None,
+    ) -> Any:
+        # Normalize (tag, attribute.name) -> (attribute.name, tag)
+        if first["type"] == "tag" and second["type"] == "attribute":
+            first, second = second, first
+
+        if first["type"] == "attribute" and first["key"] == "name" and second["type"] == "tag":
+            name_comp = first["comparator"]
+            name_val = first["value"]
+            tag_comp = second["comparator"]
+            tag_key = second["key"]
+            tag_val = second["value"]
+            if name_comp == "=" and tag_comp == "=":
+                return client.search_experiments_by_name_and_tag(
+                    SearchExperimentsByNameAndTagParams(
+                        scope=_SCOPE,
+                        name_digest=cls._digest(name_val),
+                        tag_key=tag_key,
+                        value_digest=cls._digest(tag_val),
+                        lifecycle_stages=lifecycle_stages,
+                        order=order,
+                        limit=limit,
+                        after=cursor,
+                    )
+                )
+            if name_comp == "LIKE" and tag_comp == "=":
+                return client.search_experiments_by_name_like_and_tag(
+                    SearchExperimentsByNameLikeAndTagParams(
+                        scope=_SCOPE,
+                        pattern=name_val,
+                        tag_key=tag_key,
+                        value_digest=cls._digest(tag_val),
+                        lifecycle_stages=lifecycle_stages,
+                        order=order,
+                        limit=limit,
+                        after=cursor,
+                    )
+                )
+            if name_comp == "ILIKE" and tag_comp == "=":
+                return client.search_experiments_by_name_ilike_and_tag(
+                    SearchExperimentsByNameILikeAndTagParams(
+                        scope=_SCOPE,
+                        pattern=name_val,
+                        tag_key=tag_key,
+                        value_digest=cls._digest(tag_val),
+                        lifecycle_stages=lifecycle_stages,
+                        order=order,
+                        limit=limit,
+                        after=cursor,
+                    )
+                )
+            if name_comp == "ILIKE" and tag_comp == "IS NOT NULL":
+                return client.search_experiments_by_name_ilike_and_tag_is_not_null(
+                    SearchExperimentsByNameILikeAndTagIsNotNullParams(
+                        scope=_SCOPE,
+                        pattern=name_val,
+                        tag_key=tag_key,
+                        lifecycle_stages=lifecycle_stages,
+                        order=order,
+                        limit=limit,
+                        after=cursor,
+                    )
+                )
+            if name_comp == "=" and tag_comp == "IS NULL":
+                return client.search_experiments_by_name_and_tag_is_null(
+                    SearchExperimentsByNameAndTagIsNullParams(
+                        scope=_SCOPE,
+                        name_digest=cls._digest(name_val),
+                        tag_key=tag_key,
+                        lifecycle_stages=lifecycle_stages,
+                        order=order,
+                        limit=limit,
+                        after=cursor,
+                    )
+                )
+            if name_comp == "!=" and tag_comp == "IS NULL":
+                return client.search_experiments_by_name_not_equal_and_tag_is_null(
+                    SearchExperimentsByNameNotEqualAndTagIsNullParams(
+                        scope=_SCOPE,
+                        name_digest=cls._digest(name_val),
+                        tag_key=tag_key,
+                        lifecycle_stages=lifecycle_stages,
+                        order=order,
+                        limit=limit,
+                        after=cursor,
+                    )
+                )
+            if (
+                name_comp == "ILIKE"
+                and tag_comp == "IS NULL"
+                and tag_key == MLFLOW_EXPERIMENT_IS_GATEWAY
+            ):
+                return client.search_experiments_by_name_ilike_and_gateway_is_null(
+                    SearchExperimentsByNameILikeAndGatewayIsNullParams(
+                        scope=_SCOPE,
+                        pattern=name_val,
+                        lifecycle_stages=lifecycle_stages,
+                        order=order,
+                        limit=limit,
+                        after=cursor,
+                    )
+                )
+            if (
+                name_comp == "LIKE"
+                and tag_comp == "IS NULL"
+                and tag_key == MLFLOW_EXPERIMENT_IS_GATEWAY
+            ):
+                return client.search_experiments_by_name_like_and_gateway_is_null(
+                    SearchExperimentsByNameLikeAndGatewayIsNullParams(
+                        scope=_SCOPE,
+                        pattern=name_val,
+                        lifecycle_stages=lifecycle_stages,
+                        order=order,
+                        limit=limit,
+                        after=cursor,
+                    )
+                )
+
+        if first["type"] == "tag" and second["type"] == "tag":
+            c1, c2 = first["comparator"], second["comparator"]
+            if c1 == "=" and c2 == "=":
+                return client.search_experiments_by_two_tags(
+                    SearchExperimentsByTwoTagsParams(
+                        scope=_SCOPE,
+                        first_tag_key=first["key"],
+                        first_value_digest=cls._digest(first["value"]),
+                        second_tag_key=second["key"],
+                        second_value_digest=cls._digest(second["value"]),
+                        lifecycle_stages=lifecycle_stages,
+                        order=order,
+                        limit=limit,
+                        after=cursor,
+                    )
+                )
+            if c1 == "IS NULL" and c2 == "IS NULL":
+                return client.search_experiments_by_two_tags_is_null(
+                    SearchExperimentsByTwoTagsIsNullParams(
+                        scope=_SCOPE,
+                        first_tag_key=first["key"],
+                        second_tag_key=second["key"],
+                        lifecycle_stages=lifecycle_stages,
+                        order=order,
+                        limit=limit,
+                        after=cursor,
+                    )
+                )
+            if (c1 == "=" and c2 == "!=") or (c1 == "!=" and c2 == "="):
+                eq_pred, neq_pred = (first, second) if c1 == "=" else (second, first)
+                return client.search_experiments_by_two_tags_not_equal(
+                    SearchExperimentsByTwoTagsNotEqualParams(
+                        scope=_SCOPE,
+                        first_tag_key=eq_pred["key"],
+                        first_value_digest=cls._digest(eq_pred["value"]),
+                        second_tag_key=neq_pred["key"],
+                        second_value_hash=cls._hash64(neq_pred["value"]),
+                        lifecycle_stages=lifecycle_stages,
+                        order=order,
+                        limit=limit,
+                        after=cursor,
+                    )
+                )
+            if (c1 == "=" and c2 == "IS NOT NULL") or (c1 == "IS NOT NULL" and c2 == "="):
+                eq_pred, nn_pred = (first, second) if c1 == "=" else (second, first)
+                return client.search_experiments_by_tag_and_tag_is_not_null(
+                    SearchExperimentsByTagAndTagIsNotNullParams(
+                        scope=_SCOPE,
+                        first_tag_key=eq_pred["key"],
+                        first_value_digest=cls._digest(eq_pred["value"]),
+                        second_tag_key=nn_pred["key"],
+                        lifecycle_stages=lifecycle_stages,
+                        order=order,
+                        limit=limit,
+                        after=cursor,
+                    )
+                )
+            if (c1 == "ILIKE" and c2 == "=") or (c1 == "=" and c2 == "ILIKE"):
+                ilike_pred, eq_pred = (first, second) if c1 == "ILIKE" else (second, first)
+                return client.search_experiments_by_two_tags_ilike(
+                    SearchExperimentsByTwoTagsILikeParams(
+                        scope=_SCOPE,
+                        first_tag_key=ilike_pred["key"],
+                        first_pattern=ilike_pred["value"],
+                        second_tag_key=eq_pred["key"],
+                        second_value_digest=cls._digest(eq_pred["value"]),
+                        lifecycle_stages=lifecycle_stages,
+                        order=order,
+                        limit=limit,
+                        after=cursor,
+                    )
+                )
+            if (c1 == "IS NULL" and first["key"] == MLFLOW_EXPERIMENT_IS_GATEWAY) or (
+                c2 == "IS NULL" and second["key"] == MLFLOW_EXPERIMENT_IS_GATEWAY
+            ):
+                other = (
+                    second
+                    if (c1 == "IS NULL" and first["key"] == MLFLOW_EXPERIMENT_IS_GATEWAY)
+                    else first
+                )
+                other_comp = other["comparator"]
+                if other_comp == "=":
+                    return client.search_experiments_by_tag_and_gateway_is_null(
+                        SearchExperimentsByTagAndGatewayIsNullParams(
+                            scope=_SCOPE,
+                            tag_key=other["key"],
+                            value_digest=cls._digest(other["value"]),
+                            lifecycle_stages=lifecycle_stages,
+                            order=order,
+                            limit=limit,
+                            after=cursor,
+                        )
+                    )
+                if other_comp == "IS NOT NULL":
+                    return client.search_experiments_by_tag_is_not_null_and_gateway_is_null(
+                        SearchExperimentsByTagIsNotNullAndGatewayIsNullParams(
+                            scope=_SCOPE,
+                            tag_key=other["key"],
+                            lifecycle_stages=lifecycle_stages,
+                            order=order,
+                            limit=limit,
+                            after=cursor,
+                        )
+                    )
+                if other_comp == "!=":
+                    return client.search_experiments_by_tag_not_equal_and_gateway_is_null(
+                        SearchExperimentsByTagNotEqualAndGatewayIsNullParams(
+                            scope=_SCOPE,
+                            tag_key=other["key"],
+                            value_hash=cls._hash64(other["value"]),
+                            lifecycle_stages=lifecycle_stages,
+                            order=order,
+                            limit=limit,
+                            after=cursor,
+                        )
+                    )
+
+        raise MlflowException.invalid_parameter_value(
+            "Unsupported RiffDB two-predicate experiment filter combination: "
+            f"{first['type']}.{first['key']} {first['comparator']} AND "
+            f"{second['type']}.{second['key']} {second['comparator']}"
+        )
+
+    @classmethod
     def _dispatch_experiment_search(
         cls,
         client: Any,
@@ -728,27 +1007,40 @@ class RiffDBTrackingStore(RiffDBExtendedStoreMixin):
                     after=cursor,
                 )
             )
+        if len(filters) == 3:
+            name_preds = [
+                p
+                for p in filters
+                if p["type"] == "attribute" and p["key"] == "name" and p["comparator"] == "ILIKE"
+            ]
+            gateway_null_preds = [
+                p
+                for p in filters
+                if p["type"] == "tag"
+                and p["key"] == MLFLOW_EXPERIMENT_IS_GATEWAY
+                and p["comparator"] == "IS NULL"
+            ]
+            tag_eq_preds = [p for p in filters if p["type"] == "tag" and p["comparator"] == "="]
+            if len(name_preds) == 1 and len(gateway_null_preds) == 1 and len(tag_eq_preds) == 1:
+                return client.search_experiments_by_name_ilike_and_tag_and_gateway_is_null(
+                    SearchExperimentsByNameILikeAndTagAndGatewayIsNullParams(
+                        scope=_SCOPE,
+                        pattern=name_preds[0]["value"],
+                        tag_key=tag_eq_preds[0]["key"],
+                        value_digest=cls._digest(tag_eq_preds[0]["value"]),
+                        lifecycle_stages=lifecycle_stages,
+                        order=order,
+                        limit=limit,
+                        after=cursor,
+                    )
+                )
+            raise MlflowException.invalid_parameter_value(
+                "RiffDB experiment search currently accepts at most two filter predicates "
+                "(plus optional gateway tag exclusion)"
+            )
         if len(filters) == 2:
-            first, second = filters
-            if not all(
-                predicate["type"] == "tag" and predicate["comparator"] == "="
-                for predicate in (first, second)
-            ):
-                raise MlflowException.invalid_parameter_value(
-                    "RiffDB two-predicate experiment search currently requires two exact tags"
-                )
-            return client.search_experiments_by_two_tags(
-                SearchExperimentsByTwoTagsParams(
-                    scope=_SCOPE,
-                    first_tag_key=first["key"],
-                    first_value_digest=cls._digest(first["value"]),
-                    second_tag_key=second["key"],
-                    second_value_digest=cls._digest(second["value"]),
-                    lifecycle_stages=lifecycle_stages,
-                    order=order,
-                    limit=limit,
-                    after=cursor,
-                )
+            return cls._dispatch_two_experiment_filters(
+                client, filters[0], filters[1], lifecycle_stages, order, limit, cursor
             )
         predicate = filters[0]
         kind = predicate["type"]
@@ -759,6 +1051,17 @@ class RiffDBTrackingStore(RiffDBExtendedStoreMixin):
             if comparator == "=":
                 return client.search_experiments_by_name(
                     SearchExperimentsByNameParams(
+                        scope=_SCOPE,
+                        name_digest=cls._digest(value),
+                        lifecycle_stages=lifecycle_stages,
+                        order=order,
+                        limit=limit,
+                        after=cursor,
+                    )
+                )
+            if comparator == "!=":
+                return client.search_experiments_by_name_not_equal(
+                    SearchExperimentsByNameNotEqualParams(
                         scope=_SCOPE,
                         name_digest=cls._digest(value),
                         lifecycle_stages=lifecycle_stages,
@@ -796,6 +1099,40 @@ class RiffDBTrackingStore(RiffDBExtendedStoreMixin):
                         scope=_SCOPE,
                         tag_key=key,
                         value_digest=cls._digest(value),
+                        lifecycle_stages=lifecycle_stages,
+                        order=order,
+                        limit=limit,
+                        after=cursor,
+                    )
+                )
+            if comparator == "!=":
+                return client.search_experiments_by_tag_not_equal(
+                    SearchExperimentsByTagNotEqualParams(
+                        scope=_SCOPE,
+                        tag_key=key,
+                        value_hash=cls._hash64(value),
+                        lifecycle_stages=lifecycle_stages,
+                        order=order,
+                        limit=limit,
+                        after=cursor,
+                    )
+                )
+            if comparator == "IS NULL":
+                return client.search_experiments_by_tag_is_null(
+                    SearchExperimentsByTagIsNullParams(
+                        scope=_SCOPE,
+                        tag_key=key,
+                        lifecycle_stages=lifecycle_stages,
+                        order=order,
+                        limit=limit,
+                        after=cursor,
+                    )
+                )
+            if comparator == "IS NOT NULL":
+                return client.search_experiments_by_tag_is_not_null(
+                    SearchExperimentsByTagIsNotNullParams(
+                        scope=_SCOPE,
+                        tag_key=key,
                         lifecycle_stages=lifecycle_stages,
                         order=order,
                         limit=limit,
@@ -856,7 +1193,7 @@ class RiffDBTrackingStore(RiffDBExtendedStoreMixin):
         filters = SearchExperimentsUtils.parse_search_filter(  # type: ignore[no-untyped-call]
             filter_string
         )
-        if len(filters) > 2:
+        if len(filters) > 3:
             raise MlflowException.invalid_parameter_value(
                 "RiffDB experiment search currently accepts at most two filter predicates"
             )
@@ -899,6 +1236,7 @@ class RiffDBTrackingStore(RiffDBExtendedStoreMixin):
                     str(experiment_id), artifact_location
                 ),
                 "packed_tags": packed_tags,
+                "is_gateway": self._is_gateway_tags(tags),
             }
             if tag_rows:
                 result = client.create_experiment_with_tags(
@@ -1000,10 +1338,12 @@ class RiffDBTrackingStore(RiffDBExtendedStoreMixin):
                     tag_key=tag.key,
                     value=tag.value,
                     value_digest=self._digest(tag.value),
+                    value_hash=self._hash64(tag.value),
                     packed_tags=self._encode_tags(
                         ExperimentTag(key, value)  # type: ignore[no-untyped-call]
                         for key, value in packed.items()
                     ),
+                    is_gateway=MLFLOW_EXPERIMENT_IS_GATEWAY in packed,
                     expected_revision=row.revision,
                 )
             )
@@ -1046,6 +1386,7 @@ class RiffDBTrackingStore(RiffDBExtendedStoreMixin):
                         ExperimentTag(tag_key, value)  # type: ignore[no-untyped-call]
                         for tag_key, value in packed.items()
                     ),
+                    is_gateway=MLFLOW_EXPERIMENT_IS_GATEWAY in packed,
                     expected_revision=row.revision,
                 )
             )

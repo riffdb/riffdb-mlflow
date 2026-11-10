@@ -113,6 +113,7 @@ class FakeExtendedRiffDBClient:
                 creation_time=Timestamp(seconds=1_700_000_000, nanos=0),
                 last_update_time=Timestamp(seconds=1_700_000_000, nanos=0),
                 packed_tags=b"{}",
+                is_gateway=False,
                 revision=0,
             )
         }

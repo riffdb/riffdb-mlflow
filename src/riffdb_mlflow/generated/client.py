@@ -22,8 +22,8 @@ def _compact_tag(value: object, tag: str, keys: frozenset[str]) -> dict[str, obj
 
 CONTRACT_LINEAGE: Final[str] = "RiffDBMLflow"
 CONTRACT_VERSION: Final[int] = 1
-CONTRACT_BUNDLE_HASH: Final[str] = "ef8f6a55c08d9b926f4fe7eb0c579c40e2ea621ac7662005d2cda66fe56630c3"
-QUERY_MODULE_HASH: Final[str] = "d1db94cad3dee53bc5fde42a9507f77410fa34a53f561d60dff350f854d0a03c"
+CONTRACT_BUNDLE_HASH: Final[str] = "28e4ecae8bf711d4bc91f5b5f075ce93d4d85e704995d67e6a400df7e6390ee8"
+QUERY_MODULE_HASH: Final[str] = "4736d1e84b1190c2b537332f5f4b80efe9f234813482248bc6acf84ea58677ae"
 
 COLLECTION_COUNT: Final[str] = "collection_count"
 INDIVIDUAL_VALUE_BYTES: Final[str] = "individual_value_bytes"
@@ -165,6 +165,7 @@ class Experiment:
     name: str
     scope: str
     revision: Annotated[int, "u64"]
+    is_gateway: bool
     name_digest: bytes
     packed_tags: bytes
     creation_time: Timestamp
@@ -186,8 +187,23 @@ class ExperimentTag:
     scope: str
     value: str
     tag_key: str
+    value_hash: Annotated[int, "u64"]
     value_digest: bytes
     experiment_id: Annotated[int, "u64"]
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class MCPServerEntity:
+    name: str
+    scope: str
+    created_by: str | None
+    description: str | None
+    packed_tags: bytes
+    display_name: str | None
+    packed_icons: bytes
+    created_at_ms: Annotated[int, "i64"]
+    packed_aliases: bytes
+    last_updated_by: str | None
+    last_updated_at_ms: Annotated[int, "i64"]
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class TraceAssessment:
@@ -220,7 +236,84 @@ class LoggedModelEntity:
     creation_timestamp_ms: Annotated[int, "i64"]
     last_updated_timestamp_ms: Annotated[int, "i64"]
 
-AGGREGATE_SPAN_ANALYTICS_BY_MODEL_QUERY_PLAN_HASH: Final[str] = "d51d7c81840bb7f84cae477642dac69b0db5dc7d3733911219b15ab693cb1dfa"
+@dataclass(frozen=True, slots=True, kw_only=True)
+class ModelVersionEntity:
+    name: str
+    scope: str
+    run_id: str | None
+    status: str
+    user_id: str | None
+    run_link: str | None
+    description: str | None
+    packed_tags: bytes
+    source_path: str
+    version_num: Annotated[int, "u64"]
+    current_stage: str
+    status_message: str | None
+    storage_location: str
+    creation_timestamp_ms: Annotated[int, "i64"]
+    last_updated_timestamp_ms: Annotated[int, "i64"]
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class RegisteredModelEntity:
+    name: str
+    scope: str
+    description: str | None
+    packed_tags: bytes
+    latest_version: Annotated[int, "u64"]
+    packed_aliases: bytes
+    creation_timestamp_ms: Annotated[int, "i64"]
+    last_updated_timestamp_ms: Annotated[int, "i64"]
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class RegistryWebhookEntity:
+    url: str
+    name: str
+    scope: str
+    secret: str | None
+    status: str
+    webhook_id: str
+    description: str | None
+    packed_events: bytes
+    deleted_timestamp_ms: Annotated[int, "i64"] | None
+    creation_timestamp_ms: Annotated[int, "i64"]
+    last_updated_timestamp_ms: Annotated[int, "i64"]
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class MCPServerVersionEntity:
+    name: str
+    scope: str
+    status: str
+    created_by: str | None
+    source_url: str | None
+    packed_tags: bytes
+    server_json: str
+    packed_tools: bytes
+    created_at_ms: Annotated[int, "i64"]
+    version_major: Annotated[int, "i64"]
+    version_minor: Annotated[int, "i64"]
+    version_patch: Annotated[int, "i64"]
+    server_version: str
+    last_updated_by: str | None
+    last_updated_at_ms: Annotated[int, "i64"]
+    packed_connect_options: bytes
+    version_prerelease_sort_key: str
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class MCPAccessEndpointEntity:
+    url: str
+    scope: str
+    created_by: str | None
+    endpoint_id: str
+    server_name: str
+    server_alias: str | None
+    created_at_ms: Annotated[int, "i64"]
+    server_version: str | None
+    transport_type: str
+    last_updated_by: str | None
+    last_updated_at_ms: Annotated[int, "i64"]
+
+AGGREGATE_SPAN_ANALYTICS_BY_MODEL_QUERY_PLAN_HASH: Final[str] = "d45ec47e7ca57c539056c39e5a4cb10d737adbc7e3e66ecb91d8a0472e907ed8"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class AggregateSpanAnalyticsByModelParams:
@@ -257,7 +350,7 @@ class AggregateSpanAnalyticsByModelFound:
 
 AggregateSpanAnalyticsByModelResult: TypeAlias = AggregateSpanAnalyticsByModelFound
 
-AGGREGATE_SPAN_ANALYTICS_BY_NAME_STATUS_QUERY_PLAN_HASH: Final[str] = "be95c152c12457d0cd112417b452367d3fb0c13db33b96b663b911874a37a0fe"
+AGGREGATE_SPAN_ANALYTICS_BY_NAME_STATUS_QUERY_PLAN_HASH: Final[str] = "a4927a74aa3ad356866bfc7740e22df2f3c1fa97ea2e93dfca58ec7aaa6cc504"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class AggregateSpanAnalyticsByNameStatusParams:
@@ -292,7 +385,7 @@ class AggregateSpanAnalyticsByNameStatusFound:
 
 AggregateSpanAnalyticsByNameStatusResult: TypeAlias = AggregateSpanAnalyticsByNameStatusFound
 
-AGGREGATE_TRACE_ANALYTICS_BY_NAME_QUERY_PLAN_HASH: Final[str] = "1650d813ea0364e858802cf793c3e01c5feb7907a0e462878ef381a9ed9b9fe1"
+AGGREGATE_TRACE_ANALYTICS_BY_NAME_QUERY_PLAN_HASH: Final[str] = "76ce30692cad1797880aad643847149d943cb5b9c7c4798cd52148cea9f4589e"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class AggregateTraceAnalyticsByNameParams:
@@ -326,7 +419,7 @@ class AggregateTraceAnalyticsByNameFound:
 
 AggregateTraceAnalyticsByNameResult: TypeAlias = AggregateTraceAnalyticsByNameFound
 
-AGGREGATE_TRACE_ANALYTICS_BY_STATUS_QUERY_PLAN_HASH: Final[str] = "493db6a76472a2f0b5da01b1b314671ebb0793cb1a3dc85c12f51334c92bdd3f"
+AGGREGATE_TRACE_ANALYTICS_BY_STATUS_QUERY_PLAN_HASH: Final[str] = "02922f7d8e1959656a2a55da80e24228d8b75f465e7cc5cddb8715ecd68b7968"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class AggregateTraceAnalyticsByStatusParams:
@@ -360,7 +453,8 @@ class AggregateTraceAnalyticsByStatusFound:
 
 AggregateTraceAnalyticsByStatusResult: TypeAlias = AggregateTraceAnalyticsByStatusFound
 
-BATCH_GET_TRACE_ASSESSMENTS_QUERY_PLAN_HASH: Final[str] = "c6b50708b2509a4d1c56e0c766af161630a818df340d97e932f558bc07e7da22"
+BATCH_GET_TRACE_ASSESSMENTS_QUERY_PLAN_HASH: Final[str] = "cba150340cd06054b14335906781129ce57ad2a47fc93add5da06abcc8570da2"
+BATCH_GET_TRACE_ASSESSMENTS_TRACE_IDS_MAX_ITEMS: Final[int] = 200
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class BatchGetTraceAssessmentsParams:
@@ -407,7 +501,8 @@ class BatchGetTraceAssessmentsIntegrityFailure:
 
 BatchGetTraceAssessmentsResult: TypeAlias = BatchGetTraceAssessmentsFound | BatchGetTraceAssessmentsIntegrityFailure
 
-BATCH_GET_TRACE_SPANS_QUERY_PLAN_HASH: Final[str] = "e4c50d3bae7939df04055b556e1bebcbdd8aaf01930d499998fc9f10cae8afce"
+BATCH_GET_TRACE_SPANS_QUERY_PLAN_HASH: Final[str] = "3f49cda3733694fa45ea801155088e25c9f5a3f642380d96099a3ec2bc6644ee"
+BATCH_GET_TRACE_SPANS_TRACE_IDS_MAX_ITEMS: Final[int] = 200
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class BatchGetTraceSpansParams:
@@ -450,7 +545,7 @@ class BatchGetTraceSpansIntegrityFailure:
 
 BatchGetTraceSpansResult: TypeAlias = BatchGetTraceSpansFound | BatchGetTraceSpansIntegrityFailure
 
-BATCH_GET_TRACES_QUERY_PLAN_HASH: Final[str] = "6fea0f8fc8e54e455d1989c8b5ee7e7c95e1d3e9e8ab77e3fa9d4a277cd1c7de"
+BATCH_GET_TRACES_QUERY_PLAN_HASH: Final[str] = "91649018e6db9199a5a884a8506a3ec6fb8a554b39dbf41b90b67aa546c664ea"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class BatchGetTracesParams:
@@ -527,7 +622,7 @@ class BatchGetTracesIntegrityFailure:
 
 BatchGetTracesResult: TypeAlias = BatchGetTracesFound | BatchGetTracesIntegrityFailure
 
-GET_EXPERIMENT_QUERY_PLAN_HASH: Final[str] = "95a496e578a022a7c7bf5df23af9f847fbd76bb8ab348113f256e54448a51059"
+GET_EXPERIMENT_QUERY_PLAN_HASH: Final[str] = "a13d09e030d343d45221a8cec1ffb584cbff67ecc0aa97800b226384185435c9"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class GetExperimentParams:
@@ -574,7 +669,7 @@ class GetExperimentMissing:
 
 GetExperimentResult: TypeAlias = GetExperimentFound | GetExperimentMissing
 
-GET_EXPERIMENT_BY_NAME_QUERY_PLAN_HASH: Final[str] = "b9a295b6192c70fd9b3dab088d486856c90b7b1c1419c24c5b0ac02f202643c9"
+GET_EXPERIMENT_BY_NAME_QUERY_PLAN_HASH: Final[str] = "0328b4aa033b4109d33a63a509eb11b9c4d63a5edcc0cd4077016c95665cd600"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class GetExperimentByNameParams:
@@ -621,7 +716,7 @@ class GetExperimentByNameMissing:
 
 GetExperimentByNameResult: TypeAlias = GetExperimentByNameFound | GetExperimentByNameMissing
 
-GET_LOGGED_MODEL_QUERY_PLAN_HASH: Final[str] = "15532d095fa7ebed976dbdb9ea73a6fd586dc0a4aa9e857115c948fb90c80cb4"
+GET_LOGGED_MODEL_QUERY_PLAN_HASH: Final[str] = "4cf3c6da8cf9d4756bbd02adba2a979503f50bfa937c2960a8a826beb2c8f556"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class GetLoggedModelParams:
@@ -674,7 +769,161 @@ class GetLoggedModelMissing:
 
 GetLoggedModelResult: TypeAlias = GetLoggedModelFound | GetLoggedModelMissing
 
-GET_METRIC_HISTORY_QUERY_PLAN_HASH: Final[str] = "6d1358de01c6113b67ce91ecfb9d73cf08b1a7f8c0308149a1e98775772e6677"
+GET_MCPACCESS_ENDPOINT_QUERY_PLAN_HASH: Final[str] = "41ea0462af78d2d0b85c6a6d8d57a975fc50aca4f5aad94d338a499ded12404a"
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class GetMCPAccessEndpointParams:
+    scope: str
+    endpoint_id: str
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class GetMCPAccessEndpointFoundEndpoint:
+    endpoint_id: str
+    server_name: str
+    url: str
+    transport_type: str
+    server_version: str | None
+    server_alias: str | None
+    created_by: str | None
+    last_updated_by: str | None
+    created_at_ms: Annotated[int, "i64"]
+    last_updated_at_ms: Annotated[int, "i64"]
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class GetMCPAccessEndpointFound:
+    endpoint: GetMCPAccessEndpointFoundEndpoint
+    outcome: Literal["Found"] = field(default="Found", init=False)
+
+    def is_found(self) -> bool:
+        return True
+
+    def is_missing(self) -> bool:
+        return False
+
+    def unwrap_found(self) -> GetMCPAccessEndpointFound:
+        return self
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class GetMCPAccessEndpointMissing:
+    outcome: Literal["Missing"] = field(default="Missing", init=False)
+
+    def is_found(self) -> bool:
+        return False
+
+    def is_missing(self) -> bool:
+        return True
+
+    def unwrap_found(self) -> GetMCPAccessEndpointFound:
+        raise ValueError("expected GetMCPAccessEndpoint outcome found")
+
+GetMCPAccessEndpointResult: TypeAlias = GetMCPAccessEndpointFound | GetMCPAccessEndpointMissing
+
+GET_MCPSERVER_QUERY_PLAN_HASH: Final[str] = "743e4c2ac57964fe56d1ca94540ea0e4999d4a33fbaa618aff023bd0480b33be"
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class GetMCPServerParams:
+    scope: str
+    name: str
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class GetMCPServerFoundServer:
+    name: str
+    display_name: str | None
+    description: str | None
+    packed_icons: bytes
+    packed_tags: bytes
+    packed_aliases: bytes
+    created_by: str | None
+    last_updated_by: str | None
+    created_at_ms: Annotated[int, "i64"]
+    last_updated_at_ms: Annotated[int, "i64"]
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class GetMCPServerFound:
+    server: GetMCPServerFoundServer
+    outcome: Literal["Found"] = field(default="Found", init=False)
+
+    def is_found(self) -> bool:
+        return True
+
+    def is_missing(self) -> bool:
+        return False
+
+    def unwrap_found(self) -> GetMCPServerFound:
+        return self
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class GetMCPServerMissing:
+    outcome: Literal["Missing"] = field(default="Missing", init=False)
+
+    def is_found(self) -> bool:
+        return False
+
+    def is_missing(self) -> bool:
+        return True
+
+    def unwrap_found(self) -> GetMCPServerFound:
+        raise ValueError("expected GetMCPServer outcome found")
+
+GetMCPServerResult: TypeAlias = GetMCPServerFound | GetMCPServerMissing
+
+GET_MCPSERVER_VERSION_QUERY_PLAN_HASH: Final[str] = "f615ded669b759d9ae127ce826c4a92b787009ee5dc8be0f8c4839dcba3f0d3b"
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class GetMCPServerVersionParams:
+    scope: str
+    name: str
+    server_version: str
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class GetMCPServerVersionFoundServerVersion:
+    name: str
+    server_version: str
+    version_major: Annotated[int, "i64"]
+    version_minor: Annotated[int, "i64"]
+    version_patch: Annotated[int, "i64"]
+    version_prerelease_sort_key: str
+    server_json: str
+    status: str
+    packed_tools: bytes
+    packed_tags: bytes
+    packed_connect_options: bytes
+    source_url: str | None
+    created_by: str | None
+    last_updated_by: str | None
+    created_at_ms: Annotated[int, "i64"]
+    last_updated_at_ms: Annotated[int, "i64"]
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class GetMCPServerVersionFound:
+    server_version: GetMCPServerVersionFoundServerVersion
+    outcome: Literal["Found"] = field(default="Found", init=False)
+
+    def is_found(self) -> bool:
+        return True
+
+    def is_missing(self) -> bool:
+        return False
+
+    def unwrap_found(self) -> GetMCPServerVersionFound:
+        return self
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class GetMCPServerVersionMissing:
+    outcome: Literal["Missing"] = field(default="Missing", init=False)
+
+    def is_found(self) -> bool:
+        return False
+
+    def is_missing(self) -> bool:
+        return True
+
+    def unwrap_found(self) -> GetMCPServerVersionFound:
+        raise ValueError("expected GetMCPServerVersion outcome found")
+
+GetMCPServerVersionResult: TypeAlias = GetMCPServerVersionFound | GetMCPServerVersionMissing
+
+GET_METRIC_HISTORY_QUERY_PLAN_HASH: Final[str] = "c95c3642952b513878a5c4bcfbef3fb07a57997991c834117c7fbfddb83ece7c"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class GetMetricHistoryParams:
@@ -722,7 +971,156 @@ class GetMetricHistoryIntegrityFailure:
 
 GetMetricHistoryResult: TypeAlias = GetMetricHistoryFound | GetMetricHistoryIntegrityFailure
 
-GET_RUN_QUERY_PLAN_HASH: Final[str] = "d3a5c066d807031baa0bc14ed276d449d07aea2b4cf68dd507417dcb6c78b290"
+GET_MODEL_VERSION_QUERY_PLAN_HASH: Final[str] = "560a7aeceb892cf5eb2343a276ad8bf9574e08e055983c236a93bb357556e70a"
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class GetModelVersionParams:
+    scope: str
+    name: str
+    version_num: Annotated[int, "u64"]
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class GetModelVersionFoundModelVersion:
+    name: str
+    version_num: Annotated[int, "u64"]
+    creation_timestamp_ms: Annotated[int, "i64"]
+    last_updated_timestamp_ms: Annotated[int, "i64"]
+    description: str | None
+    user_id: str | None
+    current_stage: str
+    source_path: str
+    storage_location: str
+    run_id: str | None
+    run_link: str | None
+    status: str
+    status_message: str | None
+    packed_tags: bytes
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class GetModelVersionFound:
+    model_version: GetModelVersionFoundModelVersion
+    outcome: Literal["Found"] = field(default="Found", init=False)
+
+    def is_found(self) -> bool:
+        return True
+
+    def is_missing(self) -> bool:
+        return False
+
+    def unwrap_found(self) -> GetModelVersionFound:
+        return self
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class GetModelVersionMissing:
+    outcome: Literal["Missing"] = field(default="Missing", init=False)
+
+    def is_found(self) -> bool:
+        return False
+
+    def is_missing(self) -> bool:
+        return True
+
+    def unwrap_found(self) -> GetModelVersionFound:
+        raise ValueError("expected GetModelVersion outcome found")
+
+GetModelVersionResult: TypeAlias = GetModelVersionFound | GetModelVersionMissing
+
+GET_REGISTERED_MODEL_QUERY_PLAN_HASH: Final[str] = "41f3ce6286616469b238028bbc9af9f7c219fe0a0353aff9af6954beee6a699a"
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class GetRegisteredModelParams:
+    scope: str
+    name: str
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class GetRegisteredModelFoundModel:
+    name: str
+    creation_timestamp_ms: Annotated[int, "i64"]
+    last_updated_timestamp_ms: Annotated[int, "i64"]
+    description: str | None
+    packed_tags: bytes
+    packed_aliases: bytes
+    latest_version: Annotated[int, "u64"]
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class GetRegisteredModelFound:
+    model: GetRegisteredModelFoundModel
+    outcome: Literal["Found"] = field(default="Found", init=False)
+
+    def is_found(self) -> bool:
+        return True
+
+    def is_missing(self) -> bool:
+        return False
+
+    def unwrap_found(self) -> GetRegisteredModelFound:
+        return self
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class GetRegisteredModelMissing:
+    outcome: Literal["Missing"] = field(default="Missing", init=False)
+
+    def is_found(self) -> bool:
+        return False
+
+    def is_missing(self) -> bool:
+        return True
+
+    def unwrap_found(self) -> GetRegisteredModelFound:
+        raise ValueError("expected GetRegisteredModel outcome found")
+
+GetRegisteredModelResult: TypeAlias = GetRegisteredModelFound | GetRegisteredModelMissing
+
+GET_REGISTRY_WEBHOOK_QUERY_PLAN_HASH: Final[str] = "a9a98c078819f111b889e641849a1916ac3eba0c4c1afbcc9476bb40596c88a8"
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class GetRegistryWebhookParams:
+    scope: str
+    webhook_id: str
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class GetRegistryWebhookFoundWebhook:
+    webhook_id: str
+    name: str
+    description: str | None
+    url: str
+    status: str
+    secret: str | None
+    packed_events: bytes
+    creation_timestamp_ms: Annotated[int, "i64"]
+    last_updated_timestamp_ms: Annotated[int, "i64"]
+    deleted_timestamp_ms: Annotated[int, "i64"] | None
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class GetRegistryWebhookFound:
+    webhook: GetRegistryWebhookFoundWebhook
+    outcome: Literal["Found"] = field(default="Found", init=False)
+
+    def is_found(self) -> bool:
+        return True
+
+    def is_missing(self) -> bool:
+        return False
+
+    def unwrap_found(self) -> GetRegistryWebhookFound:
+        return self
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class GetRegistryWebhookMissing:
+    outcome: Literal["Missing"] = field(default="Missing", init=False)
+
+    def is_found(self) -> bool:
+        return False
+
+    def is_missing(self) -> bool:
+        return True
+
+    def unwrap_found(self) -> GetRegistryWebhookFound:
+        raise ValueError("expected GetRegistryWebhook outcome found")
+
+GetRegistryWebhookResult: TypeAlias = GetRegistryWebhookFound | GetRegistryWebhookMissing
+
+GET_RUN_QUERY_PLAN_HASH: Final[str] = "8e64600e09ed3c4010418e56f6bb48174e2cd308296dbe5eb79fd962badbb8b0"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class GetRunParams:
@@ -775,7 +1173,7 @@ class GetRunMissing:
 
 GetRunResult: TypeAlias = GetRunFound | GetRunMissing
 
-GET_RUN_LINEAGE_QUERY_PLAN_HASH: Final[str] = "9a6a05a657b5effe57922a75b99bf367579a05157cd4670224dca0533529051d"
+GET_RUN_LINEAGE_QUERY_PLAN_HASH: Final[str] = "3c06d3aa976c9621e67d5dc5efaf9a6e484c127b3cce3b04937ae867e9f921c7"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class GetRunLineageParams:
@@ -819,7 +1217,7 @@ class GetRunLineageMissing:
 
 GetRunLineageResult: TypeAlias = GetRunLineageFound | GetRunLineageMissing
 
-GET_TRACE_QUERY_PLAN_HASH: Final[str] = "46bb0a62de900763c5cafcfee1a9305c4684a3639538419af742872fbb14bd06"
+GET_TRACE_QUERY_PLAN_HASH: Final[str] = "8db9dc9a8f47bcd00f52453dc67f43320da43bd1bf0714b30da2e950a4efed80"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class GetTraceParams:
@@ -923,7 +1321,220 @@ class GetTraceMissing:
 
 GetTraceResult: TypeAlias = GetTraceFound | GetTraceMissing
 
-QUERY_ASSESSMENT_ANALYTICS_QUERY_PLAN_HASH: Final[str] = "48f440cb27a7e4f93514f5605f2c5dccb16a5647b985cb60c7c07a4f864bf9ce"
+LIST_MCPACCESS_ENDPOINTS_BY_SERVER_QUERY_PLAN_HASH: Final[str] = "52d46df5c4b866864744ac4b3d8feb2b62cef16ab7909f6e2b20143e3eab151c"
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class ListMCPAccessEndpointsByServerParams:
+    scope: str
+    server_name: str
+    limit: Annotated[int, "u64"] | None = None
+    after: str | None = None
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class ListMCPAccessEndpointsByServerFoundEndpoints:
+    endpoint_id: str
+    server_name: str
+    url: str
+    transport_type: str
+    server_version: str | None
+    server_alias: str | None
+    created_by: str | None
+    last_updated_by: str | None
+    created_at_ms: Annotated[int, "i64"]
+    last_updated_at_ms: Annotated[int, "i64"]
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class ListMCPAccessEndpointsByServerFound:
+    endpoints: tuple[ListMCPAccessEndpointsByServerFoundEndpoints, ...]
+    outcome: Literal["Found"] = field(default="Found", init=False)
+
+    def is_found(self) -> bool:
+        return True
+
+    def is_integrity_failure(self) -> bool:
+        return False
+
+    def unwrap_found(self) -> ListMCPAccessEndpointsByServerFound:
+        return self
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class ListMCPAccessEndpointsByServerIntegrityFailure:
+    outcome: Literal["IntegrityFailure"] = field(default="IntegrityFailure", init=False)
+
+    def is_found(self) -> bool:
+        return False
+
+    def is_integrity_failure(self) -> bool:
+        return True
+
+    def unwrap_found(self) -> ListMCPAccessEndpointsByServerFound:
+        raise ValueError("expected ListMCPAccessEndpointsByServer outcome found")
+
+ListMCPAccessEndpointsByServerResult: TypeAlias = ListMCPAccessEndpointsByServerFound | ListMCPAccessEndpointsByServerIntegrityFailure
+
+LIST_MCPSERVER_VERSIONS_BY_SERVER_QUERY_PLAN_HASH: Final[str] = "d81b7f5d7743e264e16bfdb41d589f7924c6c98daa7a1cedcd138925fedc9e66"
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class ListMCPServerVersionsByServerParams:
+    scope: str
+    name: str
+    limit: Annotated[int, "u64"] | None = None
+    after: str | None = None
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class ListMCPServerVersionsByServerFoundVersions:
+    name: str
+    server_version: str
+    version_major: Annotated[int, "i64"]
+    version_minor: Annotated[int, "i64"]
+    version_patch: Annotated[int, "i64"]
+    version_prerelease_sort_key: str
+    server_json: str
+    status: str
+    packed_tools: bytes
+    packed_tags: bytes
+    packed_connect_options: bytes
+    source_url: str | None
+    created_by: str | None
+    last_updated_by: str | None
+    created_at_ms: Annotated[int, "i64"]
+    last_updated_at_ms: Annotated[int, "i64"]
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class ListMCPServerVersionsByServerFound:
+    versions: tuple[ListMCPServerVersionsByServerFoundVersions, ...]
+    outcome: Literal["Found"] = field(default="Found", init=False)
+
+    def is_found(self) -> bool:
+        return True
+
+    def is_integrity_failure(self) -> bool:
+        return False
+
+    def unwrap_found(self) -> ListMCPServerVersionsByServerFound:
+        return self
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class ListMCPServerVersionsByServerIntegrityFailure:
+    outcome: Literal["IntegrityFailure"] = field(default="IntegrityFailure", init=False)
+
+    def is_found(self) -> bool:
+        return False
+
+    def is_integrity_failure(self) -> bool:
+        return True
+
+    def unwrap_found(self) -> ListMCPServerVersionsByServerFound:
+        raise ValueError("expected ListMCPServerVersionsByServer outcome found")
+
+ListMCPServerVersionsByServerResult: TypeAlias = ListMCPServerVersionsByServerFound | ListMCPServerVersionsByServerIntegrityFailure
+
+LIST_MODEL_VERSIONS_BY_MODEL_QUERY_PLAN_HASH: Final[str] = "88bddb714ecccd11c6801da8d8b50a349c508e05c9be74ca7f5c0619f39e0d4f"
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class ListModelVersionsByModelParams:
+    scope: str
+    name: str
+    limit: Annotated[int, "u64"] | None = None
+    after: str | None = None
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class ListModelVersionsByModelFoundVersions:
+    name: str
+    version_num: Annotated[int, "u64"]
+    creation_timestamp_ms: Annotated[int, "i64"]
+    last_updated_timestamp_ms: Annotated[int, "i64"]
+    description: str | None
+    user_id: str | None
+    current_stage: str
+    source_path: str
+    storage_location: str
+    run_id: str | None
+    run_link: str | None
+    status: str
+    status_message: str | None
+    packed_tags: bytes
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class ListModelVersionsByModelFound:
+    versions: tuple[ListModelVersionsByModelFoundVersions, ...]
+    outcome: Literal["Found"] = field(default="Found", init=False)
+
+    def is_found(self) -> bool:
+        return True
+
+    def is_integrity_failure(self) -> bool:
+        return False
+
+    def unwrap_found(self) -> ListModelVersionsByModelFound:
+        return self
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class ListModelVersionsByModelIntegrityFailure:
+    outcome: Literal["IntegrityFailure"] = field(default="IntegrityFailure", init=False)
+
+    def is_found(self) -> bool:
+        return False
+
+    def is_integrity_failure(self) -> bool:
+        return True
+
+    def unwrap_found(self) -> ListModelVersionsByModelFound:
+        raise ValueError("expected ListModelVersionsByModel outcome found")
+
+ListModelVersionsByModelResult: TypeAlias = ListModelVersionsByModelFound | ListModelVersionsByModelIntegrityFailure
+
+LIST_REGISTRY_WEBHOOKS_QUERY_PLAN_HASH: Final[str] = "7884820cc8bae213b705f282af42d968952028d699c6045ad591ecb53ed0445f"
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class ListRegistryWebhooksParams:
+    scope: str
+    limit: Annotated[int, "u64"] | None = None
+    after: str | None = None
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class ListRegistryWebhooksFoundWebhooks:
+    webhook_id: str
+    name: str
+    description: str | None
+    url: str
+    status: str
+    secret: str | None
+    packed_events: bytes
+    creation_timestamp_ms: Annotated[int, "i64"]
+    last_updated_timestamp_ms: Annotated[int, "i64"]
+    deleted_timestamp_ms: Annotated[int, "i64"] | None
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class ListRegistryWebhooksFound:
+    webhooks: tuple[ListRegistryWebhooksFoundWebhooks, ...]
+    outcome: Literal["Found"] = field(default="Found", init=False)
+
+    def is_found(self) -> bool:
+        return True
+
+    def is_integrity_failure(self) -> bool:
+        return False
+
+    def unwrap_found(self) -> ListRegistryWebhooksFound:
+        return self
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class ListRegistryWebhooksIntegrityFailure:
+    outcome: Literal["IntegrityFailure"] = field(default="IntegrityFailure", init=False)
+
+    def is_found(self) -> bool:
+        return False
+
+    def is_integrity_failure(self) -> bool:
+        return True
+
+    def unwrap_found(self) -> ListRegistryWebhooksFound:
+        raise ValueError("expected ListRegistryWebhooks outcome found")
+
+ListRegistryWebhooksResult: TypeAlias = ListRegistryWebhooksFound | ListRegistryWebhooksIntegrityFailure
+
+QUERY_ASSESSMENT_ANALYTICS_QUERY_PLAN_HASH: Final[str] = "f6caa2de97dd0b5950079aff8bc4d4f51823b09e9700ca9f331a6853dc252938"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class QueryAssessmentAnalyticsParams:
@@ -971,7 +1582,7 @@ class QueryAssessmentAnalyticsIntegrityFailure:
 
 QueryAssessmentAnalyticsResult: TypeAlias = QueryAssessmentAnalyticsFound | QueryAssessmentAnalyticsIntegrityFailure
 
-QUERY_SPAN_ANALYTICS_QUERY_PLAN_HASH: Final[str] = "ab216ed264b00c6422adb6717d39a3fef3172d610aa6a4f9cdcf8d4850fe0633"
+QUERY_SPAN_ANALYTICS_QUERY_PLAN_HASH: Final[str] = "37db7a729b0b516a4c68b1154d9e3c0b4358df184900884750447783a1493d62"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class QuerySpanAnalyticsParams:
@@ -1029,7 +1640,7 @@ class QuerySpanAnalyticsIntegrityFailure:
 
 QuerySpanAnalyticsResult: TypeAlias = QuerySpanAnalyticsFound | QuerySpanAnalyticsIntegrityFailure
 
-QUERY_SPAN_MODEL_ROLLUP_QUERY_PLAN_HASH: Final[str] = "d5030fcc4790ef6524cc46a73f1d8810c40b8ff6e68665374d0da151886c2fde"
+QUERY_SPAN_MODEL_ROLLUP_QUERY_PLAN_HASH: Final[str] = "76bcaa4a9cb97d7840744ad3fa38c790fca3b441ee7c6cab142d780362c85902"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class QuerySpanModelRollupParams:
@@ -1086,7 +1697,7 @@ class QuerySpanModelRollupIntegrityFailure:
 
 QuerySpanModelRollupResult: TypeAlias = QuerySpanModelRollupFound | QuerySpanModelRollupIntegrityFailure
 
-QUERY_TRACE_ANALYTICS_QUERY_PLAN_HASH: Final[str] = "463ad2e791ff3370d0ed18bc5c1f0df45a2859214f60827a43428158cd672355"
+QUERY_TRACE_ANALYTICS_QUERY_PLAN_HASH: Final[str] = "a09ab8acd91e3a2def6432743aaf764fc4591a1cf26585422a2747d550f2b2e1"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class QueryTraceAnalyticsParams:
@@ -1143,7 +1754,7 @@ class QueryTraceAnalyticsIntegrityFailure:
 
 QueryTraceAnalyticsResult: TypeAlias = QueryTraceAnalyticsFound | QueryTraceAnalyticsIntegrityFailure
 
-SEARCH_EXPERIMENTS_QUERY_PLAN_HASH: Final[str] = "4859476daf9408ac8436f34cf36966e05243d3a6d3fb93fbedca689b9c2a19f8"
+SEARCH_EXPERIMENTS_QUERY_PLAN_HASH: Final[str] = "bf6c49b2f7cc666883b39d3318cad089a8864d53f046d3fda72b8439596aeeac"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsParams:
@@ -1193,7 +1804,7 @@ class SearchExperimentsIntegrityFailure:
 
 SearchExperimentsResult: TypeAlias = SearchExperimentsFound | SearchExperimentsIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_NAME_QUERY_PLAN_HASH: Final[str] = "bbf3a8d1b9558edf246b13943c1f4c9442b3fc10016d56a2f5156905acad1b4e"
+SEARCH_EXPERIMENTS_BY_NAME_QUERY_PLAN_HASH: Final[str] = "44f11d3c741b1839de6bc5dbe395afe7f61c606516d8dd90c27313cdb0f82f50"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByNameParams:
@@ -1244,7 +1855,112 @@ class SearchExperimentsByNameIntegrityFailure:
 
 SearchExperimentsByNameResult: TypeAlias = SearchExperimentsByNameFound | SearchExperimentsByNameIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_NAME_ILIKE_QUERY_PLAN_HASH: Final[str] = "f4efd49eebae4a53641ba66c424b94e96262f002423385507f95313f4e9cd2f5"
+SEARCH_EXPERIMENTS_BY_NAME_AND_TAG_QUERY_PLAN_HASH: Final[str] = "9d225c5bb1d2e658afc2ec805cd58d697054a2268bf6afff94797a6097a98f2e"
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchExperimentsByNameAndTagParams:
+    scope: str
+    name_digest: bytes
+    tag_key: str
+    value_digest: bytes
+    lifecycle_stages: tuple[LifecycleStage, ...]
+    order: ExperimentOrder
+    limit: Annotated[int, "u64"] | None = None
+    after: str | None = None
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchExperimentsByNameAndTagFoundExperiments:
+    experiment_id: Annotated[int, "u64"]
+    name: str
+    artifact_location: str | None
+    lifecycle_stage: LifecycleStage
+    creation_time: Timestamp
+    last_update_time: Timestamp
+    packed_tags: bytes
+    revision: Annotated[int, "u64"]
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchExperimentsByNameAndTagFound:
+    experiments: tuple[SearchExperimentsByNameAndTagFoundExperiments, ...]
+    outcome: Literal["Found"] = field(default="Found", init=False)
+
+    def is_found(self) -> bool:
+        return True
+
+    def is_integrity_failure(self) -> bool:
+        return False
+
+    def unwrap_found(self) -> SearchExperimentsByNameAndTagFound:
+        return self
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchExperimentsByNameAndTagIntegrityFailure:
+    outcome: Literal["IntegrityFailure"] = field(default="IntegrityFailure", init=False)
+
+    def is_found(self) -> bool:
+        return False
+
+    def is_integrity_failure(self) -> bool:
+        return True
+
+    def unwrap_found(self) -> SearchExperimentsByNameAndTagFound:
+        raise ValueError("expected SearchExperimentsByNameAndTag outcome found")
+
+SearchExperimentsByNameAndTagResult: TypeAlias = SearchExperimentsByNameAndTagFound | SearchExperimentsByNameAndTagIntegrityFailure
+
+SEARCH_EXPERIMENTS_BY_NAME_AND_TAG_IS_NULL_QUERY_PLAN_HASH: Final[str] = "d2a643e95320877b0d1e7b82b0b10338e0123c31cf014a717445ec06f0170fba"
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchExperimentsByNameAndTagIsNullParams:
+    scope: str
+    name_digest: bytes
+    tag_key: str
+    lifecycle_stages: tuple[LifecycleStage, ...]
+    order: ExperimentOrder
+    limit: Annotated[int, "u64"] | None = None
+    after: str | None = None
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchExperimentsByNameAndTagIsNullFoundExperiments:
+    experiment_id: Annotated[int, "u64"]
+    name: str
+    artifact_location: str | None
+    lifecycle_stage: LifecycleStage
+    creation_time: Timestamp
+    last_update_time: Timestamp
+    packed_tags: bytes
+    revision: Annotated[int, "u64"]
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchExperimentsByNameAndTagIsNullFound:
+    experiments: tuple[SearchExperimentsByNameAndTagIsNullFoundExperiments, ...]
+    outcome: Literal["Found"] = field(default="Found", init=False)
+
+    def is_found(self) -> bool:
+        return True
+
+    def is_integrity_failure(self) -> bool:
+        return False
+
+    def unwrap_found(self) -> SearchExperimentsByNameAndTagIsNullFound:
+        return self
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchExperimentsByNameAndTagIsNullIntegrityFailure:
+    outcome: Literal["IntegrityFailure"] = field(default="IntegrityFailure", init=False)
+
+    def is_found(self) -> bool:
+        return False
+
+    def is_integrity_failure(self) -> bool:
+        return True
+
+    def unwrap_found(self) -> SearchExperimentsByNameAndTagIsNullFound:
+        raise ValueError("expected SearchExperimentsByNameAndTagIsNull outcome found")
+
+SearchExperimentsByNameAndTagIsNullResult: TypeAlias = SearchExperimentsByNameAndTagIsNullFound | SearchExperimentsByNameAndTagIsNullIntegrityFailure
+
+SEARCH_EXPERIMENTS_BY_NAME_ILIKE_QUERY_PLAN_HASH: Final[str] = "54a9fb95757bd929beb11b77102670481498cbcb7917ce222e8b1b3b59e1d559"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByNameILikeParams:
@@ -1295,7 +2011,216 @@ class SearchExperimentsByNameILikeIntegrityFailure:
 
 SearchExperimentsByNameILikeResult: TypeAlias = SearchExperimentsByNameILikeFound | SearchExperimentsByNameILikeIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_NAME_LIKE_QUERY_PLAN_HASH: Final[str] = "fb5a308657928ce1af7bc43f7503c3f855eb3763b15aa06d7a3e7d6998e6dfd2"
+SEARCH_EXPERIMENTS_BY_NAME_ILIKE_AND_GATEWAY_IS_NULL_QUERY_PLAN_HASH: Final[str] = "d1c9519d417d77d96e91edd15f8f1fe2e14d3f3159454c2597335f54f07c9f04"
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchExperimentsByNameILikeAndGatewayIsNullParams:
+    scope: str
+    pattern: str
+    lifecycle_stages: tuple[LifecycleStage, ...]
+    order: ExperimentOrder
+    limit: Annotated[int, "u64"] | None = None
+    after: str | None = None
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchExperimentsByNameILikeAndGatewayIsNullFoundExperiments:
+    experiment_id: Annotated[int, "u64"]
+    name: str
+    artifact_location: str | None
+    lifecycle_stage: LifecycleStage
+    creation_time: Timestamp
+    last_update_time: Timestamp
+    packed_tags: bytes
+    revision: Annotated[int, "u64"]
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchExperimentsByNameILikeAndGatewayIsNullFound:
+    experiments: tuple[SearchExperimentsByNameILikeAndGatewayIsNullFoundExperiments, ...]
+    outcome: Literal["Found"] = field(default="Found", init=False)
+
+    def is_found(self) -> bool:
+        return True
+
+    def is_integrity_failure(self) -> bool:
+        return False
+
+    def unwrap_found(self) -> SearchExperimentsByNameILikeAndGatewayIsNullFound:
+        return self
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchExperimentsByNameILikeAndGatewayIsNullIntegrityFailure:
+    outcome: Literal["IntegrityFailure"] = field(default="IntegrityFailure", init=False)
+
+    def is_found(self) -> bool:
+        return False
+
+    def is_integrity_failure(self) -> bool:
+        return True
+
+    def unwrap_found(self) -> SearchExperimentsByNameILikeAndGatewayIsNullFound:
+        raise ValueError("expected SearchExperimentsByNameILikeAndGatewayIsNull outcome found")
+
+SearchExperimentsByNameILikeAndGatewayIsNullResult: TypeAlias = SearchExperimentsByNameILikeAndGatewayIsNullFound | SearchExperimentsByNameILikeAndGatewayIsNullIntegrityFailure
+
+SEARCH_EXPERIMENTS_BY_NAME_ILIKE_AND_TAG_QUERY_PLAN_HASH: Final[str] = "c326f5b8bc9cf21776c05f5f8e8ebe8af8e3f848eb2e17dee454823da027bd56"
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchExperimentsByNameILikeAndTagParams:
+    scope: str
+    pattern: str
+    tag_key: str
+    value_digest: bytes
+    lifecycle_stages: tuple[LifecycleStage, ...]
+    order: ExperimentOrder
+    limit: Annotated[int, "u64"] | None = None
+    after: str | None = None
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchExperimentsByNameILikeAndTagFoundExperiments:
+    experiment_id: Annotated[int, "u64"]
+    name: str
+    artifact_location: str | None
+    lifecycle_stage: LifecycleStage
+    creation_time: Timestamp
+    last_update_time: Timestamp
+    packed_tags: bytes
+    revision: Annotated[int, "u64"]
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchExperimentsByNameILikeAndTagFound:
+    experiments: tuple[SearchExperimentsByNameILikeAndTagFoundExperiments, ...]
+    outcome: Literal["Found"] = field(default="Found", init=False)
+
+    def is_found(self) -> bool:
+        return True
+
+    def is_integrity_failure(self) -> bool:
+        return False
+
+    def unwrap_found(self) -> SearchExperimentsByNameILikeAndTagFound:
+        return self
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchExperimentsByNameILikeAndTagIntegrityFailure:
+    outcome: Literal["IntegrityFailure"] = field(default="IntegrityFailure", init=False)
+
+    def is_found(self) -> bool:
+        return False
+
+    def is_integrity_failure(self) -> bool:
+        return True
+
+    def unwrap_found(self) -> SearchExperimentsByNameILikeAndTagFound:
+        raise ValueError("expected SearchExperimentsByNameILikeAndTag outcome found")
+
+SearchExperimentsByNameILikeAndTagResult: TypeAlias = SearchExperimentsByNameILikeAndTagFound | SearchExperimentsByNameILikeAndTagIntegrityFailure
+
+SEARCH_EXPERIMENTS_BY_NAME_ILIKE_AND_TAG_AND_GATEWAY_IS_NULL_QUERY_PLAN_HASH: Final[str] = "4025a6d647ab2af86bfebe5f10ce3f107bb9845e9e80b10e2c70a11b7a15f317"
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchExperimentsByNameILikeAndTagAndGatewayIsNullParams:
+    scope: str
+    pattern: str
+    tag_key: str
+    value_digest: bytes
+    lifecycle_stages: tuple[LifecycleStage, ...]
+    order: ExperimentOrder
+    limit: Annotated[int, "u64"] | None = None
+    after: str | None = None
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchExperimentsByNameILikeAndTagAndGatewayIsNullFoundExperiments:
+    experiment_id: Annotated[int, "u64"]
+    name: str
+    artifact_location: str | None
+    lifecycle_stage: LifecycleStage
+    creation_time: Timestamp
+    last_update_time: Timestamp
+    packed_tags: bytes
+    revision: Annotated[int, "u64"]
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchExperimentsByNameILikeAndTagAndGatewayIsNullFound:
+    experiments: tuple[SearchExperimentsByNameILikeAndTagAndGatewayIsNullFoundExperiments, ...]
+    outcome: Literal["Found"] = field(default="Found", init=False)
+
+    def is_found(self) -> bool:
+        return True
+
+    def is_integrity_failure(self) -> bool:
+        return False
+
+    def unwrap_found(self) -> SearchExperimentsByNameILikeAndTagAndGatewayIsNullFound:
+        return self
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchExperimentsByNameILikeAndTagAndGatewayIsNullIntegrityFailure:
+    outcome: Literal["IntegrityFailure"] = field(default="IntegrityFailure", init=False)
+
+    def is_found(self) -> bool:
+        return False
+
+    def is_integrity_failure(self) -> bool:
+        return True
+
+    def unwrap_found(self) -> SearchExperimentsByNameILikeAndTagAndGatewayIsNullFound:
+        raise ValueError("expected SearchExperimentsByNameILikeAndTagAndGatewayIsNull outcome found")
+
+SearchExperimentsByNameILikeAndTagAndGatewayIsNullResult: TypeAlias = SearchExperimentsByNameILikeAndTagAndGatewayIsNullFound | SearchExperimentsByNameILikeAndTagAndGatewayIsNullIntegrityFailure
+
+SEARCH_EXPERIMENTS_BY_NAME_ILIKE_AND_TAG_IS_NOT_NULL_QUERY_PLAN_HASH: Final[str] = "36f63ca33b3c1c3b3ab125c368e9c25a2b61b76ca3a0e88f7849779311055dbb"
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchExperimentsByNameILikeAndTagIsNotNullParams:
+    scope: str
+    pattern: str
+    tag_key: str
+    lifecycle_stages: tuple[LifecycleStage, ...]
+    order: ExperimentOrder
+    limit: Annotated[int, "u64"] | None = None
+    after: str | None = None
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchExperimentsByNameILikeAndTagIsNotNullFoundExperiments:
+    experiment_id: Annotated[int, "u64"]
+    name: str
+    artifact_location: str | None
+    lifecycle_stage: LifecycleStage
+    creation_time: Timestamp
+    last_update_time: Timestamp
+    packed_tags: bytes
+    revision: Annotated[int, "u64"]
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchExperimentsByNameILikeAndTagIsNotNullFound:
+    experiments: tuple[SearchExperimentsByNameILikeAndTagIsNotNullFoundExperiments, ...]
+    outcome: Literal["Found"] = field(default="Found", init=False)
+
+    def is_found(self) -> bool:
+        return True
+
+    def is_integrity_failure(self) -> bool:
+        return False
+
+    def unwrap_found(self) -> SearchExperimentsByNameILikeAndTagIsNotNullFound:
+        return self
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchExperimentsByNameILikeAndTagIsNotNullIntegrityFailure:
+    outcome: Literal["IntegrityFailure"] = field(default="IntegrityFailure", init=False)
+
+    def is_found(self) -> bool:
+        return False
+
+    def is_integrity_failure(self) -> bool:
+        return True
+
+    def unwrap_found(self) -> SearchExperimentsByNameILikeAndTagIsNotNullFound:
+        raise ValueError("expected SearchExperimentsByNameILikeAndTagIsNotNull outcome found")
+
+SearchExperimentsByNameILikeAndTagIsNotNullResult: TypeAlias = SearchExperimentsByNameILikeAndTagIsNotNullFound | SearchExperimentsByNameILikeAndTagIsNotNullIntegrityFailure
+
+SEARCH_EXPERIMENTS_BY_NAME_LIKE_QUERY_PLAN_HASH: Final[str] = "57541d67a0d05043516fe085aed95632f92ed73d61228daff0a9805d2d6fa4ae"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByNameLikeParams:
@@ -1346,7 +2271,214 @@ class SearchExperimentsByNameLikeIntegrityFailure:
 
 SearchExperimentsByNameLikeResult: TypeAlias = SearchExperimentsByNameLikeFound | SearchExperimentsByNameLikeIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_TAG_QUERY_PLAN_HASH: Final[str] = "d04b0a916773b5d235945a147e64e7d0a2a1e401e055b0241f6afe0a26f9dbb9"
+SEARCH_EXPERIMENTS_BY_NAME_LIKE_AND_GATEWAY_IS_NULL_QUERY_PLAN_HASH: Final[str] = "da7ec2d370fa6c47f400aaebb5372ff1fbdc86a404c6b580ca7c94caa5089f56"
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchExperimentsByNameLikeAndGatewayIsNullParams:
+    scope: str
+    pattern: str
+    lifecycle_stages: tuple[LifecycleStage, ...]
+    order: ExperimentOrder
+    limit: Annotated[int, "u64"] | None = None
+    after: str | None = None
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchExperimentsByNameLikeAndGatewayIsNullFoundExperiments:
+    experiment_id: Annotated[int, "u64"]
+    name: str
+    artifact_location: str | None
+    lifecycle_stage: LifecycleStage
+    creation_time: Timestamp
+    last_update_time: Timestamp
+    packed_tags: bytes
+    revision: Annotated[int, "u64"]
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchExperimentsByNameLikeAndGatewayIsNullFound:
+    experiments: tuple[SearchExperimentsByNameLikeAndGatewayIsNullFoundExperiments, ...]
+    outcome: Literal["Found"] = field(default="Found", init=False)
+
+    def is_found(self) -> bool:
+        return True
+
+    def is_integrity_failure(self) -> bool:
+        return False
+
+    def unwrap_found(self) -> SearchExperimentsByNameLikeAndGatewayIsNullFound:
+        return self
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchExperimentsByNameLikeAndGatewayIsNullIntegrityFailure:
+    outcome: Literal["IntegrityFailure"] = field(default="IntegrityFailure", init=False)
+
+    def is_found(self) -> bool:
+        return False
+
+    def is_integrity_failure(self) -> bool:
+        return True
+
+    def unwrap_found(self) -> SearchExperimentsByNameLikeAndGatewayIsNullFound:
+        raise ValueError("expected SearchExperimentsByNameLikeAndGatewayIsNull outcome found")
+
+SearchExperimentsByNameLikeAndGatewayIsNullResult: TypeAlias = SearchExperimentsByNameLikeAndGatewayIsNullFound | SearchExperimentsByNameLikeAndGatewayIsNullIntegrityFailure
+
+SEARCH_EXPERIMENTS_BY_NAME_LIKE_AND_TAG_QUERY_PLAN_HASH: Final[str] = "b8dc4c5c720e4ecbdaeef9efc95aeadc5cc7e5ab71e574cf82ac49253bebc57d"
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchExperimentsByNameLikeAndTagParams:
+    scope: str
+    pattern: str
+    tag_key: str
+    value_digest: bytes
+    lifecycle_stages: tuple[LifecycleStage, ...]
+    order: ExperimentOrder
+    limit: Annotated[int, "u64"] | None = None
+    after: str | None = None
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchExperimentsByNameLikeAndTagFoundExperiments:
+    experiment_id: Annotated[int, "u64"]
+    name: str
+    artifact_location: str | None
+    lifecycle_stage: LifecycleStage
+    creation_time: Timestamp
+    last_update_time: Timestamp
+    packed_tags: bytes
+    revision: Annotated[int, "u64"]
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchExperimentsByNameLikeAndTagFound:
+    experiments: tuple[SearchExperimentsByNameLikeAndTagFoundExperiments, ...]
+    outcome: Literal["Found"] = field(default="Found", init=False)
+
+    def is_found(self) -> bool:
+        return True
+
+    def is_integrity_failure(self) -> bool:
+        return False
+
+    def unwrap_found(self) -> SearchExperimentsByNameLikeAndTagFound:
+        return self
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchExperimentsByNameLikeAndTagIntegrityFailure:
+    outcome: Literal["IntegrityFailure"] = field(default="IntegrityFailure", init=False)
+
+    def is_found(self) -> bool:
+        return False
+
+    def is_integrity_failure(self) -> bool:
+        return True
+
+    def unwrap_found(self) -> SearchExperimentsByNameLikeAndTagFound:
+        raise ValueError("expected SearchExperimentsByNameLikeAndTag outcome found")
+
+SearchExperimentsByNameLikeAndTagResult: TypeAlias = SearchExperimentsByNameLikeAndTagFound | SearchExperimentsByNameLikeAndTagIntegrityFailure
+
+SEARCH_EXPERIMENTS_BY_NAME_NOT_EQUAL_QUERY_PLAN_HASH: Final[str] = "316e7a5c9891dbd75769a6c36910c06b8440eb85c05e2f7c587595d3ddf6f23d"
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchExperimentsByNameNotEqualParams:
+    scope: str
+    name_digest: bytes
+    lifecycle_stages: tuple[LifecycleStage, ...]
+    order: ExperimentOrder
+    limit: Annotated[int, "u64"] | None = None
+    after: str | None = None
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchExperimentsByNameNotEqualFoundExperiments:
+    experiment_id: Annotated[int, "u64"]
+    name: str
+    artifact_location: str | None
+    lifecycle_stage: LifecycleStage
+    creation_time: Timestamp
+    last_update_time: Timestamp
+    packed_tags: bytes
+    revision: Annotated[int, "u64"]
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchExperimentsByNameNotEqualFound:
+    experiments: tuple[SearchExperimentsByNameNotEqualFoundExperiments, ...]
+    outcome: Literal["Found"] = field(default="Found", init=False)
+
+    def is_found(self) -> bool:
+        return True
+
+    def is_integrity_failure(self) -> bool:
+        return False
+
+    def unwrap_found(self) -> SearchExperimentsByNameNotEqualFound:
+        return self
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchExperimentsByNameNotEqualIntegrityFailure:
+    outcome: Literal["IntegrityFailure"] = field(default="IntegrityFailure", init=False)
+
+    def is_found(self) -> bool:
+        return False
+
+    def is_integrity_failure(self) -> bool:
+        return True
+
+    def unwrap_found(self) -> SearchExperimentsByNameNotEqualFound:
+        raise ValueError("expected SearchExperimentsByNameNotEqual outcome found")
+
+SearchExperimentsByNameNotEqualResult: TypeAlias = SearchExperimentsByNameNotEqualFound | SearchExperimentsByNameNotEqualIntegrityFailure
+
+SEARCH_EXPERIMENTS_BY_NAME_NOT_EQUAL_AND_TAG_IS_NULL_QUERY_PLAN_HASH: Final[str] = "8795d5c42ad9a5c0bf3ec7288ba61ca74b0447c0229b26f64b46e9eec61fdc9a"
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchExperimentsByNameNotEqualAndTagIsNullParams:
+    scope: str
+    name_digest: bytes
+    tag_key: str
+    lifecycle_stages: tuple[LifecycleStage, ...]
+    order: ExperimentOrder
+    limit: Annotated[int, "u64"] | None = None
+    after: str | None = None
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchExperimentsByNameNotEqualAndTagIsNullFoundExperiments:
+    experiment_id: Annotated[int, "u64"]
+    name: str
+    artifact_location: str | None
+    lifecycle_stage: LifecycleStage
+    creation_time: Timestamp
+    last_update_time: Timestamp
+    packed_tags: bytes
+    revision: Annotated[int, "u64"]
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchExperimentsByNameNotEqualAndTagIsNullFound:
+    experiments: tuple[SearchExperimentsByNameNotEqualAndTagIsNullFoundExperiments, ...]
+    outcome: Literal["Found"] = field(default="Found", init=False)
+
+    def is_found(self) -> bool:
+        return True
+
+    def is_integrity_failure(self) -> bool:
+        return False
+
+    def unwrap_found(self) -> SearchExperimentsByNameNotEqualAndTagIsNullFound:
+        return self
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchExperimentsByNameNotEqualAndTagIsNullIntegrityFailure:
+    outcome: Literal["IntegrityFailure"] = field(default="IntegrityFailure", init=False)
+
+    def is_found(self) -> bool:
+        return False
+
+    def is_integrity_failure(self) -> bool:
+        return True
+
+    def unwrap_found(self) -> SearchExperimentsByNameNotEqualAndTagIsNullFound:
+        raise ValueError("expected SearchExperimentsByNameNotEqualAndTagIsNull outcome found")
+
+SearchExperimentsByNameNotEqualAndTagIsNullResult: TypeAlias = SearchExperimentsByNameNotEqualAndTagIsNullFound | SearchExperimentsByNameNotEqualAndTagIsNullIntegrityFailure
+
+SEARCH_EXPERIMENTS_BY_TAG_QUERY_PLAN_HASH: Final[str] = "e54c72205b169131acccdf5df9e00a4ba232807ae287786e03dab5e6d9a5f0b0"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByTagParams:
@@ -1398,7 +2530,112 @@ class SearchExperimentsByTagIntegrityFailure:
 
 SearchExperimentsByTagResult: TypeAlias = SearchExperimentsByTagFound | SearchExperimentsByTagIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_TAG_ILIKE_QUERY_PLAN_HASH: Final[str] = "ccd131c2831849fc06ed831a318d36c108ccdcf97e4a9ce6bc1b33e05dcc0621"
+SEARCH_EXPERIMENTS_BY_TAG_AND_GATEWAY_IS_NULL_QUERY_PLAN_HASH: Final[str] = "e636d7202aa65920d87a060e12392263bfc260e5eb91a9fafc823a5a00934ac8"
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchExperimentsByTagAndGatewayIsNullParams:
+    scope: str
+    tag_key: str
+    value_digest: bytes
+    lifecycle_stages: tuple[LifecycleStage, ...]
+    order: ExperimentOrder
+    limit: Annotated[int, "u64"] | None = None
+    after: str | None = None
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchExperimentsByTagAndGatewayIsNullFoundExperiments:
+    experiment_id: Annotated[int, "u64"]
+    name: str
+    artifact_location: str | None
+    lifecycle_stage: LifecycleStage
+    creation_time: Timestamp
+    last_update_time: Timestamp
+    packed_tags: bytes
+    revision: Annotated[int, "u64"]
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchExperimentsByTagAndGatewayIsNullFound:
+    experiments: tuple[SearchExperimentsByTagAndGatewayIsNullFoundExperiments, ...]
+    outcome: Literal["Found"] = field(default="Found", init=False)
+
+    def is_found(self) -> bool:
+        return True
+
+    def is_integrity_failure(self) -> bool:
+        return False
+
+    def unwrap_found(self) -> SearchExperimentsByTagAndGatewayIsNullFound:
+        return self
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchExperimentsByTagAndGatewayIsNullIntegrityFailure:
+    outcome: Literal["IntegrityFailure"] = field(default="IntegrityFailure", init=False)
+
+    def is_found(self) -> bool:
+        return False
+
+    def is_integrity_failure(self) -> bool:
+        return True
+
+    def unwrap_found(self) -> SearchExperimentsByTagAndGatewayIsNullFound:
+        raise ValueError("expected SearchExperimentsByTagAndGatewayIsNull outcome found")
+
+SearchExperimentsByTagAndGatewayIsNullResult: TypeAlias = SearchExperimentsByTagAndGatewayIsNullFound | SearchExperimentsByTagAndGatewayIsNullIntegrityFailure
+
+SEARCH_EXPERIMENTS_BY_TAG_AND_TAG_IS_NOT_NULL_QUERY_PLAN_HASH: Final[str] = "3242c97d13335dabf53744860851ca27ec9c9812f154ecda00ba06275372cddd"
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchExperimentsByTagAndTagIsNotNullParams:
+    scope: str
+    first_tag_key: str
+    first_value_digest: bytes
+    second_tag_key: str
+    lifecycle_stages: tuple[LifecycleStage, ...]
+    order: ExperimentOrder
+    limit: Annotated[int, "u64"] | None = None
+    after: str | None = None
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchExperimentsByTagAndTagIsNotNullFoundExperiments:
+    experiment_id: Annotated[int, "u64"]
+    name: str
+    artifact_location: str | None
+    lifecycle_stage: LifecycleStage
+    creation_time: Timestamp
+    last_update_time: Timestamp
+    packed_tags: bytes
+    revision: Annotated[int, "u64"]
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchExperimentsByTagAndTagIsNotNullFound:
+    experiments: tuple[SearchExperimentsByTagAndTagIsNotNullFoundExperiments, ...]
+    outcome: Literal["Found"] = field(default="Found", init=False)
+
+    def is_found(self) -> bool:
+        return True
+
+    def is_integrity_failure(self) -> bool:
+        return False
+
+    def unwrap_found(self) -> SearchExperimentsByTagAndTagIsNotNullFound:
+        return self
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchExperimentsByTagAndTagIsNotNullIntegrityFailure:
+    outcome: Literal["IntegrityFailure"] = field(default="IntegrityFailure", init=False)
+
+    def is_found(self) -> bool:
+        return False
+
+    def is_integrity_failure(self) -> bool:
+        return True
+
+    def unwrap_found(self) -> SearchExperimentsByTagAndTagIsNotNullFound:
+        raise ValueError("expected SearchExperimentsByTagAndTagIsNotNull outcome found")
+
+SearchExperimentsByTagAndTagIsNotNullResult: TypeAlias = SearchExperimentsByTagAndTagIsNotNullFound | SearchExperimentsByTagAndTagIsNotNullIntegrityFailure
+
+SEARCH_EXPERIMENTS_BY_TAG_ILIKE_QUERY_PLAN_HASH: Final[str] = "c0a30c5d6ad8c0da0116a6fc2825fc99e23ef3ff3c7a1952251a107312c5179a"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByTagILikeParams:
@@ -1450,7 +2687,160 @@ class SearchExperimentsByTagILikeIntegrityFailure:
 
 SearchExperimentsByTagILikeResult: TypeAlias = SearchExperimentsByTagILikeFound | SearchExperimentsByTagILikeIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_TAG_LIKE_QUERY_PLAN_HASH: Final[str] = "9d04010ec4ab5d9b991aef1788e86c6a848f1e9942a47fbe6f592328d7f8c4fa"
+SEARCH_EXPERIMENTS_BY_TAG_IS_NOT_NULL_QUERY_PLAN_HASH: Final[str] = "68c886dfca8d8fd6957180a1cbfe4ee27db87c9b1dccc2173cd281523aa3b42f"
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchExperimentsByTagIsNotNullParams:
+    scope: str
+    tag_key: str
+    lifecycle_stages: tuple[LifecycleStage, ...]
+    order: ExperimentOrder
+    limit: Annotated[int, "u64"] | None = None
+    after: str | None = None
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchExperimentsByTagIsNotNullFoundExperiments:
+    experiment_id: Annotated[int, "u64"]
+    name: str
+    artifact_location: str | None
+    lifecycle_stage: LifecycleStage
+    creation_time: Timestamp
+    last_update_time: Timestamp
+    packed_tags: bytes
+    revision: Annotated[int, "u64"]
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchExperimentsByTagIsNotNullFound:
+    experiments: tuple[SearchExperimentsByTagIsNotNullFoundExperiments, ...]
+    outcome: Literal["Found"] = field(default="Found", init=False)
+
+    def is_found(self) -> bool:
+        return True
+
+    def is_integrity_failure(self) -> bool:
+        return False
+
+    def unwrap_found(self) -> SearchExperimentsByTagIsNotNullFound:
+        return self
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchExperimentsByTagIsNotNullIntegrityFailure:
+    outcome: Literal["IntegrityFailure"] = field(default="IntegrityFailure", init=False)
+
+    def is_found(self) -> bool:
+        return False
+
+    def is_integrity_failure(self) -> bool:
+        return True
+
+    def unwrap_found(self) -> SearchExperimentsByTagIsNotNullFound:
+        raise ValueError("expected SearchExperimentsByTagIsNotNull outcome found")
+
+SearchExperimentsByTagIsNotNullResult: TypeAlias = SearchExperimentsByTagIsNotNullFound | SearchExperimentsByTagIsNotNullIntegrityFailure
+
+SEARCH_EXPERIMENTS_BY_TAG_IS_NOT_NULL_AND_GATEWAY_IS_NULL_QUERY_PLAN_HASH: Final[str] = "24d2f1463f9ba3c7d7da774a6512f9b41781f1bc53aab36ee2b58caef586c711"
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchExperimentsByTagIsNotNullAndGatewayIsNullParams:
+    scope: str
+    tag_key: str
+    lifecycle_stages: tuple[LifecycleStage, ...]
+    order: ExperimentOrder
+    limit: Annotated[int, "u64"] | None = None
+    after: str | None = None
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchExperimentsByTagIsNotNullAndGatewayIsNullFoundExperiments:
+    experiment_id: Annotated[int, "u64"]
+    name: str
+    artifact_location: str | None
+    lifecycle_stage: LifecycleStage
+    creation_time: Timestamp
+    last_update_time: Timestamp
+    packed_tags: bytes
+    revision: Annotated[int, "u64"]
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchExperimentsByTagIsNotNullAndGatewayIsNullFound:
+    experiments: tuple[SearchExperimentsByTagIsNotNullAndGatewayIsNullFoundExperiments, ...]
+    outcome: Literal["Found"] = field(default="Found", init=False)
+
+    def is_found(self) -> bool:
+        return True
+
+    def is_integrity_failure(self) -> bool:
+        return False
+
+    def unwrap_found(self) -> SearchExperimentsByTagIsNotNullAndGatewayIsNullFound:
+        return self
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchExperimentsByTagIsNotNullAndGatewayIsNullIntegrityFailure:
+    outcome: Literal["IntegrityFailure"] = field(default="IntegrityFailure", init=False)
+
+    def is_found(self) -> bool:
+        return False
+
+    def is_integrity_failure(self) -> bool:
+        return True
+
+    def unwrap_found(self) -> SearchExperimentsByTagIsNotNullAndGatewayIsNullFound:
+        raise ValueError("expected SearchExperimentsByTagIsNotNullAndGatewayIsNull outcome found")
+
+SearchExperimentsByTagIsNotNullAndGatewayIsNullResult: TypeAlias = SearchExperimentsByTagIsNotNullAndGatewayIsNullFound | SearchExperimentsByTagIsNotNullAndGatewayIsNullIntegrityFailure
+
+SEARCH_EXPERIMENTS_BY_TAG_IS_NULL_QUERY_PLAN_HASH: Final[str] = "3238d2e6fef7793dd1d330f5e3d3c34604387fea5a47b772c8894584559862e7"
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchExperimentsByTagIsNullParams:
+    scope: str
+    tag_key: str
+    lifecycle_stages: tuple[LifecycleStage, ...]
+    order: ExperimentOrder
+    limit: Annotated[int, "u64"] | None = None
+    after: str | None = None
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchExperimentsByTagIsNullFoundExperiments:
+    experiment_id: Annotated[int, "u64"]
+    name: str
+    artifact_location: str | None
+    lifecycle_stage: LifecycleStage
+    creation_time: Timestamp
+    last_update_time: Timestamp
+    packed_tags: bytes
+    revision: Annotated[int, "u64"]
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchExperimentsByTagIsNullFound:
+    experiments: tuple[SearchExperimentsByTagIsNullFoundExperiments, ...]
+    outcome: Literal["Found"] = field(default="Found", init=False)
+
+    def is_found(self) -> bool:
+        return True
+
+    def is_integrity_failure(self) -> bool:
+        return False
+
+    def unwrap_found(self) -> SearchExperimentsByTagIsNullFound:
+        return self
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchExperimentsByTagIsNullIntegrityFailure:
+    outcome: Literal["IntegrityFailure"] = field(default="IntegrityFailure", init=False)
+
+    def is_found(self) -> bool:
+        return False
+
+    def is_integrity_failure(self) -> bool:
+        return True
+
+    def unwrap_found(self) -> SearchExperimentsByTagIsNullFound:
+        raise ValueError("expected SearchExperimentsByTagIsNull outcome found")
+
+SearchExperimentsByTagIsNullResult: TypeAlias = SearchExperimentsByTagIsNullFound | SearchExperimentsByTagIsNullIntegrityFailure
+
+SEARCH_EXPERIMENTS_BY_TAG_LIKE_QUERY_PLAN_HASH: Final[str] = "43cc898ad6961fe41b98583978f86a618e815c07c8a21ea1cbd6e01092206142"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByTagLikeParams:
@@ -1502,7 +2892,111 @@ class SearchExperimentsByTagLikeIntegrityFailure:
 
 SearchExperimentsByTagLikeResult: TypeAlias = SearchExperimentsByTagLikeFound | SearchExperimentsByTagLikeIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_TWO_TAGS_QUERY_PLAN_HASH: Final[str] = "31303048b72da8a6e8b057ad0c90984c79ee7521788702e3f6e1b41abb9854d3"
+SEARCH_EXPERIMENTS_BY_TAG_NOT_EQUAL_QUERY_PLAN_HASH: Final[str] = "fdfe539ef74154aa80792b8461a8759edb46c074c0bbfcfedd3c7119b1d7c6d2"
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchExperimentsByTagNotEqualParams:
+    scope: str
+    tag_key: str
+    value_hash: Annotated[int, "u64"]
+    lifecycle_stages: tuple[LifecycleStage, ...]
+    order: ExperimentOrder
+    limit: Annotated[int, "u64"] | None = None
+    after: str | None = None
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchExperimentsByTagNotEqualFoundExperiments:
+    experiment_id: Annotated[int, "u64"]
+    name: str
+    artifact_location: str | None
+    lifecycle_stage: LifecycleStage
+    creation_time: Timestamp
+    last_update_time: Timestamp
+    packed_tags: bytes
+    revision: Annotated[int, "u64"]
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchExperimentsByTagNotEqualFound:
+    experiments: tuple[SearchExperimentsByTagNotEqualFoundExperiments, ...]
+    outcome: Literal["Found"] = field(default="Found", init=False)
+
+    def is_found(self) -> bool:
+        return True
+
+    def is_integrity_failure(self) -> bool:
+        return False
+
+    def unwrap_found(self) -> SearchExperimentsByTagNotEqualFound:
+        return self
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchExperimentsByTagNotEqualIntegrityFailure:
+    outcome: Literal["IntegrityFailure"] = field(default="IntegrityFailure", init=False)
+
+    def is_found(self) -> bool:
+        return False
+
+    def is_integrity_failure(self) -> bool:
+        return True
+
+    def unwrap_found(self) -> SearchExperimentsByTagNotEqualFound:
+        raise ValueError("expected SearchExperimentsByTagNotEqual outcome found")
+
+SearchExperimentsByTagNotEqualResult: TypeAlias = SearchExperimentsByTagNotEqualFound | SearchExperimentsByTagNotEqualIntegrityFailure
+
+SEARCH_EXPERIMENTS_BY_TAG_NOT_EQUAL_AND_GATEWAY_IS_NULL_QUERY_PLAN_HASH: Final[str] = "7f4f54bc8a62e971c66cff502c16bd0888e54cbcb112bcbe17545fba38ef44e0"
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchExperimentsByTagNotEqualAndGatewayIsNullParams:
+    scope: str
+    tag_key: str
+    value_hash: Annotated[int, "u64"]
+    lifecycle_stages: tuple[LifecycleStage, ...]
+    order: ExperimentOrder
+    limit: Annotated[int, "u64"] | None = None
+    after: str | None = None
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchExperimentsByTagNotEqualAndGatewayIsNullFoundExperiments:
+    experiment_id: Annotated[int, "u64"]
+    name: str
+    artifact_location: str | None
+    lifecycle_stage: LifecycleStage
+    creation_time: Timestamp
+    last_update_time: Timestamp
+    packed_tags: bytes
+    revision: Annotated[int, "u64"]
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchExperimentsByTagNotEqualAndGatewayIsNullFound:
+    experiments: tuple[SearchExperimentsByTagNotEqualAndGatewayIsNullFoundExperiments, ...]
+    outcome: Literal["Found"] = field(default="Found", init=False)
+
+    def is_found(self) -> bool:
+        return True
+
+    def is_integrity_failure(self) -> bool:
+        return False
+
+    def unwrap_found(self) -> SearchExperimentsByTagNotEqualAndGatewayIsNullFound:
+        return self
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchExperimentsByTagNotEqualAndGatewayIsNullIntegrityFailure:
+    outcome: Literal["IntegrityFailure"] = field(default="IntegrityFailure", init=False)
+
+    def is_found(self) -> bool:
+        return False
+
+    def is_integrity_failure(self) -> bool:
+        return True
+
+    def unwrap_found(self) -> SearchExperimentsByTagNotEqualAndGatewayIsNullFound:
+        raise ValueError("expected SearchExperimentsByTagNotEqualAndGatewayIsNull outcome found")
+
+SearchExperimentsByTagNotEqualAndGatewayIsNullResult: TypeAlias = SearchExperimentsByTagNotEqualAndGatewayIsNullFound | SearchExperimentsByTagNotEqualAndGatewayIsNullIntegrityFailure
+
+SEARCH_EXPERIMENTS_BY_TWO_TAGS_QUERY_PLAN_HASH: Final[str] = "939255409df7a39d80a8d734d20d0d1cdf118561dfa676837487cc46cf5ef978"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByTwoTagsParams:
@@ -1556,7 +3050,167 @@ class SearchExperimentsByTwoTagsIntegrityFailure:
 
 SearchExperimentsByTwoTagsResult: TypeAlias = SearchExperimentsByTwoTagsFound | SearchExperimentsByTwoTagsIntegrityFailure
 
-SEARCH_LOGGED_MODELS_QUERY_PLAN_HASH: Final[str] = "86d2d4dac07e4999b5ed0d8e1a7cb9258a404c1dc04f28a8bf76b301cd9a5659"
+SEARCH_EXPERIMENTS_BY_TWO_TAGS_ILIKE_QUERY_PLAN_HASH: Final[str] = "b5abe55864e9872fc9028452eab5c39bd57d57f7212adc60e087bbdf2140d0f1"
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchExperimentsByTwoTagsILikeParams:
+    scope: str
+    first_tag_key: str
+    first_pattern: str
+    second_tag_key: str
+    second_value_digest: bytes
+    lifecycle_stages: tuple[LifecycleStage, ...]
+    order: ExperimentOrder
+    limit: Annotated[int, "u64"] | None = None
+    after: str | None = None
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchExperimentsByTwoTagsILikeFoundExperiments:
+    experiment_id: Annotated[int, "u64"]
+    name: str
+    artifact_location: str | None
+    lifecycle_stage: LifecycleStage
+    creation_time: Timestamp
+    last_update_time: Timestamp
+    packed_tags: bytes
+    revision: Annotated[int, "u64"]
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchExperimentsByTwoTagsILikeFound:
+    experiments: tuple[SearchExperimentsByTwoTagsILikeFoundExperiments, ...]
+    outcome: Literal["Found"] = field(default="Found", init=False)
+
+    def is_found(self) -> bool:
+        return True
+
+    def is_integrity_failure(self) -> bool:
+        return False
+
+    def unwrap_found(self) -> SearchExperimentsByTwoTagsILikeFound:
+        return self
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchExperimentsByTwoTagsILikeIntegrityFailure:
+    outcome: Literal["IntegrityFailure"] = field(default="IntegrityFailure", init=False)
+
+    def is_found(self) -> bool:
+        return False
+
+    def is_integrity_failure(self) -> bool:
+        return True
+
+    def unwrap_found(self) -> SearchExperimentsByTwoTagsILikeFound:
+        raise ValueError("expected SearchExperimentsByTwoTagsILike outcome found")
+
+SearchExperimentsByTwoTagsILikeResult: TypeAlias = SearchExperimentsByTwoTagsILikeFound | SearchExperimentsByTwoTagsILikeIntegrityFailure
+
+SEARCH_EXPERIMENTS_BY_TWO_TAGS_IS_NULL_QUERY_PLAN_HASH: Final[str] = "7d95428616d832e63962b103fbf39dd99eabcb3a98c9140dd94a721f4d59b997"
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchExperimentsByTwoTagsIsNullParams:
+    scope: str
+    first_tag_key: str
+    second_tag_key: str
+    lifecycle_stages: tuple[LifecycleStage, ...]
+    order: ExperimentOrder
+    limit: Annotated[int, "u64"] | None = None
+    after: str | None = None
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchExperimentsByTwoTagsIsNullFoundExperiments:
+    experiment_id: Annotated[int, "u64"]
+    name: str
+    artifact_location: str | None
+    lifecycle_stage: LifecycleStage
+    creation_time: Timestamp
+    last_update_time: Timestamp
+    packed_tags: bytes
+    revision: Annotated[int, "u64"]
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchExperimentsByTwoTagsIsNullFound:
+    experiments: tuple[SearchExperimentsByTwoTagsIsNullFoundExperiments, ...]
+    outcome: Literal["Found"] = field(default="Found", init=False)
+
+    def is_found(self) -> bool:
+        return True
+
+    def is_integrity_failure(self) -> bool:
+        return False
+
+    def unwrap_found(self) -> SearchExperimentsByTwoTagsIsNullFound:
+        return self
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchExperimentsByTwoTagsIsNullIntegrityFailure:
+    outcome: Literal["IntegrityFailure"] = field(default="IntegrityFailure", init=False)
+
+    def is_found(self) -> bool:
+        return False
+
+    def is_integrity_failure(self) -> bool:
+        return True
+
+    def unwrap_found(self) -> SearchExperimentsByTwoTagsIsNullFound:
+        raise ValueError("expected SearchExperimentsByTwoTagsIsNull outcome found")
+
+SearchExperimentsByTwoTagsIsNullResult: TypeAlias = SearchExperimentsByTwoTagsIsNullFound | SearchExperimentsByTwoTagsIsNullIntegrityFailure
+
+SEARCH_EXPERIMENTS_BY_TWO_TAGS_NOT_EQUAL_QUERY_PLAN_HASH: Final[str] = "caad90a3b4b6a259bd30c5eccac521e33ae447676310159251cf5c49a1957f0f"
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchExperimentsByTwoTagsNotEqualParams:
+    scope: str
+    first_tag_key: str
+    first_value_digest: bytes
+    second_tag_key: str
+    second_value_hash: Annotated[int, "u64"]
+    lifecycle_stages: tuple[LifecycleStage, ...]
+    order: ExperimentOrder
+    limit: Annotated[int, "u64"] | None = None
+    after: str | None = None
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchExperimentsByTwoTagsNotEqualFoundExperiments:
+    experiment_id: Annotated[int, "u64"]
+    name: str
+    artifact_location: str | None
+    lifecycle_stage: LifecycleStage
+    creation_time: Timestamp
+    last_update_time: Timestamp
+    packed_tags: bytes
+    revision: Annotated[int, "u64"]
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchExperimentsByTwoTagsNotEqualFound:
+    experiments: tuple[SearchExperimentsByTwoTagsNotEqualFoundExperiments, ...]
+    outcome: Literal["Found"] = field(default="Found", init=False)
+
+    def is_found(self) -> bool:
+        return True
+
+    def is_integrity_failure(self) -> bool:
+        return False
+
+    def unwrap_found(self) -> SearchExperimentsByTwoTagsNotEqualFound:
+        return self
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchExperimentsByTwoTagsNotEqualIntegrityFailure:
+    outcome: Literal["IntegrityFailure"] = field(default="IntegrityFailure", init=False)
+
+    def is_found(self) -> bool:
+        return False
+
+    def is_integrity_failure(self) -> bool:
+        return True
+
+    def unwrap_found(self) -> SearchExperimentsByTwoTagsNotEqualFound:
+        raise ValueError("expected SearchExperimentsByTwoTagsNotEqual outcome found")
+
+SearchExperimentsByTwoTagsNotEqualResult: TypeAlias = SearchExperimentsByTwoTagsNotEqualFound | SearchExperimentsByTwoTagsNotEqualIntegrityFailure
+
+SEARCH_LOGGED_MODELS_QUERY_PLAN_HASH: Final[str] = "7cde2b1f6657353fb984e83054d2879c242508870f6c8658efdbbc5052ba0ed4"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchLoggedModelsParams:
@@ -1610,7 +3264,209 @@ class SearchLoggedModelsIntegrityFailure:
 
 SearchLoggedModelsResult: TypeAlias = SearchLoggedModelsFound | SearchLoggedModelsIntegrityFailure
 
-SEARCH_RUNS_QUERY_PLAN_HASH: Final[str] = "0887b5cc0f82c208895f733aef5fe5ecea6428a0e0d37df1a61edf2fa1ac46fc"
+SEARCH_MCPACCESS_ENDPOINTS_QUERY_PLAN_HASH: Final[str] = "5389ea7fb6f9ad3592839416053f958900e9a293bc7eb7927c13893785c5373d"
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchMCPAccessEndpointsParams:
+    scope: str
+    limit: Annotated[int, "u64"] | None = None
+    after: str | None = None
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchMCPAccessEndpointsFoundEndpoints:
+    endpoint_id: str
+    server_name: str
+    url: str
+    transport_type: str
+    server_version: str | None
+    server_alias: str | None
+    created_by: str | None
+    last_updated_by: str | None
+    created_at_ms: Annotated[int, "i64"]
+    last_updated_at_ms: Annotated[int, "i64"]
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchMCPAccessEndpointsFound:
+    endpoints: tuple[SearchMCPAccessEndpointsFoundEndpoints, ...]
+    outcome: Literal["Found"] = field(default="Found", init=False)
+
+    def is_found(self) -> bool:
+        return True
+
+    def is_integrity_failure(self) -> bool:
+        return False
+
+    def unwrap_found(self) -> SearchMCPAccessEndpointsFound:
+        return self
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchMCPAccessEndpointsIntegrityFailure:
+    outcome: Literal["IntegrityFailure"] = field(default="IntegrityFailure", init=False)
+
+    def is_found(self) -> bool:
+        return False
+
+    def is_integrity_failure(self) -> bool:
+        return True
+
+    def unwrap_found(self) -> SearchMCPAccessEndpointsFound:
+        raise ValueError("expected SearchMCPAccessEndpoints outcome found")
+
+SearchMCPAccessEndpointsResult: TypeAlias = SearchMCPAccessEndpointsFound | SearchMCPAccessEndpointsIntegrityFailure
+
+SEARCH_MCPSERVERS_QUERY_PLAN_HASH: Final[str] = "66dda9dd11a5fb2bfeec075a146d524a9135d2608c560ff97b62f8464f409076"
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchMCPServersParams:
+    scope: str
+    limit: Annotated[int, "u64"] | None = None
+    after: str | None = None
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchMCPServersFoundServers:
+    name: str
+    display_name: str | None
+    description: str | None
+    packed_icons: bytes
+    packed_tags: bytes
+    packed_aliases: bytes
+    created_by: str | None
+    last_updated_by: str | None
+    created_at_ms: Annotated[int, "i64"]
+    last_updated_at_ms: Annotated[int, "i64"]
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchMCPServersFound:
+    servers: tuple[SearchMCPServersFoundServers, ...]
+    outcome: Literal["Found"] = field(default="Found", init=False)
+
+    def is_found(self) -> bool:
+        return True
+
+    def is_integrity_failure(self) -> bool:
+        return False
+
+    def unwrap_found(self) -> SearchMCPServersFound:
+        return self
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchMCPServersIntegrityFailure:
+    outcome: Literal["IntegrityFailure"] = field(default="IntegrityFailure", init=False)
+
+    def is_found(self) -> bool:
+        return False
+
+    def is_integrity_failure(self) -> bool:
+        return True
+
+    def unwrap_found(self) -> SearchMCPServersFound:
+        raise ValueError("expected SearchMCPServers outcome found")
+
+SearchMCPServersResult: TypeAlias = SearchMCPServersFound | SearchMCPServersIntegrityFailure
+
+SEARCH_MODEL_VERSIONS_QUERY_PLAN_HASH: Final[str] = "cef216b857cc8e81dc16f6429f07b2bb74993c5f0ac31965fe3bf360a69f508f"
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchModelVersionsParams:
+    scope: str
+    limit: Annotated[int, "u64"] | None = None
+    after: str | None = None
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchModelVersionsFoundVersions:
+    name: str
+    version_num: Annotated[int, "u64"]
+    creation_timestamp_ms: Annotated[int, "i64"]
+    last_updated_timestamp_ms: Annotated[int, "i64"]
+    description: str | None
+    user_id: str | None
+    current_stage: str
+    source_path: str
+    storage_location: str
+    run_id: str | None
+    run_link: str | None
+    status: str
+    status_message: str | None
+    packed_tags: bytes
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchModelVersionsFound:
+    versions: tuple[SearchModelVersionsFoundVersions, ...]
+    outcome: Literal["Found"] = field(default="Found", init=False)
+
+    def is_found(self) -> bool:
+        return True
+
+    def is_integrity_failure(self) -> bool:
+        return False
+
+    def unwrap_found(self) -> SearchModelVersionsFound:
+        return self
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchModelVersionsIntegrityFailure:
+    outcome: Literal["IntegrityFailure"] = field(default="IntegrityFailure", init=False)
+
+    def is_found(self) -> bool:
+        return False
+
+    def is_integrity_failure(self) -> bool:
+        return True
+
+    def unwrap_found(self) -> SearchModelVersionsFound:
+        raise ValueError("expected SearchModelVersions outcome found")
+
+SearchModelVersionsResult: TypeAlias = SearchModelVersionsFound | SearchModelVersionsIntegrityFailure
+
+SEARCH_REGISTERED_MODELS_QUERY_PLAN_HASH: Final[str] = "26d42bec491582c9668af7af606b979266be3f051101f3edb2579aa2792811d2"
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchRegisteredModelsParams:
+    scope: str
+    limit: Annotated[int, "u64"] | None = None
+    after: str | None = None
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchRegisteredModelsFoundModels:
+    name: str
+    creation_timestamp_ms: Annotated[int, "i64"]
+    last_updated_timestamp_ms: Annotated[int, "i64"]
+    description: str | None
+    packed_tags: bytes
+    packed_aliases: bytes
+    latest_version: Annotated[int, "u64"]
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchRegisteredModelsFound:
+    models: tuple[SearchRegisteredModelsFoundModels, ...]
+    outcome: Literal["Found"] = field(default="Found", init=False)
+
+    def is_found(self) -> bool:
+        return True
+
+    def is_integrity_failure(self) -> bool:
+        return False
+
+    def unwrap_found(self) -> SearchRegisteredModelsFound:
+        return self
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchRegisteredModelsIntegrityFailure:
+    outcome: Literal["IntegrityFailure"] = field(default="IntegrityFailure", init=False)
+
+    def is_found(self) -> bool:
+        return False
+
+    def is_integrity_failure(self) -> bool:
+        return True
+
+    def unwrap_found(self) -> SearchRegisteredModelsFound:
+        raise ValueError("expected SearchRegisteredModels outcome found")
+
+SearchRegisteredModelsResult: TypeAlias = SearchRegisteredModelsFound | SearchRegisteredModelsIntegrityFailure
+
+SEARCH_RUNS_QUERY_PLAN_HASH: Final[str] = "0a84c52633f425343ae44cc5e29e2cf53d37ac5d9c85246b40dd6738bb3abf9d"
+SEARCH_RUNS_EXPERIMENT_IDS_MAX_ITEMS: Final[int] = 1000
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchRunsParams:
@@ -1664,7 +3520,8 @@ class SearchRunsIntegrityFailure:
 
 SearchRunsResult: TypeAlias = SearchRunsFound | SearchRunsIntegrityFailure
 
-SEARCH_RUNS_BY_LIFECYCLE_QUERY_PLAN_HASH: Final[str] = "30433dc370b50f693823959dabf4bd5eee3f047c747e2856912918a160bd0ee4"
+SEARCH_RUNS_BY_LIFECYCLE_QUERY_PLAN_HASH: Final[str] = "6901b7709848df0d38ce86ae6291033bc47200088dbdece791d78eea61c96c93"
+SEARCH_RUNS_BY_LIFECYCLE_EXPERIMENT_IDS_MAX_ITEMS: Final[int] = 1000
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchRunsByLifecycleParams:
@@ -1719,7 +3576,7 @@ class SearchRunsByLifecycleIntegrityFailure:
 
 SearchRunsByLifecycleResult: TypeAlias = SearchRunsByLifecycleFound | SearchRunsByLifecycleIntegrityFailure
 
-SEARCH_TRACES_QUERY_PLAN_HASH: Final[str] = "5fb0123b6e261d6c21919f56c135fc8fdeec562c0993a14d065ec9e77d97b7b9"
+SEARCH_TRACES_QUERY_PLAN_HASH: Final[str] = "30ce2fdeaab6e1b09279b9ae672fe307a4377eee160e3f5fefcd70d2dfa854fe"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchTracesParams:
@@ -1788,13 +3645,14 @@ SearchTracesResult: TypeAlias = SearchTracesFound | SearchTracesIntegrityFailure
 @dataclass(frozen=True, slots=True, kw_only=True)
 class CreateExperimentInput:
     name: str
+    is_gateway: bool
     request_id: str = field(default_factory=lambda: str(__import__("uuid").uuid4()))
     name_digest: bytes
     packed_tags: bytes
     experiment_id: Annotated[int, "u64"]
     artifact_location: str | None
 
-CREATE_EXPERIMENT_PLAN_HASH: Final[str] = "a3e1881b2eaeb6ab99c82f1332e12f32f0f4371b7d5c1dab57480fabed8b58c8"
+CREATE_EXPERIMENT_PLAN_HASH: Final[str] = "b69bccbd6cff674a7e4813c2b451f9fa22328bc4f4997a7dad7ed9bb0de23148"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class CreateExperimentExperimentExists:
     outcome: Literal["ExperimentExists"] = field(default="ExperimentExists", init=False)
@@ -1822,13 +3680,14 @@ CreateExperimentOutcome: TypeAlias = CreateExperimentExperimentExists | CreateEx
 class CreateExperimentWithTagsInput:
     name: str
     tags: tuple[ExperimentTag, ...]
+    is_gateway: bool
     request_id: str = field(default_factory=lambda: str(__import__("uuid").uuid4()))
     name_digest: bytes
     packed_tags: bytes
     experiment_id: Annotated[int, "u64"]
     artifact_location: str | None
 
-CREATE_EXPERIMENT_WITH_TAGS_PLAN_HASH: Final[str] = "0088ec9f0d38c96405d7c2905526a7e05f21f69ecdc64e963dba1c13e552e1f5"
+CREATE_EXPERIMENT_WITH_TAGS_PLAN_HASH: Final[str] = "5ad99260cb9b5fce82a0287133a8243c81a2465ba75d136880c8d70b99cda283"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class CreateExperimentWithTagsExperimentExists:
     outcome: Literal["ExperimentExists"] = field(default="ExperimentExists", init=False)
@@ -1870,6 +3729,123 @@ class CreateExperimentWithTagsExperimentTagExists:
         return True
 
 CreateExperimentWithTagsOutcome: TypeAlias = CreateExperimentWithTagsExperimentExists | CreateExperimentWithTagsExperimentCreated | CreateExperimentWithTagsExperimentTagExists
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class CreateMCPServerEntityInput:
+    name: str
+    created_by: str | None
+    request_id: str = field(default_factory=lambda: str(__import__("uuid").uuid4()))
+    description: str | None
+    packed_tags: bytes
+    display_name: str | None
+    packed_icons: bytes
+    created_at_ms: Annotated[int, "i64"]
+    packed_aliases: bytes
+    last_updated_by: str | None
+    last_updated_at_ms: Annotated[int, "i64"]
+
+CREATE_MCPSERVER_ENTITY_PLAN_HASH: Final[str] = "88ffca24fd5350b90929242c28a756d3a80f85e82c9a1947b71bff42a9a98cbc"
+@dataclass(frozen=True, slots=True, kw_only=True)
+class CreateMCPServerEntityMCPServerExists:
+    outcome: Literal["MCPServerExists"] = field(default="MCPServerExists", init=False)
+
+    def is_mcpserver_exists(self) -> bool:
+        return True
+
+    def is_mcpserver_created(self) -> bool:
+        return False
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class CreateMCPServerEntityMCPServerCreated:
+    server: MCPServerEntity
+    outcome: Literal["MCPServerCreated"] = field(default="MCPServerCreated", init=False)
+
+    def is_mcpserver_exists(self) -> bool:
+        return False
+
+    def is_mcpserver_created(self) -> bool:
+        return True
+
+CreateMCPServerEntityOutcome: TypeAlias = CreateMCPServerEntityMCPServerExists | CreateMCPServerEntityMCPServerCreated
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class CreateMCPServerVersionEntityInput:
+    name: str
+    status: str
+    created_by: str | None
+    request_id: str = field(default_factory=lambda: str(__import__("uuid").uuid4()))
+    source_url: str | None
+    packed_tags: bytes
+    server_json: str
+    packed_tools: bytes
+    created_at_ms: Annotated[int, "i64"]
+    version_major: Annotated[int, "i64"]
+    version_minor: Annotated[int, "i64"]
+    version_patch: Annotated[int, "i64"]
+    server_version: str
+    last_updated_by: str | None
+    last_updated_at_ms: Annotated[int, "i64"]
+    packed_connect_options: bytes
+    version_prerelease_sort_key: str
+
+CREATE_MCPSERVER_VERSION_ENTITY_PLAN_HASH: Final[str] = "3db98bd3f638e3a1ad41651b31194351953ca568f37aee3198d66958e664f599"
+@dataclass(frozen=True, slots=True, kw_only=True)
+class CreateMCPServerVersionEntityMCPServerVersionExists:
+    outcome: Literal["MCPServerVersionExists"] = field(default="MCPServerVersionExists", init=False)
+
+    def is_mcpserver_version_exists(self) -> bool:
+        return True
+
+    def is_mcpserver_version_created(self) -> bool:
+        return False
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class CreateMCPServerVersionEntityMCPServerVersionCreated:
+    server_version: MCPServerVersionEntity
+    outcome: Literal["MCPServerVersionCreated"] = field(default="MCPServerVersionCreated", init=False)
+
+    def is_mcpserver_version_exists(self) -> bool:
+        return False
+
+    def is_mcpserver_version_created(self) -> bool:
+        return True
+
+CreateMCPServerVersionEntityOutcome: TypeAlias = CreateMCPServerVersionEntityMCPServerVersionExists | CreateMCPServerVersionEntityMCPServerVersionCreated
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class CreateRegisteredModelEntityInput:
+    name: str
+    request_id: str = field(default_factory=lambda: str(__import__("uuid").uuid4()))
+    description: str | None
+    packed_tags: bytes
+    latest_version: Annotated[int, "u64"]
+    packed_aliases: bytes
+    creation_timestamp_ms: Annotated[int, "i64"]
+    last_updated_timestamp_ms: Annotated[int, "i64"]
+
+CREATE_REGISTERED_MODEL_ENTITY_PLAN_HASH: Final[str] = "7c2a5c3ba23e29c0b64cb878844c74471ce48b6d6257265c2dbc03c5e88fa435"
+@dataclass(frozen=True, slots=True, kw_only=True)
+class CreateRegisteredModelEntityRegisteredModelExists:
+    outcome: Literal["RegisteredModelExists"] = field(default="RegisteredModelExists", init=False)
+
+    def is_registered_model_exists(self) -> bool:
+        return True
+
+    def is_registered_model_created(self) -> bool:
+        return False
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class CreateRegisteredModelEntityRegisteredModelCreated:
+    model: RegisteredModelEntity
+    outcome: Literal["RegisteredModelCreated"] = field(default="RegisteredModelCreated", init=False)
+
+    def is_registered_model_exists(self) -> bool:
+        return False
+
+    def is_registered_model_created(self) -> bool:
+        return True
+
+CreateRegisteredModelEntityOutcome: TypeAlias = CreateRegisteredModelEntityRegisteredModelExists | CreateRegisteredModelEntityRegisteredModelCreated
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class CreateRunInput:
@@ -1970,7 +3946,7 @@ class DeleteExperimentInput:
     request_id: str = field(default_factory=lambda: str(__import__("uuid").uuid4()))
     experiment_id: Annotated[int, "u64"]
 
-DELETE_EXPERIMENT_PLAN_HASH: Final[str] = "4e8afed836bf25a721ec5057d11f9c417b7bec0cbeb29a54c12756c1216611a4"
+DELETE_EXPERIMENT_PLAN_HASH: Final[str] = "5fdc8cfce8575e13c3c0246bc483485203309fa3cb7f5aade938762ef86ad3de"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class DeleteExperimentExperimentDeleted:
     experiment: Experiment
@@ -1997,12 +3973,13 @@ DeleteExperimentOutcome: TypeAlias = DeleteExperimentExperimentDeleted | DeleteE
 @dataclass(frozen=True, slots=True, kw_only=True)
 class DeleteExperimentTagInput:
     tag_key: str
+    is_gateway: bool
     request_id: str = field(default_factory=lambda: str(__import__("uuid").uuid4()))
     packed_tags: bytes
     experiment_id: Annotated[int, "u64"]
     expected_revision: Annotated[int, "u64"]
 
-DELETE_EXPERIMENT_TAG_PLAN_HASH: Final[str] = "ab3c175086edddfc994ede4a8eea499e79080a34477e3e54dfecab36c82239a0"
+DELETE_EXPERIMENT_TAG_PLAN_HASH: Final[str] = "f60d737c31bbdbd97fdc0f3fa4ff3a41b27d48c50dd3e58d51998eadc813b4ce"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class DeleteExperimentTagExperimentStale:
     outcome: Literal["ExperimentStale"] = field(default="ExperimentStale", init=False)
@@ -2107,7 +4084,7 @@ class DeleteLoggedModelEntityInput:
     request_id: str = field(default_factory=lambda: str(__import__("uuid").uuid4()))
     experiment_id: Annotated[int, "u64"]
 
-DELETE_LOGGED_MODEL_ENTITY_PLAN_HASH: Final[str] = "ca10515d274e60a0a3feeaa0f47fc8926055cb1b3119294a94749ac385eae0a4"
+DELETE_LOGGED_MODEL_ENTITY_PLAN_HASH: Final[str] = "b3b4cbb03fecd87305216218c9be33e8873ee1076f968c430fd72af04cb487c6"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class DeleteLoggedModelEntityLoggedModelDeleted:
     model: LoggedModelEntity
@@ -2130,6 +4107,123 @@ class DeleteLoggedModelEntityLoggedModelMissing:
         return True
 
 DeleteLoggedModelEntityOutcome: TypeAlias = DeleteLoggedModelEntityLoggedModelDeleted | DeleteLoggedModelEntityLoggedModelMissing
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class DeleteMCPAccessEndpointEntityInput:
+    request_id: str = field(default_factory=lambda: str(__import__("uuid").uuid4()))
+    endpoint_id: str
+
+DELETE_MCPACCESS_ENDPOINT_ENTITY_PLAN_HASH: Final[str] = "cf5c74caec58d87e8daaa07e233f1a5c1359f4e3da3e3596236c5e9a03af2077"
+@dataclass(frozen=True, slots=True, kw_only=True)
+class DeleteMCPAccessEndpointEntityMCPAccessEndpointDeleted:
+    endpoint: MCPAccessEndpointEntity
+    outcome: Literal["MCPAccessEndpointDeleted"] = field(default="MCPAccessEndpointDeleted", init=False)
+
+    def is_mcpaccess_endpoint_deleted(self) -> bool:
+        return True
+
+    def is_mcpaccess_endpoint_missing(self) -> bool:
+        return False
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class DeleteMCPAccessEndpointEntityMCPAccessEndpointMissing:
+    outcome: Literal["MCPAccessEndpointMissing"] = field(default="MCPAccessEndpointMissing", init=False)
+
+    def is_mcpaccess_endpoint_deleted(self) -> bool:
+        return False
+
+    def is_mcpaccess_endpoint_missing(self) -> bool:
+        return True
+
+DeleteMCPAccessEndpointEntityOutcome: TypeAlias = DeleteMCPAccessEndpointEntityMCPAccessEndpointDeleted | DeleteMCPAccessEndpointEntityMCPAccessEndpointMissing
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class DeleteMCPServerEntityInput:
+    name: str
+    request_id: str = field(default_factory=lambda: str(__import__("uuid").uuid4()))
+
+DELETE_MCPSERVER_ENTITY_PLAN_HASH: Final[str] = "2ae252f5d9b5d0abf663fbd2cfd0344dfa281f1115e470bcda03c0c0381e9fcf"
+@dataclass(frozen=True, slots=True, kw_only=True)
+class DeleteMCPServerEntityMCPServerDeleted:
+    server: MCPServerEntity
+    outcome: Literal["MCPServerDeleted"] = field(default="MCPServerDeleted", init=False)
+
+    def is_mcpserver_deleted(self) -> bool:
+        return True
+
+    def is_mcpserver_missing(self) -> bool:
+        return False
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class DeleteMCPServerEntityMCPServerMissing:
+    outcome: Literal["MCPServerMissing"] = field(default="MCPServerMissing", init=False)
+
+    def is_mcpserver_deleted(self) -> bool:
+        return False
+
+    def is_mcpserver_missing(self) -> bool:
+        return True
+
+DeleteMCPServerEntityOutcome: TypeAlias = DeleteMCPServerEntityMCPServerDeleted | DeleteMCPServerEntityMCPServerMissing
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class DeleteModelVersionEntityInput:
+    name: str
+    request_id: str = field(default_factory=lambda: str(__import__("uuid").uuid4()))
+    version_num: Annotated[int, "u64"]
+
+DELETE_MODEL_VERSION_ENTITY_PLAN_HASH: Final[str] = "24a40bad4393b5c2c2efa7964f1511d45c9450d7338db303c7a7ce3b5185e553"
+@dataclass(frozen=True, slots=True, kw_only=True)
+class DeleteModelVersionEntityModelVersionDeleted:
+    model_version: ModelVersionEntity
+    outcome: Literal["ModelVersionDeleted"] = field(default="ModelVersionDeleted", init=False)
+
+    def is_model_version_deleted(self) -> bool:
+        return True
+
+    def is_model_version_missing(self) -> bool:
+        return False
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class DeleteModelVersionEntityModelVersionMissing:
+    outcome: Literal["ModelVersionMissing"] = field(default="ModelVersionMissing", init=False)
+
+    def is_model_version_deleted(self) -> bool:
+        return False
+
+    def is_model_version_missing(self) -> bool:
+        return True
+
+DeleteModelVersionEntityOutcome: TypeAlias = DeleteModelVersionEntityModelVersionDeleted | DeleteModelVersionEntityModelVersionMissing
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class DeleteRegisteredModelEntityInput:
+    name: str
+    request_id: str = field(default_factory=lambda: str(__import__("uuid").uuid4()))
+
+DELETE_REGISTERED_MODEL_ENTITY_PLAN_HASH: Final[str] = "7fabc76a91a985cb8c5925fbdfea5937655ae6761c98f7814f1f018c144912f6"
+@dataclass(frozen=True, slots=True, kw_only=True)
+class DeleteRegisteredModelEntityRegisteredModelDeleted:
+    model: RegisteredModelEntity
+    outcome: Literal["RegisteredModelDeleted"] = field(default="RegisteredModelDeleted", init=False)
+
+    def is_registered_model_deleted(self) -> bool:
+        return True
+
+    def is_registered_model_missing(self) -> bool:
+        return False
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class DeleteRegisteredModelEntityRegisteredModelMissing:
+    outcome: Literal["RegisteredModelMissing"] = field(default="RegisteredModelMissing", init=False)
+
+    def is_registered_model_deleted(self) -> bool:
+        return False
+
+    def is_registered_model_missing(self) -> bool:
+        return True
+
+DeleteRegisteredModelEntityOutcome: TypeAlias = DeleteRegisteredModelEntityRegisteredModelDeleted | DeleteRegisteredModelEntityRegisteredModelMissing
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class DeleteRunInput:
@@ -2167,7 +4261,7 @@ class DeleteTraceInput:
     request_id: str = field(default_factory=lambda: str(__import__("uuid").uuid4()))
     experiment_id: Annotated[int, "u64"]
 
-DELETE_TRACE_PLAN_HASH: Final[str] = "f76b6f616c7047ba06ad25ba03c14cf5352647818f642d0270201b91e11aee65"
+DELETE_TRACE_PLAN_HASH: Final[str] = "b0140928262671831dc78c73c58bc020d708bad24be25267b67939bb867f0bb7"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class DeleteTraceTraceDeleted:
     trace: Trace
@@ -2198,7 +4292,7 @@ class DeleteTraceAssessmentInput:
     assessment_id: str
     experiment_id: Annotated[int, "u64"]
 
-DELETE_TRACE_ASSESSMENT_PLAN_HASH: Final[str] = "b9e0c993f75d157327e10d8035db8cc3c520e33706e966777652593db1af8a47"
+DELETE_TRACE_ASSESSMENT_PLAN_HASH: Final[str] = "52c18b17294121bc56a23382c842e0e2dc2250694633a8ac7218e4708a6ceee2"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class DeleteTraceAssessmentTraceAssessmentDeleted:
     assessment: TraceAssessment
@@ -2229,7 +4323,7 @@ class DeleteTraceSpanInput:
     request_id: str = field(default_factory=lambda: str(__import__("uuid").uuid4()))
     experiment_id: Annotated[int, "u64"]
 
-DELETE_TRACE_SPAN_PLAN_HASH: Final[str] = "45326ba7ff17d1feaff40fd9dcb3401f9be8c0af9dbb312d34de513a5ad7fe61"
+DELETE_TRACE_SPAN_PLAN_HASH: Final[str] = "0e20b683d5d727ce58e47fcd9c7297b031dc3f2ce96560e5833318f568044947"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class DeleteTraceSpanTraceSpanDeleted:
     span: TraceSpan
@@ -2284,7 +4378,7 @@ class IngestTraceSpansInput:
     cache_read_input_tokens: Annotated[int, "i64"]
     cache_creation_input_tokens: Annotated[int, "i64"]
 
-INGEST_TRACE_SPANS_PLAN_HASH: Final[str] = "8db943eba0814f1a869bf5a8474523dfd5057a97cfe39bd98555f21e261d6934"
+INGEST_TRACE_SPANS_PLAN_HASH: Final[str] = "093b533d3b67410e5534bbea91333f57d5bdca596dea370109bd7c16379d1936"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class IngestTraceSpansTraceSpansIngested:
     trace: Trace
@@ -2413,7 +4507,7 @@ class RenameExperimentInput:
     name_digest: bytes
     experiment_id: Annotated[int, "u64"]
 
-RENAME_EXPERIMENT_PLAN_HASH: Final[str] = "c2f8b261326c48930b4207a8e70ddf05c6e5fe59cb6c97e0914e63ec7f9a642b"
+RENAME_EXPERIMENT_PLAN_HASH: Final[str] = "68e43b0034df511250ba9888a9902b25b1c7c243130a3cccfe6623be3b6e3f8d"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class RenameExperimentExperimentMissing:
     outcome: Literal["ExperimentMissing"] = field(default="ExperimentMissing", init=False)
@@ -2442,7 +4536,7 @@ class RestoreExperimentInput:
     request_id: str = field(default_factory=lambda: str(__import__("uuid").uuid4()))
     experiment_id: Annotated[int, "u64"]
 
-RESTORE_EXPERIMENT_PLAN_HASH: Final[str] = "b8c871db3df995184d78e5d0803cec199ba263f0300d14e170084a95768a0f9a"
+RESTORE_EXPERIMENT_PLAN_HASH: Final[str] = "e25b8693eb0501ff4fd45394f51685b4d440fb61a9c3ddbb515cc114fe1cb900"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class RestoreExperimentExperimentMissing:
     outcome: Literal["ExperimentMissing"] = field(default="ExperimentMissing", init=False)
@@ -2500,13 +4594,15 @@ RestoreRunOutcome: TypeAlias = RestoreRunRunMissing | RestoreRunRunRestored
 class SetExperimentTagInput:
     value: str
     tag_key: str
+    is_gateway: bool
     request_id: str = field(default_factory=lambda: str(__import__("uuid").uuid4()))
+    value_hash: Annotated[int, "u64"]
     packed_tags: bytes
     value_digest: bytes
     experiment_id: Annotated[int, "u64"]
     expected_revision: Annotated[int, "u64"]
 
-SET_EXPERIMENT_TAG_PLAN_HASH: Final[str] = "feb472e5f443945d55f38f36b1dfc94f3d77ec22d74a5caa76c77c90838b498b"
+SET_EXPERIMENT_TAG_PLAN_HASH: Final[str] = "cad0fc7c6dee721f3252253f8af4c6ce59926c263a084727201d29262d027ab3"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SetExperimentTagExperimentStale:
     outcome: Literal["ExperimentStale"] = field(default="ExperimentStale", init=False)
@@ -2673,7 +4769,7 @@ class UpsertLoggedModelInput:
     creation_timestamp_ms: Annotated[int, "i64"]
     last_updated_timestamp_ms: Annotated[int, "i64"]
 
-UPSERT_LOGGED_MODEL_PLAN_HASH: Final[str] = "7e5b053af6e929ed0a26e0817ac22fa6a3ad6973eb711d43373f457580d59f56"
+UPSERT_LOGGED_MODEL_PLAN_HASH: Final[str] = "3a518e8dada61483969fc4a02eebdba196b2a55c00c6358939233eb20239fbfb"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class UpsertLoggedModelLoggedModelUpserted:
     model: LoggedModelEntity
@@ -2683,6 +4779,163 @@ class UpsertLoggedModelLoggedModelUpserted:
         return True
 
 UpsertLoggedModelOutcome: TypeAlias = UpsertLoggedModelLoggedModelUpserted
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class UpsertMCPAccessEndpointEntityInput:
+    url: str
+    created_by: str | None
+    request_id: str = field(default_factory=lambda: str(__import__("uuid").uuid4()))
+    endpoint_id: str
+    server_name: str
+    server_alias: str | None
+    created_at_ms: Annotated[int, "i64"]
+    server_version: str | None
+    transport_type: str
+    last_updated_by: str | None
+    last_updated_at_ms: Annotated[int, "i64"]
+
+UPSERT_MCPACCESS_ENDPOINT_ENTITY_PLAN_HASH: Final[str] = "436e8cd9d4445e74611fbd778cf50a4a74c39f6fb1c80d31b8c23fcd1f1b01b7"
+@dataclass(frozen=True, slots=True, kw_only=True)
+class UpsertMCPAccessEndpointEntityMCPAccessEndpointUpserted:
+    endpoint: MCPAccessEndpointEntity
+    outcome: Literal["MCPAccessEndpointUpserted"] = field(default="MCPAccessEndpointUpserted", init=False)
+
+    def is_mcpaccess_endpoint_upserted(self) -> bool:
+        return True
+
+UpsertMCPAccessEndpointEntityOutcome: TypeAlias = UpsertMCPAccessEndpointEntityMCPAccessEndpointUpserted
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class UpsertMCPServerEntityInput:
+    name: str
+    created_by: str | None
+    request_id: str = field(default_factory=lambda: str(__import__("uuid").uuid4()))
+    description: str | None
+    packed_tags: bytes
+    display_name: str | None
+    packed_icons: bytes
+    created_at_ms: Annotated[int, "i64"]
+    packed_aliases: bytes
+    last_updated_by: str | None
+    last_updated_at_ms: Annotated[int, "i64"]
+
+UPSERT_MCPSERVER_ENTITY_PLAN_HASH: Final[str] = "ecef7d889ab9eff55e0508a4cd77de35202cf62c59fb872ac310e7dfef87b67d"
+@dataclass(frozen=True, slots=True, kw_only=True)
+class UpsertMCPServerEntityMCPServerUpserted:
+    server: MCPServerEntity
+    outcome: Literal["MCPServerUpserted"] = field(default="MCPServerUpserted", init=False)
+
+    def is_mcpserver_upserted(self) -> bool:
+        return True
+
+UpsertMCPServerEntityOutcome: TypeAlias = UpsertMCPServerEntityMCPServerUpserted
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class UpsertMCPServerVersionEntityInput:
+    name: str
+    status: str
+    created_by: str | None
+    request_id: str = field(default_factory=lambda: str(__import__("uuid").uuid4()))
+    source_url: str | None
+    packed_tags: bytes
+    server_json: str
+    packed_tools: bytes
+    created_at_ms: Annotated[int, "i64"]
+    version_major: Annotated[int, "i64"]
+    version_minor: Annotated[int, "i64"]
+    version_patch: Annotated[int, "i64"]
+    server_version: str
+    last_updated_by: str | None
+    last_updated_at_ms: Annotated[int, "i64"]
+    packed_connect_options: bytes
+    version_prerelease_sort_key: str
+
+UPSERT_MCPSERVER_VERSION_ENTITY_PLAN_HASH: Final[str] = "028f798bd797de6d9225bb698ace183434ed938c007790a0228a183eb8fe73e0"
+@dataclass(frozen=True, slots=True, kw_only=True)
+class UpsertMCPServerVersionEntityMCPServerVersionUpserted:
+    server_version: MCPServerVersionEntity
+    outcome: Literal["MCPServerVersionUpserted"] = field(default="MCPServerVersionUpserted", init=False)
+
+    def is_mcpserver_version_upserted(self) -> bool:
+        return True
+
+UpsertMCPServerVersionEntityOutcome: TypeAlias = UpsertMCPServerVersionEntityMCPServerVersionUpserted
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class UpsertModelVersionEntityInput:
+    name: str
+    run_id: str | None
+    status: str
+    user_id: str | None
+    run_link: str | None
+    request_id: str = field(default_factory=lambda: str(__import__("uuid").uuid4()))
+    description: str | None
+    packed_tags: bytes
+    source_path: str
+    version_num: Annotated[int, "u64"]
+    current_stage: str
+    status_message: str | None
+    storage_location: str
+    creation_timestamp_ms: Annotated[int, "i64"]
+    last_updated_timestamp_ms: Annotated[int, "i64"]
+
+UPSERT_MODEL_VERSION_ENTITY_PLAN_HASH: Final[str] = "b1916c6be76bd46b1e00634f5cfc2efa887478f990516addbf9960adf293f3a3"
+@dataclass(frozen=True, slots=True, kw_only=True)
+class UpsertModelVersionEntityModelVersionUpserted:
+    model_version: ModelVersionEntity
+    outcome: Literal["ModelVersionUpserted"] = field(default="ModelVersionUpserted", init=False)
+
+    def is_model_version_upserted(self) -> bool:
+        return True
+
+UpsertModelVersionEntityOutcome: TypeAlias = UpsertModelVersionEntityModelVersionUpserted
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class UpsertRegisteredModelEntityInput:
+    name: str
+    request_id: str = field(default_factory=lambda: str(__import__("uuid").uuid4()))
+    description: str | None
+    packed_tags: bytes
+    latest_version: Annotated[int, "u64"]
+    packed_aliases: bytes
+    creation_timestamp_ms: Annotated[int, "i64"]
+    last_updated_timestamp_ms: Annotated[int, "i64"]
+
+UPSERT_REGISTERED_MODEL_ENTITY_PLAN_HASH: Final[str] = "cf78eafd7d5d8bac43f7724ceb95f3715addab7455e73e5c1ddae712d5cc1ae7"
+@dataclass(frozen=True, slots=True, kw_only=True)
+class UpsertRegisteredModelEntityRegisteredModelUpserted:
+    model: RegisteredModelEntity
+    outcome: Literal["RegisteredModelUpserted"] = field(default="RegisteredModelUpserted", init=False)
+
+    def is_registered_model_upserted(self) -> bool:
+        return True
+
+UpsertRegisteredModelEntityOutcome: TypeAlias = UpsertRegisteredModelEntityRegisteredModelUpserted
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class UpsertRegistryWebhookEntityInput:
+    url: str
+    name: str
+    secret: str | None
+    status: str
+    request_id: str = field(default_factory=lambda: str(__import__("uuid").uuid4()))
+    webhook_id: str
+    description: str | None
+    packed_events: bytes
+    deleted_timestamp_ms: Annotated[int, "i64"] | None
+    creation_timestamp_ms: Annotated[int, "i64"]
+    last_updated_timestamp_ms: Annotated[int, "i64"]
+
+UPSERT_REGISTRY_WEBHOOK_ENTITY_PLAN_HASH: Final[str] = "839c9d05fedc429df0c4eb47c0077576c5e3bf81af70f06646b5f17f2e6339f6"
+@dataclass(frozen=True, slots=True, kw_only=True)
+class UpsertRegistryWebhookEntityRegistryWebhookUpserted:
+    webhook: RegistryWebhookEntity
+    outcome: Literal["RegistryWebhookUpserted"] = field(default="RegistryWebhookUpserted", init=False)
+
+    def is_registry_webhook_upserted(self) -> bool:
+        return True
+
+UpsertRegistryWebhookEntityOutcome: TypeAlias = UpsertRegistryWebhookEntityRegistryWebhookUpserted
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class UpsertRunLineageInput:
@@ -2766,7 +5019,7 @@ class UpsertTraceInput:
     cache_read_input_tokens: Annotated[int, "i64"]
     cache_creation_input_tokens: Annotated[int, "i64"]
 
-UPSERT_TRACE_PLAN_HASH: Final[str] = "963e8279130c32e0046769401156601da9ec3bcc58d38059e9bb2f562e2ff2fd"
+UPSERT_TRACE_PLAN_HASH: Final[str] = "91c624c550c7af15c7b31155deb3c979fcab5804f8d5f3d8b1239cde915fabec"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class UpsertTraceTraceUpserted:
     trace: Trace
@@ -2792,7 +5045,7 @@ class UpsertTraceAssessmentInput:
     packed_assessment_json: str
     last_updated_timestamp_ms: Annotated[int, "i64"]
 
-UPSERT_TRACE_ASSESSMENT_PLAN_HASH: Final[str] = "f3be69fc79d066c85dbd2fde2c0993e6866f1acd47c1c6d280a46500db891036"
+UPSERT_TRACE_ASSESSMENT_PLAN_HASH: Final[str] = "7855553ab960998d83a02f440bddd1c5eb8afdbb1820d07a2a674383e15f0d51"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class UpsertTraceAssessmentTraceMissing:
     outcome: Literal["TraceMissing"] = field(default="TraceMissing", init=False)
@@ -2996,6 +5249,41 @@ class RiffDBMLflowClient:
             cursor = page.next_cursor
         return pages
 
+    def batch_get_trace_assessments_all(self, parameters: BatchGetTraceAssessmentsParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> TypedQueryResult[BatchGetTraceAssessmentsFound]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if options.cursor is not None or parameters.after is not None:
+            raise ValueError("batch_get_trace_assessments_all does not accept an initial cursor")
+        items = tuple(dict.fromkeys(parameters.trace_ids))
+        if not items:
+            raise ValueError("trace_ids must contain at least 1 item")
+        pinned_head = options.read_after_commit if options.read_after_commit is not None else self._read_after_commit
+        highest_head = 0
+        merged: list[BatchGetTraceAssessmentsFoundAssessments] = []
+        latest_page: TypedQueryResult[BatchGetTraceAssessmentsResult] | None = None
+        pages_remaining = max_pages
+        for offset in range(0, len(items), BATCH_GET_TRACE_ASSESSMENTS_TRACE_IDS_MAX_ITEMS):
+            chunk = items[offset:offset + BATCH_GET_TRACE_ASSESSMENTS_TRACE_IDS_MAX_ITEMS]
+            chunk_cursor: str | None = None
+            while True:
+                if pages_remaining < 1:
+                    raise ValueError("batch_get_trace_assessments_all exceeded max_pages (1..=1024)")
+                pages_remaining -= 1
+                chunk_parameters = BatchGetTraceAssessmentsParams(experiment_id=parameters.experiment_id, trace_ids=chunk, limit=parameters.limit, after=None)
+                page = self.batch_get_trace_assessments(chunk_parameters, QueryOptions(cursor=chunk_cursor, read_after_commit=pinned_head, consistency=options.consistency))
+                found = page.value.unwrap_found()
+                merged.extend(found.assessments)
+                latest_page = page
+                if page.application_head > highest_head:
+                    highest_head = page.application_head
+                if pinned_head is None or page.application_head > pinned_head:
+                    pinned_head = page.application_head
+                if not page.next_cursor:
+                    break
+                chunk_cursor = page.next_cursor
+        assert latest_page is not None
+        return TypedQueryResult(identity=latest_page.identity, value=BatchGetTraceAssessmentsFound(assessments=tuple(merged)), application_head=highest_head, next_cursor=None)
+
     def batch_get_trace_spans(self, parameters: BatchGetTraceSpansParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[BatchGetTraceSpansResult]:
         if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 500):
             raise ValueError("limit must be an integer from 1 through 500")
@@ -3038,6 +5326,41 @@ class RiffDBMLflowClient:
                 break
             cursor = page.next_cursor
         return pages
+
+    def batch_get_trace_spans_all(self, parameters: BatchGetTraceSpansParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> TypedQueryResult[BatchGetTraceSpansFound]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if options.cursor is not None or parameters.after is not None:
+            raise ValueError("batch_get_trace_spans_all does not accept an initial cursor")
+        items = tuple(dict.fromkeys(parameters.trace_ids))
+        if not items:
+            raise ValueError("trace_ids must contain at least 1 item")
+        pinned_head = options.read_after_commit if options.read_after_commit is not None else self._read_after_commit
+        highest_head = 0
+        merged: list[BatchGetTraceSpansFoundSpans] = []
+        latest_page: TypedQueryResult[BatchGetTraceSpansResult] | None = None
+        pages_remaining = max_pages
+        for offset in range(0, len(items), BATCH_GET_TRACE_SPANS_TRACE_IDS_MAX_ITEMS):
+            chunk = items[offset:offset + BATCH_GET_TRACE_SPANS_TRACE_IDS_MAX_ITEMS]
+            chunk_cursor: str | None = None
+            while True:
+                if pages_remaining < 1:
+                    raise ValueError("batch_get_trace_spans_all exceeded max_pages (1..=1024)")
+                pages_remaining -= 1
+                chunk_parameters = BatchGetTraceSpansParams(experiment_id=parameters.experiment_id, trace_ids=chunk, limit=parameters.limit, after=None)
+                page = self.batch_get_trace_spans(chunk_parameters, QueryOptions(cursor=chunk_cursor, read_after_commit=pinned_head, consistency=options.consistency))
+                found = page.value.unwrap_found()
+                merged.extend(found.spans)
+                latest_page = page
+                if page.application_head > highest_head:
+                    highest_head = page.application_head
+                if pinned_head is None or page.application_head > pinned_head:
+                    pinned_head = page.application_head
+                if not page.next_cursor:
+                    break
+                chunk_cursor = page.next_cursor
+        assert latest_page is not None
+        return TypedQueryResult(identity=latest_page.identity, value=BatchGetTraceSpansFound(spans=tuple(merged)), application_head=highest_head, next_cursor=None)
 
     def batch_get_traces(self, parameters: BatchGetTracesParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[BatchGetTracesResult]:
         if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 50):
@@ -3136,6 +5459,60 @@ class RiffDBMLflowClient:
     def get_logged_model_after_commit(self, parameters: GetLoggedModelParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetLoggedModelResult]:
         return self.get_logged_model(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
 
+    def get_mcpaccess_endpoint(self, parameters: GetMCPAccessEndpointParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetMCPAccessEndpointResult]:
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="GetMCPAccessEndpoint", plan_hash=GET_MCPACCESS_ENDPOINT_QUERY_PLAN_HASH,
+            parameters=encode_record(parameters), options=options,
+        )
+        outcomes = {
+            "Found": GetMCPAccessEndpointFound,
+            "Missing": GetMCPAccessEndpointMissing,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    def get_mcpaccess_endpoint_after_commit(self, parameters: GetMCPAccessEndpointParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetMCPAccessEndpointResult]:
+        return self.get_mcpaccess_endpoint(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    def get_mcpserver(self, parameters: GetMCPServerParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetMCPServerResult]:
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="GetMCPServer", plan_hash=GET_MCPSERVER_QUERY_PLAN_HASH,
+            parameters=encode_record(parameters), options=options,
+        )
+        outcomes = {
+            "Found": GetMCPServerFound,
+            "Missing": GetMCPServerMissing,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    def get_mcpserver_after_commit(self, parameters: GetMCPServerParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetMCPServerResult]:
+        return self.get_mcpserver(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    def get_mcpserver_version(self, parameters: GetMCPServerVersionParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetMCPServerVersionResult]:
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="GetMCPServerVersion", plan_hash=GET_MCPSERVER_VERSION_QUERY_PLAN_HASH,
+            parameters=encode_record(parameters), options=options,
+        )
+        outcomes = {
+            "Found": GetMCPServerVersionFound,
+            "Missing": GetMCPServerVersionMissing,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    def get_mcpserver_version_after_commit(self, parameters: GetMCPServerVersionParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetMCPServerVersionResult]:
+        return self.get_mcpserver_version(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
     def get_metric_history(self, parameters: GetMetricHistoryParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetMetricHistoryResult]:
         if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 499):
             raise ValueError("limit must be an integer from 1 through 499")
@@ -3178,6 +5555,60 @@ class RiffDBMLflowClient:
                 break
             cursor = page.next_cursor
         return pages
+
+    def get_model_version(self, parameters: GetModelVersionParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetModelVersionResult]:
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="GetModelVersion", plan_hash=GET_MODEL_VERSION_QUERY_PLAN_HASH,
+            parameters=encode_record(parameters), options=options,
+        )
+        outcomes = {
+            "Found": GetModelVersionFound,
+            "Missing": GetModelVersionMissing,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    def get_model_version_after_commit(self, parameters: GetModelVersionParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetModelVersionResult]:
+        return self.get_model_version(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    def get_registered_model(self, parameters: GetRegisteredModelParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetRegisteredModelResult]:
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="GetRegisteredModel", plan_hash=GET_REGISTERED_MODEL_QUERY_PLAN_HASH,
+            parameters=encode_record(parameters), options=options,
+        )
+        outcomes = {
+            "Found": GetRegisteredModelFound,
+            "Missing": GetRegisteredModelMissing,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    def get_registered_model_after_commit(self, parameters: GetRegisteredModelParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetRegisteredModelResult]:
+        return self.get_registered_model(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    def get_registry_webhook(self, parameters: GetRegistryWebhookParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetRegistryWebhookResult]:
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="GetRegistryWebhook", plan_hash=GET_REGISTRY_WEBHOOK_QUERY_PLAN_HASH,
+            parameters=encode_record(parameters), options=options,
+        )
+        outcomes = {
+            "Found": GetRegistryWebhookFound,
+            "Missing": GetRegistryWebhookMissing,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    def get_registry_webhook_after_commit(self, parameters: GetRegistryWebhookParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetRegistryWebhookResult]:
+        return self.get_registry_webhook(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
 
     def get_run(self, parameters: GetRunParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetRunResult]:
         if options.read_after_commit is None and self._read_after_commit is not None:
@@ -3232,6 +5663,178 @@ class RiffDBMLflowClient:
 
     def get_trace_after_commit(self, parameters: GetTraceParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetTraceResult]:
         return self.get_trace(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    def list_mcpaccess_endpoints_by_server(self, parameters: ListMCPAccessEndpointsByServerParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[ListMCPAccessEndpointsByServerResult]:
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 50):
+            raise ValueError("limit must be an integer from 1 through 50")
+        encoded_parameters = encode_record(parameters)
+        generated_cursor = parameters.after
+        if generated_cursor is not None:
+            if options.cursor is not None:
+                raise ValueError("generated cursor conflicts with query options")
+            options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
+        encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="ListMCPAccessEndpointsByServer", plan_hash=LIST_MCPACCESS_ENDPOINTS_BY_SERVER_QUERY_PLAN_HASH,
+            parameters=encoded_parameters, options=options,
+        )
+        outcomes = {
+            "Found": ListMCPAccessEndpointsByServerFound,
+            "IntegrityFailure": ListMCPAccessEndpointsByServerIntegrityFailure,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    def list_mcpaccess_endpoints_by_server_after_commit(self, parameters: ListMCPAccessEndpointsByServerParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[ListMCPAccessEndpointsByServerResult]:
+        return self.list_mcpaccess_endpoints_by_server(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    def list_mcpaccess_endpoints_by_server_pages(self, parameters: ListMCPAccessEndpointsByServerParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[ListMCPAccessEndpointsByServerResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[ListMCPAccessEndpointsByServerResult]] = []
+        for _ in range(max_pages):
+            page_parameters = ListMCPAccessEndpointsByServerParams(scope=parameters.scope, server_name=parameters.server_name, limit=parameters.limit, after=None)
+            page = self.list_mcpaccess_endpoints_by_server(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
+
+    def list_mcpserver_versions_by_server(self, parameters: ListMCPServerVersionsByServerParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[ListMCPServerVersionsByServerResult]:
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 10):
+            raise ValueError("limit must be an integer from 1 through 10")
+        encoded_parameters = encode_record(parameters)
+        generated_cursor = parameters.after
+        if generated_cursor is not None:
+            if options.cursor is not None:
+                raise ValueError("generated cursor conflicts with query options")
+            options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
+        encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="ListMCPServerVersionsByServer", plan_hash=LIST_MCPSERVER_VERSIONS_BY_SERVER_QUERY_PLAN_HASH,
+            parameters=encoded_parameters, options=options,
+        )
+        outcomes = {
+            "Found": ListMCPServerVersionsByServerFound,
+            "IntegrityFailure": ListMCPServerVersionsByServerIntegrityFailure,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    def list_mcpserver_versions_by_server_after_commit(self, parameters: ListMCPServerVersionsByServerParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[ListMCPServerVersionsByServerResult]:
+        return self.list_mcpserver_versions_by_server(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    def list_mcpserver_versions_by_server_pages(self, parameters: ListMCPServerVersionsByServerParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[ListMCPServerVersionsByServerResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[ListMCPServerVersionsByServerResult]] = []
+        for _ in range(max_pages):
+            page_parameters = ListMCPServerVersionsByServerParams(scope=parameters.scope, name=parameters.name, limit=parameters.limit, after=None)
+            page = self.list_mcpserver_versions_by_server(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
+
+    def list_model_versions_by_model(self, parameters: ListModelVersionsByModelParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[ListModelVersionsByModelResult]:
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 25):
+            raise ValueError("limit must be an integer from 1 through 25")
+        encoded_parameters = encode_record(parameters)
+        generated_cursor = parameters.after
+        if generated_cursor is not None:
+            if options.cursor is not None:
+                raise ValueError("generated cursor conflicts with query options")
+            options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
+        encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="ListModelVersionsByModel", plan_hash=LIST_MODEL_VERSIONS_BY_MODEL_QUERY_PLAN_HASH,
+            parameters=encoded_parameters, options=options,
+        )
+        outcomes = {
+            "Found": ListModelVersionsByModelFound,
+            "IntegrityFailure": ListModelVersionsByModelIntegrityFailure,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    def list_model_versions_by_model_after_commit(self, parameters: ListModelVersionsByModelParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[ListModelVersionsByModelResult]:
+        return self.list_model_versions_by_model(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    def list_model_versions_by_model_pages(self, parameters: ListModelVersionsByModelParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[ListModelVersionsByModelResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[ListModelVersionsByModelResult]] = []
+        for _ in range(max_pages):
+            page_parameters = ListModelVersionsByModelParams(scope=parameters.scope, name=parameters.name, limit=parameters.limit, after=None)
+            page = self.list_model_versions_by_model(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
+
+    def list_registry_webhooks(self, parameters: ListRegistryWebhooksParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[ListRegistryWebhooksResult]:
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 50):
+            raise ValueError("limit must be an integer from 1 through 50")
+        encoded_parameters = encode_record(parameters)
+        generated_cursor = parameters.after
+        if generated_cursor is not None:
+            if options.cursor is not None:
+                raise ValueError("generated cursor conflicts with query options")
+            options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
+        encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="ListRegistryWebhooks", plan_hash=LIST_REGISTRY_WEBHOOKS_QUERY_PLAN_HASH,
+            parameters=encoded_parameters, options=options,
+        )
+        outcomes = {
+            "Found": ListRegistryWebhooksFound,
+            "IntegrityFailure": ListRegistryWebhooksIntegrityFailure,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    def list_registry_webhooks_after_commit(self, parameters: ListRegistryWebhooksParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[ListRegistryWebhooksResult]:
+        return self.list_registry_webhooks(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    def list_registry_webhooks_pages(self, parameters: ListRegistryWebhooksParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[ListRegistryWebhooksResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[ListRegistryWebhooksResult]] = []
+        for _ in range(max_pages):
+            page_parameters = ListRegistryWebhooksParams(scope=parameters.scope, limit=parameters.limit, after=None)
+            page = self.list_registry_webhooks(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
 
     def query_assessment_analytics(self, parameters: QueryAssessmentAnalyticsParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[QueryAssessmentAnalyticsResult]:
         if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 500):
@@ -3466,6 +6069,92 @@ class RiffDBMLflowClient:
             cursor = page.next_cursor
         return pages
 
+    def search_experiments_by_name_and_tag(self, parameters: SearchExperimentsByNameAndTagParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByNameAndTagResult]:
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
+            raise ValueError("limit must be an integer from 1 through 4")
+        encoded_parameters = encode_record(parameters)
+        generated_cursor = parameters.after
+        if generated_cursor is not None:
+            if options.cursor is not None:
+                raise ValueError("generated cursor conflicts with query options")
+            options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
+        encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="SearchExperimentsByNameAndTag", plan_hash=SEARCH_EXPERIMENTS_BY_NAME_AND_TAG_QUERY_PLAN_HASH,
+            parameters=encoded_parameters, options=options,
+        )
+        outcomes = {
+            "Found": SearchExperimentsByNameAndTagFound,
+            "IntegrityFailure": SearchExperimentsByNameAndTagIntegrityFailure,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    def search_experiments_by_name_and_tag_after_commit(self, parameters: SearchExperimentsByNameAndTagParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByNameAndTagResult]:
+        return self.search_experiments_by_name_and_tag(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    def search_experiments_by_name_and_tag_pages(self, parameters: SearchExperimentsByNameAndTagParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[SearchExperimentsByNameAndTagResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[SearchExperimentsByNameAndTagResult]] = []
+        for _ in range(max_pages):
+            page_parameters = SearchExperimentsByNameAndTagParams(scope=parameters.scope, name_digest=parameters.name_digest, tag_key=parameters.tag_key, value_digest=parameters.value_digest, lifecycle_stages=parameters.lifecycle_stages, order=parameters.order, limit=parameters.limit, after=None)
+            page = self.search_experiments_by_name_and_tag(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
+
+    def search_experiments_by_name_and_tag_is_null(self, parameters: SearchExperimentsByNameAndTagIsNullParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByNameAndTagIsNullResult]:
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
+            raise ValueError("limit must be an integer from 1 through 4")
+        encoded_parameters = encode_record(parameters)
+        generated_cursor = parameters.after
+        if generated_cursor is not None:
+            if options.cursor is not None:
+                raise ValueError("generated cursor conflicts with query options")
+            options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
+        encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="SearchExperimentsByNameAndTagIsNull", plan_hash=SEARCH_EXPERIMENTS_BY_NAME_AND_TAG_IS_NULL_QUERY_PLAN_HASH,
+            parameters=encoded_parameters, options=options,
+        )
+        outcomes = {
+            "Found": SearchExperimentsByNameAndTagIsNullFound,
+            "IntegrityFailure": SearchExperimentsByNameAndTagIsNullIntegrityFailure,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    def search_experiments_by_name_and_tag_is_null_after_commit(self, parameters: SearchExperimentsByNameAndTagIsNullParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByNameAndTagIsNullResult]:
+        return self.search_experiments_by_name_and_tag_is_null(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    def search_experiments_by_name_and_tag_is_null_pages(self, parameters: SearchExperimentsByNameAndTagIsNullParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[SearchExperimentsByNameAndTagIsNullResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[SearchExperimentsByNameAndTagIsNullResult]] = []
+        for _ in range(max_pages):
+            page_parameters = SearchExperimentsByNameAndTagIsNullParams(scope=parameters.scope, name_digest=parameters.name_digest, tag_key=parameters.tag_key, lifecycle_stages=parameters.lifecycle_stages, order=parameters.order, limit=parameters.limit, after=None)
+            page = self.search_experiments_by_name_and_tag_is_null(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
+
     def search_experiments_by_name_ilike(self, parameters: SearchExperimentsByNameILikeParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByNameILikeResult]:
         if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
             raise ValueError("limit must be an integer from 1 through 4")
@@ -3503,6 +6192,178 @@ class RiffDBMLflowClient:
         for _ in range(max_pages):
             page_parameters = SearchExperimentsByNameILikeParams(scope=parameters.scope, pattern=parameters.pattern, lifecycle_stages=parameters.lifecycle_stages, order=parameters.order, limit=parameters.limit, after=None)
             page = self.search_experiments_by_name_ilike(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
+
+    def search_experiments_by_name_ilike_and_gateway_is_null(self, parameters: SearchExperimentsByNameILikeAndGatewayIsNullParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByNameILikeAndGatewayIsNullResult]:
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
+            raise ValueError("limit must be an integer from 1 through 4")
+        encoded_parameters = encode_record(parameters)
+        generated_cursor = parameters.after
+        if generated_cursor is not None:
+            if options.cursor is not None:
+                raise ValueError("generated cursor conflicts with query options")
+            options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
+        encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="SearchExperimentsByNameILikeAndGatewayIsNull", plan_hash=SEARCH_EXPERIMENTS_BY_NAME_ILIKE_AND_GATEWAY_IS_NULL_QUERY_PLAN_HASH,
+            parameters=encoded_parameters, options=options,
+        )
+        outcomes = {
+            "Found": SearchExperimentsByNameILikeAndGatewayIsNullFound,
+            "IntegrityFailure": SearchExperimentsByNameILikeAndGatewayIsNullIntegrityFailure,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    def search_experiments_by_name_ilike_and_gateway_is_null_after_commit(self, parameters: SearchExperimentsByNameILikeAndGatewayIsNullParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByNameILikeAndGatewayIsNullResult]:
+        return self.search_experiments_by_name_ilike_and_gateway_is_null(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    def search_experiments_by_name_ilike_and_gateway_is_null_pages(self, parameters: SearchExperimentsByNameILikeAndGatewayIsNullParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[SearchExperimentsByNameILikeAndGatewayIsNullResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[SearchExperimentsByNameILikeAndGatewayIsNullResult]] = []
+        for _ in range(max_pages):
+            page_parameters = SearchExperimentsByNameILikeAndGatewayIsNullParams(scope=parameters.scope, pattern=parameters.pattern, lifecycle_stages=parameters.lifecycle_stages, order=parameters.order, limit=parameters.limit, after=None)
+            page = self.search_experiments_by_name_ilike_and_gateway_is_null(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
+
+    def search_experiments_by_name_ilike_and_tag(self, parameters: SearchExperimentsByNameILikeAndTagParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByNameILikeAndTagResult]:
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
+            raise ValueError("limit must be an integer from 1 through 4")
+        encoded_parameters = encode_record(parameters)
+        generated_cursor = parameters.after
+        if generated_cursor is not None:
+            if options.cursor is not None:
+                raise ValueError("generated cursor conflicts with query options")
+            options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
+        encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="SearchExperimentsByNameILikeAndTag", plan_hash=SEARCH_EXPERIMENTS_BY_NAME_ILIKE_AND_TAG_QUERY_PLAN_HASH,
+            parameters=encoded_parameters, options=options,
+        )
+        outcomes = {
+            "Found": SearchExperimentsByNameILikeAndTagFound,
+            "IntegrityFailure": SearchExperimentsByNameILikeAndTagIntegrityFailure,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    def search_experiments_by_name_ilike_and_tag_after_commit(self, parameters: SearchExperimentsByNameILikeAndTagParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByNameILikeAndTagResult]:
+        return self.search_experiments_by_name_ilike_and_tag(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    def search_experiments_by_name_ilike_and_tag_pages(self, parameters: SearchExperimentsByNameILikeAndTagParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[SearchExperimentsByNameILikeAndTagResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[SearchExperimentsByNameILikeAndTagResult]] = []
+        for _ in range(max_pages):
+            page_parameters = SearchExperimentsByNameILikeAndTagParams(scope=parameters.scope, pattern=parameters.pattern, tag_key=parameters.tag_key, value_digest=parameters.value_digest, lifecycle_stages=parameters.lifecycle_stages, order=parameters.order, limit=parameters.limit, after=None)
+            page = self.search_experiments_by_name_ilike_and_tag(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
+
+    def search_experiments_by_name_ilike_and_tag_and_gateway_is_null(self, parameters: SearchExperimentsByNameILikeAndTagAndGatewayIsNullParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByNameILikeAndTagAndGatewayIsNullResult]:
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
+            raise ValueError("limit must be an integer from 1 through 4")
+        encoded_parameters = encode_record(parameters)
+        generated_cursor = parameters.after
+        if generated_cursor is not None:
+            if options.cursor is not None:
+                raise ValueError("generated cursor conflicts with query options")
+            options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
+        encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="SearchExperimentsByNameILikeAndTagAndGatewayIsNull", plan_hash=SEARCH_EXPERIMENTS_BY_NAME_ILIKE_AND_TAG_AND_GATEWAY_IS_NULL_QUERY_PLAN_HASH,
+            parameters=encoded_parameters, options=options,
+        )
+        outcomes = {
+            "Found": SearchExperimentsByNameILikeAndTagAndGatewayIsNullFound,
+            "IntegrityFailure": SearchExperimentsByNameILikeAndTagAndGatewayIsNullIntegrityFailure,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    def search_experiments_by_name_ilike_and_tag_and_gateway_is_null_after_commit(self, parameters: SearchExperimentsByNameILikeAndTagAndGatewayIsNullParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByNameILikeAndTagAndGatewayIsNullResult]:
+        return self.search_experiments_by_name_ilike_and_tag_and_gateway_is_null(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    def search_experiments_by_name_ilike_and_tag_and_gateway_is_null_pages(self, parameters: SearchExperimentsByNameILikeAndTagAndGatewayIsNullParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[SearchExperimentsByNameILikeAndTagAndGatewayIsNullResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[SearchExperimentsByNameILikeAndTagAndGatewayIsNullResult]] = []
+        for _ in range(max_pages):
+            page_parameters = SearchExperimentsByNameILikeAndTagAndGatewayIsNullParams(scope=parameters.scope, pattern=parameters.pattern, tag_key=parameters.tag_key, value_digest=parameters.value_digest, lifecycle_stages=parameters.lifecycle_stages, order=parameters.order, limit=parameters.limit, after=None)
+            page = self.search_experiments_by_name_ilike_and_tag_and_gateway_is_null(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
+
+    def search_experiments_by_name_ilike_and_tag_is_not_null(self, parameters: SearchExperimentsByNameILikeAndTagIsNotNullParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByNameILikeAndTagIsNotNullResult]:
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
+            raise ValueError("limit must be an integer from 1 through 4")
+        encoded_parameters = encode_record(parameters)
+        generated_cursor = parameters.after
+        if generated_cursor is not None:
+            if options.cursor is not None:
+                raise ValueError("generated cursor conflicts with query options")
+            options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
+        encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="SearchExperimentsByNameILikeAndTagIsNotNull", plan_hash=SEARCH_EXPERIMENTS_BY_NAME_ILIKE_AND_TAG_IS_NOT_NULL_QUERY_PLAN_HASH,
+            parameters=encoded_parameters, options=options,
+        )
+        outcomes = {
+            "Found": SearchExperimentsByNameILikeAndTagIsNotNullFound,
+            "IntegrityFailure": SearchExperimentsByNameILikeAndTagIsNotNullIntegrityFailure,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    def search_experiments_by_name_ilike_and_tag_is_not_null_after_commit(self, parameters: SearchExperimentsByNameILikeAndTagIsNotNullParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByNameILikeAndTagIsNotNullResult]:
+        return self.search_experiments_by_name_ilike_and_tag_is_not_null(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    def search_experiments_by_name_ilike_and_tag_is_not_null_pages(self, parameters: SearchExperimentsByNameILikeAndTagIsNotNullParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[SearchExperimentsByNameILikeAndTagIsNotNullResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[SearchExperimentsByNameILikeAndTagIsNotNullResult]] = []
+        for _ in range(max_pages):
+            page_parameters = SearchExperimentsByNameILikeAndTagIsNotNullParams(scope=parameters.scope, pattern=parameters.pattern, tag_key=parameters.tag_key, lifecycle_stages=parameters.lifecycle_stages, order=parameters.order, limit=parameters.limit, after=None)
+            page = self.search_experiments_by_name_ilike_and_tag_is_not_null(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
             pages.append(page)
             if not page.next_cursor:
                 break
@@ -3552,6 +6413,178 @@ class RiffDBMLflowClient:
             cursor = page.next_cursor
         return pages
 
+    def search_experiments_by_name_like_and_gateway_is_null(self, parameters: SearchExperimentsByNameLikeAndGatewayIsNullParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByNameLikeAndGatewayIsNullResult]:
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
+            raise ValueError("limit must be an integer from 1 through 4")
+        encoded_parameters = encode_record(parameters)
+        generated_cursor = parameters.after
+        if generated_cursor is not None:
+            if options.cursor is not None:
+                raise ValueError("generated cursor conflicts with query options")
+            options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
+        encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="SearchExperimentsByNameLikeAndGatewayIsNull", plan_hash=SEARCH_EXPERIMENTS_BY_NAME_LIKE_AND_GATEWAY_IS_NULL_QUERY_PLAN_HASH,
+            parameters=encoded_parameters, options=options,
+        )
+        outcomes = {
+            "Found": SearchExperimentsByNameLikeAndGatewayIsNullFound,
+            "IntegrityFailure": SearchExperimentsByNameLikeAndGatewayIsNullIntegrityFailure,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    def search_experiments_by_name_like_and_gateway_is_null_after_commit(self, parameters: SearchExperimentsByNameLikeAndGatewayIsNullParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByNameLikeAndGatewayIsNullResult]:
+        return self.search_experiments_by_name_like_and_gateway_is_null(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    def search_experiments_by_name_like_and_gateway_is_null_pages(self, parameters: SearchExperimentsByNameLikeAndGatewayIsNullParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[SearchExperimentsByNameLikeAndGatewayIsNullResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[SearchExperimentsByNameLikeAndGatewayIsNullResult]] = []
+        for _ in range(max_pages):
+            page_parameters = SearchExperimentsByNameLikeAndGatewayIsNullParams(scope=parameters.scope, pattern=parameters.pattern, lifecycle_stages=parameters.lifecycle_stages, order=parameters.order, limit=parameters.limit, after=None)
+            page = self.search_experiments_by_name_like_and_gateway_is_null(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
+
+    def search_experiments_by_name_like_and_tag(self, parameters: SearchExperimentsByNameLikeAndTagParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByNameLikeAndTagResult]:
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
+            raise ValueError("limit must be an integer from 1 through 4")
+        encoded_parameters = encode_record(parameters)
+        generated_cursor = parameters.after
+        if generated_cursor is not None:
+            if options.cursor is not None:
+                raise ValueError("generated cursor conflicts with query options")
+            options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
+        encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="SearchExperimentsByNameLikeAndTag", plan_hash=SEARCH_EXPERIMENTS_BY_NAME_LIKE_AND_TAG_QUERY_PLAN_HASH,
+            parameters=encoded_parameters, options=options,
+        )
+        outcomes = {
+            "Found": SearchExperimentsByNameLikeAndTagFound,
+            "IntegrityFailure": SearchExperimentsByNameLikeAndTagIntegrityFailure,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    def search_experiments_by_name_like_and_tag_after_commit(self, parameters: SearchExperimentsByNameLikeAndTagParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByNameLikeAndTagResult]:
+        return self.search_experiments_by_name_like_and_tag(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    def search_experiments_by_name_like_and_tag_pages(self, parameters: SearchExperimentsByNameLikeAndTagParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[SearchExperimentsByNameLikeAndTagResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[SearchExperimentsByNameLikeAndTagResult]] = []
+        for _ in range(max_pages):
+            page_parameters = SearchExperimentsByNameLikeAndTagParams(scope=parameters.scope, pattern=parameters.pattern, tag_key=parameters.tag_key, value_digest=parameters.value_digest, lifecycle_stages=parameters.lifecycle_stages, order=parameters.order, limit=parameters.limit, after=None)
+            page = self.search_experiments_by_name_like_and_tag(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
+
+    def search_experiments_by_name_not_equal(self, parameters: SearchExperimentsByNameNotEqualParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByNameNotEqualResult]:
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
+            raise ValueError("limit must be an integer from 1 through 4")
+        encoded_parameters = encode_record(parameters)
+        generated_cursor = parameters.after
+        if generated_cursor is not None:
+            if options.cursor is not None:
+                raise ValueError("generated cursor conflicts with query options")
+            options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
+        encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="SearchExperimentsByNameNotEqual", plan_hash=SEARCH_EXPERIMENTS_BY_NAME_NOT_EQUAL_QUERY_PLAN_HASH,
+            parameters=encoded_parameters, options=options,
+        )
+        outcomes = {
+            "Found": SearchExperimentsByNameNotEqualFound,
+            "IntegrityFailure": SearchExperimentsByNameNotEqualIntegrityFailure,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    def search_experiments_by_name_not_equal_after_commit(self, parameters: SearchExperimentsByNameNotEqualParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByNameNotEqualResult]:
+        return self.search_experiments_by_name_not_equal(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    def search_experiments_by_name_not_equal_pages(self, parameters: SearchExperimentsByNameNotEqualParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[SearchExperimentsByNameNotEqualResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[SearchExperimentsByNameNotEqualResult]] = []
+        for _ in range(max_pages):
+            page_parameters = SearchExperimentsByNameNotEqualParams(scope=parameters.scope, name_digest=parameters.name_digest, lifecycle_stages=parameters.lifecycle_stages, order=parameters.order, limit=parameters.limit, after=None)
+            page = self.search_experiments_by_name_not_equal(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
+
+    def search_experiments_by_name_not_equal_and_tag_is_null(self, parameters: SearchExperimentsByNameNotEqualAndTagIsNullParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByNameNotEqualAndTagIsNullResult]:
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
+            raise ValueError("limit must be an integer from 1 through 4")
+        encoded_parameters = encode_record(parameters)
+        generated_cursor = parameters.after
+        if generated_cursor is not None:
+            if options.cursor is not None:
+                raise ValueError("generated cursor conflicts with query options")
+            options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
+        encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="SearchExperimentsByNameNotEqualAndTagIsNull", plan_hash=SEARCH_EXPERIMENTS_BY_NAME_NOT_EQUAL_AND_TAG_IS_NULL_QUERY_PLAN_HASH,
+            parameters=encoded_parameters, options=options,
+        )
+        outcomes = {
+            "Found": SearchExperimentsByNameNotEqualAndTagIsNullFound,
+            "IntegrityFailure": SearchExperimentsByNameNotEqualAndTagIsNullIntegrityFailure,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    def search_experiments_by_name_not_equal_and_tag_is_null_after_commit(self, parameters: SearchExperimentsByNameNotEqualAndTagIsNullParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByNameNotEqualAndTagIsNullResult]:
+        return self.search_experiments_by_name_not_equal_and_tag_is_null(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    def search_experiments_by_name_not_equal_and_tag_is_null_pages(self, parameters: SearchExperimentsByNameNotEqualAndTagIsNullParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[SearchExperimentsByNameNotEqualAndTagIsNullResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[SearchExperimentsByNameNotEqualAndTagIsNullResult]] = []
+        for _ in range(max_pages):
+            page_parameters = SearchExperimentsByNameNotEqualAndTagIsNullParams(scope=parameters.scope, name_digest=parameters.name_digest, tag_key=parameters.tag_key, lifecycle_stages=parameters.lifecycle_stages, order=parameters.order, limit=parameters.limit, after=None)
+            page = self.search_experiments_by_name_not_equal_and_tag_is_null(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
+
     def search_experiments_by_tag(self, parameters: SearchExperimentsByTagParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByTagResult]:
         if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
             raise ValueError("limit must be an integer from 1 through 4")
@@ -3589,6 +6622,92 @@ class RiffDBMLflowClient:
         for _ in range(max_pages):
             page_parameters = SearchExperimentsByTagParams(scope=parameters.scope, tag_key=parameters.tag_key, value_digest=parameters.value_digest, lifecycle_stages=parameters.lifecycle_stages, order=parameters.order, limit=parameters.limit, after=None)
             page = self.search_experiments_by_tag(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
+
+    def search_experiments_by_tag_and_gateway_is_null(self, parameters: SearchExperimentsByTagAndGatewayIsNullParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByTagAndGatewayIsNullResult]:
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
+            raise ValueError("limit must be an integer from 1 through 4")
+        encoded_parameters = encode_record(parameters)
+        generated_cursor = parameters.after
+        if generated_cursor is not None:
+            if options.cursor is not None:
+                raise ValueError("generated cursor conflicts with query options")
+            options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
+        encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="SearchExperimentsByTagAndGatewayIsNull", plan_hash=SEARCH_EXPERIMENTS_BY_TAG_AND_GATEWAY_IS_NULL_QUERY_PLAN_HASH,
+            parameters=encoded_parameters, options=options,
+        )
+        outcomes = {
+            "Found": SearchExperimentsByTagAndGatewayIsNullFound,
+            "IntegrityFailure": SearchExperimentsByTagAndGatewayIsNullIntegrityFailure,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    def search_experiments_by_tag_and_gateway_is_null_after_commit(self, parameters: SearchExperimentsByTagAndGatewayIsNullParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByTagAndGatewayIsNullResult]:
+        return self.search_experiments_by_tag_and_gateway_is_null(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    def search_experiments_by_tag_and_gateway_is_null_pages(self, parameters: SearchExperimentsByTagAndGatewayIsNullParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[SearchExperimentsByTagAndGatewayIsNullResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[SearchExperimentsByTagAndGatewayIsNullResult]] = []
+        for _ in range(max_pages):
+            page_parameters = SearchExperimentsByTagAndGatewayIsNullParams(scope=parameters.scope, tag_key=parameters.tag_key, value_digest=parameters.value_digest, lifecycle_stages=parameters.lifecycle_stages, order=parameters.order, limit=parameters.limit, after=None)
+            page = self.search_experiments_by_tag_and_gateway_is_null(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
+
+    def search_experiments_by_tag_and_tag_is_not_null(self, parameters: SearchExperimentsByTagAndTagIsNotNullParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByTagAndTagIsNotNullResult]:
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
+            raise ValueError("limit must be an integer from 1 through 4")
+        encoded_parameters = encode_record(parameters)
+        generated_cursor = parameters.after
+        if generated_cursor is not None:
+            if options.cursor is not None:
+                raise ValueError("generated cursor conflicts with query options")
+            options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
+        encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="SearchExperimentsByTagAndTagIsNotNull", plan_hash=SEARCH_EXPERIMENTS_BY_TAG_AND_TAG_IS_NOT_NULL_QUERY_PLAN_HASH,
+            parameters=encoded_parameters, options=options,
+        )
+        outcomes = {
+            "Found": SearchExperimentsByTagAndTagIsNotNullFound,
+            "IntegrityFailure": SearchExperimentsByTagAndTagIsNotNullIntegrityFailure,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    def search_experiments_by_tag_and_tag_is_not_null_after_commit(self, parameters: SearchExperimentsByTagAndTagIsNotNullParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByTagAndTagIsNotNullResult]:
+        return self.search_experiments_by_tag_and_tag_is_not_null(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    def search_experiments_by_tag_and_tag_is_not_null_pages(self, parameters: SearchExperimentsByTagAndTagIsNotNullParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[SearchExperimentsByTagAndTagIsNotNullResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[SearchExperimentsByTagAndTagIsNotNullResult]] = []
+        for _ in range(max_pages):
+            page_parameters = SearchExperimentsByTagAndTagIsNotNullParams(scope=parameters.scope, first_tag_key=parameters.first_tag_key, first_value_digest=parameters.first_value_digest, second_tag_key=parameters.second_tag_key, lifecycle_stages=parameters.lifecycle_stages, order=parameters.order, limit=parameters.limit, after=None)
+            page = self.search_experiments_by_tag_and_tag_is_not_null(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
             pages.append(page)
             if not page.next_cursor:
                 break
@@ -3638,6 +6757,135 @@ class RiffDBMLflowClient:
             cursor = page.next_cursor
         return pages
 
+    def search_experiments_by_tag_is_not_null(self, parameters: SearchExperimentsByTagIsNotNullParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByTagIsNotNullResult]:
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
+            raise ValueError("limit must be an integer from 1 through 4")
+        encoded_parameters = encode_record(parameters)
+        generated_cursor = parameters.after
+        if generated_cursor is not None:
+            if options.cursor is not None:
+                raise ValueError("generated cursor conflicts with query options")
+            options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
+        encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="SearchExperimentsByTagIsNotNull", plan_hash=SEARCH_EXPERIMENTS_BY_TAG_IS_NOT_NULL_QUERY_PLAN_HASH,
+            parameters=encoded_parameters, options=options,
+        )
+        outcomes = {
+            "Found": SearchExperimentsByTagIsNotNullFound,
+            "IntegrityFailure": SearchExperimentsByTagIsNotNullIntegrityFailure,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    def search_experiments_by_tag_is_not_null_after_commit(self, parameters: SearchExperimentsByTagIsNotNullParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByTagIsNotNullResult]:
+        return self.search_experiments_by_tag_is_not_null(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    def search_experiments_by_tag_is_not_null_pages(self, parameters: SearchExperimentsByTagIsNotNullParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[SearchExperimentsByTagIsNotNullResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[SearchExperimentsByTagIsNotNullResult]] = []
+        for _ in range(max_pages):
+            page_parameters = SearchExperimentsByTagIsNotNullParams(scope=parameters.scope, tag_key=parameters.tag_key, lifecycle_stages=parameters.lifecycle_stages, order=parameters.order, limit=parameters.limit, after=None)
+            page = self.search_experiments_by_tag_is_not_null(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
+
+    def search_experiments_by_tag_is_not_null_and_gateway_is_null(self, parameters: SearchExperimentsByTagIsNotNullAndGatewayIsNullParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByTagIsNotNullAndGatewayIsNullResult]:
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
+            raise ValueError("limit must be an integer from 1 through 4")
+        encoded_parameters = encode_record(parameters)
+        generated_cursor = parameters.after
+        if generated_cursor is not None:
+            if options.cursor is not None:
+                raise ValueError("generated cursor conflicts with query options")
+            options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
+        encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="SearchExperimentsByTagIsNotNullAndGatewayIsNull", plan_hash=SEARCH_EXPERIMENTS_BY_TAG_IS_NOT_NULL_AND_GATEWAY_IS_NULL_QUERY_PLAN_HASH,
+            parameters=encoded_parameters, options=options,
+        )
+        outcomes = {
+            "Found": SearchExperimentsByTagIsNotNullAndGatewayIsNullFound,
+            "IntegrityFailure": SearchExperimentsByTagIsNotNullAndGatewayIsNullIntegrityFailure,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    def search_experiments_by_tag_is_not_null_and_gateway_is_null_after_commit(self, parameters: SearchExperimentsByTagIsNotNullAndGatewayIsNullParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByTagIsNotNullAndGatewayIsNullResult]:
+        return self.search_experiments_by_tag_is_not_null_and_gateway_is_null(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    def search_experiments_by_tag_is_not_null_and_gateway_is_null_pages(self, parameters: SearchExperimentsByTagIsNotNullAndGatewayIsNullParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[SearchExperimentsByTagIsNotNullAndGatewayIsNullResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[SearchExperimentsByTagIsNotNullAndGatewayIsNullResult]] = []
+        for _ in range(max_pages):
+            page_parameters = SearchExperimentsByTagIsNotNullAndGatewayIsNullParams(scope=parameters.scope, tag_key=parameters.tag_key, lifecycle_stages=parameters.lifecycle_stages, order=parameters.order, limit=parameters.limit, after=None)
+            page = self.search_experiments_by_tag_is_not_null_and_gateway_is_null(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
+
+    def search_experiments_by_tag_is_null(self, parameters: SearchExperimentsByTagIsNullParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByTagIsNullResult]:
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
+            raise ValueError("limit must be an integer from 1 through 4")
+        encoded_parameters = encode_record(parameters)
+        generated_cursor = parameters.after
+        if generated_cursor is not None:
+            if options.cursor is not None:
+                raise ValueError("generated cursor conflicts with query options")
+            options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
+        encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="SearchExperimentsByTagIsNull", plan_hash=SEARCH_EXPERIMENTS_BY_TAG_IS_NULL_QUERY_PLAN_HASH,
+            parameters=encoded_parameters, options=options,
+        )
+        outcomes = {
+            "Found": SearchExperimentsByTagIsNullFound,
+            "IntegrityFailure": SearchExperimentsByTagIsNullIntegrityFailure,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    def search_experiments_by_tag_is_null_after_commit(self, parameters: SearchExperimentsByTagIsNullParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByTagIsNullResult]:
+        return self.search_experiments_by_tag_is_null(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    def search_experiments_by_tag_is_null_pages(self, parameters: SearchExperimentsByTagIsNullParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[SearchExperimentsByTagIsNullResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[SearchExperimentsByTagIsNullResult]] = []
+        for _ in range(max_pages):
+            page_parameters = SearchExperimentsByTagIsNullParams(scope=parameters.scope, tag_key=parameters.tag_key, lifecycle_stages=parameters.lifecycle_stages, order=parameters.order, limit=parameters.limit, after=None)
+            page = self.search_experiments_by_tag_is_null(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
+
     def search_experiments_by_tag_like(self, parameters: SearchExperimentsByTagLikeParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByTagLikeResult]:
         if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
             raise ValueError("limit must be an integer from 1 through 4")
@@ -3675,6 +6923,92 @@ class RiffDBMLflowClient:
         for _ in range(max_pages):
             page_parameters = SearchExperimentsByTagLikeParams(scope=parameters.scope, tag_key=parameters.tag_key, pattern=parameters.pattern, lifecycle_stages=parameters.lifecycle_stages, order=parameters.order, limit=parameters.limit, after=None)
             page = self.search_experiments_by_tag_like(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
+
+    def search_experiments_by_tag_not_equal(self, parameters: SearchExperimentsByTagNotEqualParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByTagNotEqualResult]:
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
+            raise ValueError("limit must be an integer from 1 through 4")
+        encoded_parameters = encode_record(parameters)
+        generated_cursor = parameters.after
+        if generated_cursor is not None:
+            if options.cursor is not None:
+                raise ValueError("generated cursor conflicts with query options")
+            options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
+        encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="SearchExperimentsByTagNotEqual", plan_hash=SEARCH_EXPERIMENTS_BY_TAG_NOT_EQUAL_QUERY_PLAN_HASH,
+            parameters=encoded_parameters, options=options,
+        )
+        outcomes = {
+            "Found": SearchExperimentsByTagNotEqualFound,
+            "IntegrityFailure": SearchExperimentsByTagNotEqualIntegrityFailure,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    def search_experiments_by_tag_not_equal_after_commit(self, parameters: SearchExperimentsByTagNotEqualParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByTagNotEqualResult]:
+        return self.search_experiments_by_tag_not_equal(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    def search_experiments_by_tag_not_equal_pages(self, parameters: SearchExperimentsByTagNotEqualParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[SearchExperimentsByTagNotEqualResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[SearchExperimentsByTagNotEqualResult]] = []
+        for _ in range(max_pages):
+            page_parameters = SearchExperimentsByTagNotEqualParams(scope=parameters.scope, tag_key=parameters.tag_key, value_hash=parameters.value_hash, lifecycle_stages=parameters.lifecycle_stages, order=parameters.order, limit=parameters.limit, after=None)
+            page = self.search_experiments_by_tag_not_equal(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
+
+    def search_experiments_by_tag_not_equal_and_gateway_is_null(self, parameters: SearchExperimentsByTagNotEqualAndGatewayIsNullParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByTagNotEqualAndGatewayIsNullResult]:
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
+            raise ValueError("limit must be an integer from 1 through 4")
+        encoded_parameters = encode_record(parameters)
+        generated_cursor = parameters.after
+        if generated_cursor is not None:
+            if options.cursor is not None:
+                raise ValueError("generated cursor conflicts with query options")
+            options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
+        encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="SearchExperimentsByTagNotEqualAndGatewayIsNull", plan_hash=SEARCH_EXPERIMENTS_BY_TAG_NOT_EQUAL_AND_GATEWAY_IS_NULL_QUERY_PLAN_HASH,
+            parameters=encoded_parameters, options=options,
+        )
+        outcomes = {
+            "Found": SearchExperimentsByTagNotEqualAndGatewayIsNullFound,
+            "IntegrityFailure": SearchExperimentsByTagNotEqualAndGatewayIsNullIntegrityFailure,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    def search_experiments_by_tag_not_equal_and_gateway_is_null_after_commit(self, parameters: SearchExperimentsByTagNotEqualAndGatewayIsNullParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByTagNotEqualAndGatewayIsNullResult]:
+        return self.search_experiments_by_tag_not_equal_and_gateway_is_null(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    def search_experiments_by_tag_not_equal_and_gateway_is_null_pages(self, parameters: SearchExperimentsByTagNotEqualAndGatewayIsNullParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[SearchExperimentsByTagNotEqualAndGatewayIsNullResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[SearchExperimentsByTagNotEqualAndGatewayIsNullResult]] = []
+        for _ in range(max_pages):
+            page_parameters = SearchExperimentsByTagNotEqualAndGatewayIsNullParams(scope=parameters.scope, tag_key=parameters.tag_key, value_hash=parameters.value_hash, lifecycle_stages=parameters.lifecycle_stages, order=parameters.order, limit=parameters.limit, after=None)
+            page = self.search_experiments_by_tag_not_equal_and_gateway_is_null(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
             pages.append(page)
             if not page.next_cursor:
                 break
@@ -3724,6 +7058,135 @@ class RiffDBMLflowClient:
             cursor = page.next_cursor
         return pages
 
+    def search_experiments_by_two_tags_ilike(self, parameters: SearchExperimentsByTwoTagsILikeParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByTwoTagsILikeResult]:
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
+            raise ValueError("limit must be an integer from 1 through 4")
+        encoded_parameters = encode_record(parameters)
+        generated_cursor = parameters.after
+        if generated_cursor is not None:
+            if options.cursor is not None:
+                raise ValueError("generated cursor conflicts with query options")
+            options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
+        encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="SearchExperimentsByTwoTagsILike", plan_hash=SEARCH_EXPERIMENTS_BY_TWO_TAGS_ILIKE_QUERY_PLAN_HASH,
+            parameters=encoded_parameters, options=options,
+        )
+        outcomes = {
+            "Found": SearchExperimentsByTwoTagsILikeFound,
+            "IntegrityFailure": SearchExperimentsByTwoTagsILikeIntegrityFailure,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    def search_experiments_by_two_tags_ilike_after_commit(self, parameters: SearchExperimentsByTwoTagsILikeParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByTwoTagsILikeResult]:
+        return self.search_experiments_by_two_tags_ilike(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    def search_experiments_by_two_tags_ilike_pages(self, parameters: SearchExperimentsByTwoTagsILikeParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[SearchExperimentsByTwoTagsILikeResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[SearchExperimentsByTwoTagsILikeResult]] = []
+        for _ in range(max_pages):
+            page_parameters = SearchExperimentsByTwoTagsILikeParams(scope=parameters.scope, first_tag_key=parameters.first_tag_key, first_pattern=parameters.first_pattern, second_tag_key=parameters.second_tag_key, second_value_digest=parameters.second_value_digest, lifecycle_stages=parameters.lifecycle_stages, order=parameters.order, limit=parameters.limit, after=None)
+            page = self.search_experiments_by_two_tags_ilike(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
+
+    def search_experiments_by_two_tags_is_null(self, parameters: SearchExperimentsByTwoTagsIsNullParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByTwoTagsIsNullResult]:
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
+            raise ValueError("limit must be an integer from 1 through 4")
+        encoded_parameters = encode_record(parameters)
+        generated_cursor = parameters.after
+        if generated_cursor is not None:
+            if options.cursor is not None:
+                raise ValueError("generated cursor conflicts with query options")
+            options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
+        encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="SearchExperimentsByTwoTagsIsNull", plan_hash=SEARCH_EXPERIMENTS_BY_TWO_TAGS_IS_NULL_QUERY_PLAN_HASH,
+            parameters=encoded_parameters, options=options,
+        )
+        outcomes = {
+            "Found": SearchExperimentsByTwoTagsIsNullFound,
+            "IntegrityFailure": SearchExperimentsByTwoTagsIsNullIntegrityFailure,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    def search_experiments_by_two_tags_is_null_after_commit(self, parameters: SearchExperimentsByTwoTagsIsNullParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByTwoTagsIsNullResult]:
+        return self.search_experiments_by_two_tags_is_null(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    def search_experiments_by_two_tags_is_null_pages(self, parameters: SearchExperimentsByTwoTagsIsNullParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[SearchExperimentsByTwoTagsIsNullResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[SearchExperimentsByTwoTagsIsNullResult]] = []
+        for _ in range(max_pages):
+            page_parameters = SearchExperimentsByTwoTagsIsNullParams(scope=parameters.scope, first_tag_key=parameters.first_tag_key, second_tag_key=parameters.second_tag_key, lifecycle_stages=parameters.lifecycle_stages, order=parameters.order, limit=parameters.limit, after=None)
+            page = self.search_experiments_by_two_tags_is_null(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
+
+    def search_experiments_by_two_tags_not_equal(self, parameters: SearchExperimentsByTwoTagsNotEqualParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByTwoTagsNotEqualResult]:
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
+            raise ValueError("limit must be an integer from 1 through 4")
+        encoded_parameters = encode_record(parameters)
+        generated_cursor = parameters.after
+        if generated_cursor is not None:
+            if options.cursor is not None:
+                raise ValueError("generated cursor conflicts with query options")
+            options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
+        encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="SearchExperimentsByTwoTagsNotEqual", plan_hash=SEARCH_EXPERIMENTS_BY_TWO_TAGS_NOT_EQUAL_QUERY_PLAN_HASH,
+            parameters=encoded_parameters, options=options,
+        )
+        outcomes = {
+            "Found": SearchExperimentsByTwoTagsNotEqualFound,
+            "IntegrityFailure": SearchExperimentsByTwoTagsNotEqualIntegrityFailure,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    def search_experiments_by_two_tags_not_equal_after_commit(self, parameters: SearchExperimentsByTwoTagsNotEqualParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByTwoTagsNotEqualResult]:
+        return self.search_experiments_by_two_tags_not_equal(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    def search_experiments_by_two_tags_not_equal_pages(self, parameters: SearchExperimentsByTwoTagsNotEqualParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[SearchExperimentsByTwoTagsNotEqualResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[SearchExperimentsByTwoTagsNotEqualResult]] = []
+        for _ in range(max_pages):
+            page_parameters = SearchExperimentsByTwoTagsNotEqualParams(scope=parameters.scope, first_tag_key=parameters.first_tag_key, first_value_digest=parameters.first_value_digest, second_tag_key=parameters.second_tag_key, second_value_hash=parameters.second_value_hash, lifecycle_stages=parameters.lifecycle_stages, order=parameters.order, limit=parameters.limit, after=None)
+            page = self.search_experiments_by_two_tags_not_equal(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
+
     def search_logged_models(self, parameters: SearchLoggedModelsParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchLoggedModelsResult]:
         if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 50):
             raise ValueError("limit must be an integer from 1 through 50")
@@ -3761,6 +7224,178 @@ class RiffDBMLflowClient:
         for _ in range(max_pages):
             page_parameters = SearchLoggedModelsParams(experiment_id=parameters.experiment_id, limit=parameters.limit, after=None)
             page = self.search_logged_models(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
+
+    def search_mcpaccess_endpoints(self, parameters: SearchMCPAccessEndpointsParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchMCPAccessEndpointsResult]:
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 50):
+            raise ValueError("limit must be an integer from 1 through 50")
+        encoded_parameters = encode_record(parameters)
+        generated_cursor = parameters.after
+        if generated_cursor is not None:
+            if options.cursor is not None:
+                raise ValueError("generated cursor conflicts with query options")
+            options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
+        encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="SearchMCPAccessEndpoints", plan_hash=SEARCH_MCPACCESS_ENDPOINTS_QUERY_PLAN_HASH,
+            parameters=encoded_parameters, options=options,
+        )
+        outcomes = {
+            "Found": SearchMCPAccessEndpointsFound,
+            "IntegrityFailure": SearchMCPAccessEndpointsIntegrityFailure,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    def search_mcpaccess_endpoints_after_commit(self, parameters: SearchMCPAccessEndpointsParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchMCPAccessEndpointsResult]:
+        return self.search_mcpaccess_endpoints(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    def search_mcpaccess_endpoints_pages(self, parameters: SearchMCPAccessEndpointsParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[SearchMCPAccessEndpointsResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[SearchMCPAccessEndpointsResult]] = []
+        for _ in range(max_pages):
+            page_parameters = SearchMCPAccessEndpointsParams(scope=parameters.scope, limit=parameters.limit, after=None)
+            page = self.search_mcpaccess_endpoints(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
+
+    def search_mcpservers(self, parameters: SearchMCPServersParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchMCPServersResult]:
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 25):
+            raise ValueError("limit must be an integer from 1 through 25")
+        encoded_parameters = encode_record(parameters)
+        generated_cursor = parameters.after
+        if generated_cursor is not None:
+            if options.cursor is not None:
+                raise ValueError("generated cursor conflicts with query options")
+            options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
+        encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="SearchMCPServers", plan_hash=SEARCH_MCPSERVERS_QUERY_PLAN_HASH,
+            parameters=encoded_parameters, options=options,
+        )
+        outcomes = {
+            "Found": SearchMCPServersFound,
+            "IntegrityFailure": SearchMCPServersIntegrityFailure,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    def search_mcpservers_after_commit(self, parameters: SearchMCPServersParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchMCPServersResult]:
+        return self.search_mcpservers(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    def search_mcpservers_pages(self, parameters: SearchMCPServersParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[SearchMCPServersResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[SearchMCPServersResult]] = []
+        for _ in range(max_pages):
+            page_parameters = SearchMCPServersParams(scope=parameters.scope, limit=parameters.limit, after=None)
+            page = self.search_mcpservers(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
+
+    def search_model_versions(self, parameters: SearchModelVersionsParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchModelVersionsResult]:
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 25):
+            raise ValueError("limit must be an integer from 1 through 25")
+        encoded_parameters = encode_record(parameters)
+        generated_cursor = parameters.after
+        if generated_cursor is not None:
+            if options.cursor is not None:
+                raise ValueError("generated cursor conflicts with query options")
+            options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
+        encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="SearchModelVersions", plan_hash=SEARCH_MODEL_VERSIONS_QUERY_PLAN_HASH,
+            parameters=encoded_parameters, options=options,
+        )
+        outcomes = {
+            "Found": SearchModelVersionsFound,
+            "IntegrityFailure": SearchModelVersionsIntegrityFailure,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    def search_model_versions_after_commit(self, parameters: SearchModelVersionsParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchModelVersionsResult]:
+        return self.search_model_versions(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    def search_model_versions_pages(self, parameters: SearchModelVersionsParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[SearchModelVersionsResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[SearchModelVersionsResult]] = []
+        for _ in range(max_pages):
+            page_parameters = SearchModelVersionsParams(scope=parameters.scope, limit=parameters.limit, after=None)
+            page = self.search_model_versions(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
+
+    def search_registered_models(self, parameters: SearchRegisteredModelsParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchRegisteredModelsResult]:
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 25):
+            raise ValueError("limit must be an integer from 1 through 25")
+        encoded_parameters = encode_record(parameters)
+        generated_cursor = parameters.after
+        if generated_cursor is not None:
+            if options.cursor is not None:
+                raise ValueError("generated cursor conflicts with query options")
+            options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
+        encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="SearchRegisteredModels", plan_hash=SEARCH_REGISTERED_MODELS_QUERY_PLAN_HASH,
+            parameters=encoded_parameters, options=options,
+        )
+        outcomes = {
+            "Found": SearchRegisteredModelsFound,
+            "IntegrityFailure": SearchRegisteredModelsIntegrityFailure,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    def search_registered_models_after_commit(self, parameters: SearchRegisteredModelsParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchRegisteredModelsResult]:
+        return self.search_registered_models(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    def search_registered_models_pages(self, parameters: SearchRegisteredModelsParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[SearchRegisteredModelsResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[SearchRegisteredModelsResult]] = []
+        for _ in range(max_pages):
+            page_parameters = SearchRegisteredModelsParams(scope=parameters.scope, limit=parameters.limit, after=None)
+            page = self.search_registered_models(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
             pages.append(page)
             if not page.next_cursor:
                 break
@@ -3810,6 +7445,41 @@ class RiffDBMLflowClient:
             cursor = page.next_cursor
         return pages
 
+    def search_runs_all(self, parameters: SearchRunsParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchRunsFound]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if options.cursor is not None or parameters.after is not None:
+            raise ValueError("search_runs_all does not accept an initial cursor")
+        items = tuple(dict.fromkeys(parameters.experiment_ids))
+        if not items:
+            raise ValueError("experiment_ids must contain at least 1 item")
+        pinned_head = options.read_after_commit if options.read_after_commit is not None else self._read_after_commit
+        highest_head = 0
+        merged: list[SearchRunsFoundRuns] = []
+        latest_page: TypedQueryResult[SearchRunsResult] | None = None
+        pages_remaining = max_pages
+        for offset in range(0, len(items), SEARCH_RUNS_EXPERIMENT_IDS_MAX_ITEMS):
+            chunk = items[offset:offset + SEARCH_RUNS_EXPERIMENT_IDS_MAX_ITEMS]
+            chunk_cursor: str | None = None
+            while True:
+                if pages_remaining < 1:
+                    raise ValueError("search_runs_all exceeded max_pages (1..=1024)")
+                pages_remaining -= 1
+                chunk_parameters = SearchRunsParams(experiment_ids=chunk, limit=parameters.limit, after=None)
+                page = self.search_runs(chunk_parameters, QueryOptions(cursor=chunk_cursor, read_after_commit=pinned_head, consistency=options.consistency))
+                found = page.value.unwrap_found()
+                merged.extend(found.runs)
+                latest_page = page
+                if page.application_head > highest_head:
+                    highest_head = page.application_head
+                if pinned_head is None or page.application_head > pinned_head:
+                    pinned_head = page.application_head
+                if not page.next_cursor:
+                    break
+                chunk_cursor = page.next_cursor
+        assert latest_page is not None
+        return TypedQueryResult(identity=latest_page.identity, value=SearchRunsFound(runs=tuple(merged)), application_head=highest_head, next_cursor=None)
+
     def search_runs_by_lifecycle(self, parameters: SearchRunsByLifecycleParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchRunsByLifecycleResult]:
         if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 2):
             raise ValueError("limit must be an integer from 1 through 2")
@@ -3852,6 +7522,41 @@ class RiffDBMLflowClient:
                 break
             cursor = page.next_cursor
         return pages
+
+    def search_runs_by_lifecycle_all(self, parameters: SearchRunsByLifecycleParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchRunsByLifecycleFound]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if options.cursor is not None or parameters.after is not None:
+            raise ValueError("search_runs_by_lifecycle_all does not accept an initial cursor")
+        items = tuple(dict.fromkeys(parameters.experiment_ids))
+        if not items:
+            raise ValueError("experiment_ids must contain at least 1 item")
+        pinned_head = options.read_after_commit if options.read_after_commit is not None else self._read_after_commit
+        highest_head = 0
+        merged: list[SearchRunsByLifecycleFoundRuns] = []
+        latest_page: TypedQueryResult[SearchRunsByLifecycleResult] | None = None
+        pages_remaining = max_pages
+        for offset in range(0, len(items), SEARCH_RUNS_BY_LIFECYCLE_EXPERIMENT_IDS_MAX_ITEMS):
+            chunk = items[offset:offset + SEARCH_RUNS_BY_LIFECYCLE_EXPERIMENT_IDS_MAX_ITEMS]
+            chunk_cursor: str | None = None
+            while True:
+                if pages_remaining < 1:
+                    raise ValueError("search_runs_by_lifecycle_all exceeded max_pages (1..=1024)")
+                pages_remaining -= 1
+                chunk_parameters = SearchRunsByLifecycleParams(experiment_ids=chunk, lifecycle_stage=parameters.lifecycle_stage, limit=parameters.limit, after=None)
+                page = self.search_runs_by_lifecycle(chunk_parameters, QueryOptions(cursor=chunk_cursor, read_after_commit=pinned_head, consistency=options.consistency))
+                found = page.value.unwrap_found()
+                merged.extend(found.runs)
+                latest_page = page
+                if page.application_head > highest_head:
+                    highest_head = page.application_head
+                if pinned_head is None or page.application_head > pinned_head:
+                    pinned_head = page.application_head
+                if not page.next_cursor:
+                    break
+                chunk_cursor = page.next_cursor
+        assert latest_page is not None
+        return TypedQueryResult(identity=latest_page.identity, value=SearchRunsByLifecycleFound(runs=tuple(merged)), application_head=highest_head, next_cursor=None)
 
     def search_traces(self, parameters: SearchTracesParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchTracesResult]:
         if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 50):
@@ -3968,6 +7673,69 @@ class RiffDBMLflowClient:
             if aggregate_element_bytes > 900000:
                 raise InputBudgetError(AGGREGATE_CANONICAL_ELEMENT_BYTES, "tags")
         return self._transport._command_batch(inputs, options, self.create_experiment_with_tags, progress)
+
+    def create_mcpserver_entity(self, input: CreateMCPServerEntityInput) -> TypedCommandResult[CreateMCPServerEntityOutcome]:
+        raw = self._transport._execute_command(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            command_name="CreateMCPServerEntity", plan_hash=CREATE_MCPSERVER_ENTITY_PLAN_HASH,
+            input=encode_record(input), attempts=self._command_attempts,
+        )
+        outcomes = {
+            "MCPServerExists": CreateMCPServerEntityMCPServerExists,
+            "MCPServerCreated": CreateMCPServerEntityMCPServerCreated,
+        }
+        result: TypedCommandResult[CreateMCPServerEntityOutcome] = raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        if self._track_causal_writes and result.commit_sequence is not None and result.commit_sequence > 0:
+            self._read_after_commit = result.commit_sequence if self._read_after_commit is None or result.commit_sequence > self._read_after_commit else self._read_after_commit
+        return result
+
+    def create_mcpserver_entity_batch(
+        self, inputs: Sequence[CreateMCPServerEntityInput], options: CommandBatchOptions,
+        progress: Callable[[CommandBatchProgress], None] | None = None,
+    ) -> CommandBatchResult[CreateMCPServerEntityOutcome]:
+        return self._transport._command_batch(inputs, options, self.create_mcpserver_entity, progress)
+
+    def create_mcpserver_version_entity(self, input: CreateMCPServerVersionEntityInput) -> TypedCommandResult[CreateMCPServerVersionEntityOutcome]:
+        raw = self._transport._execute_command(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            command_name="CreateMCPServerVersionEntity", plan_hash=CREATE_MCPSERVER_VERSION_ENTITY_PLAN_HASH,
+            input=encode_record(input), attempts=self._command_attempts,
+        )
+        outcomes = {
+            "MCPServerVersionExists": CreateMCPServerVersionEntityMCPServerVersionExists,
+            "MCPServerVersionCreated": CreateMCPServerVersionEntityMCPServerVersionCreated,
+        }
+        result: TypedCommandResult[CreateMCPServerVersionEntityOutcome] = raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        if self._track_causal_writes and result.commit_sequence is not None and result.commit_sequence > 0:
+            self._read_after_commit = result.commit_sequence if self._read_after_commit is None or result.commit_sequence > self._read_after_commit else self._read_after_commit
+        return result
+
+    def create_mcpserver_version_entity_batch(
+        self, inputs: Sequence[CreateMCPServerVersionEntityInput], options: CommandBatchOptions,
+        progress: Callable[[CommandBatchProgress], None] | None = None,
+    ) -> CommandBatchResult[CreateMCPServerVersionEntityOutcome]:
+        return self._transport._command_batch(inputs, options, self.create_mcpserver_version_entity, progress)
+
+    def create_registered_model_entity(self, input: CreateRegisteredModelEntityInput) -> TypedCommandResult[CreateRegisteredModelEntityOutcome]:
+        raw = self._transport._execute_command(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            command_name="CreateRegisteredModelEntity", plan_hash=CREATE_REGISTERED_MODEL_ENTITY_PLAN_HASH,
+            input=encode_record(input), attempts=self._command_attempts,
+        )
+        outcomes = {
+            "RegisteredModelExists": CreateRegisteredModelEntityRegisteredModelExists,
+            "RegisteredModelCreated": CreateRegisteredModelEntityRegisteredModelCreated,
+        }
+        result: TypedCommandResult[CreateRegisteredModelEntityOutcome] = raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        if self._track_causal_writes and result.commit_sequence is not None and result.commit_sequence > 0:
+            self._read_after_commit = result.commit_sequence if self._read_after_commit is None or result.commit_sequence > self._read_after_commit else self._read_after_commit
+        return result
+
+    def create_registered_model_entity_batch(
+        self, inputs: Sequence[CreateRegisteredModelEntityInput], options: CommandBatchOptions,
+        progress: Callable[[CommandBatchProgress], None] | None = None,
+    ) -> CommandBatchResult[CreateRegisteredModelEntityOutcome]:
+        return self._transport._command_batch(inputs, options, self.create_registered_model_entity, progress)
 
     def create_run(self, input: CreateRunInput) -> TypedCommandResult[CreateRunOutcome]:
         raw = self._transport._execute_command(
@@ -4127,6 +7895,90 @@ class RiffDBMLflowClient:
         progress: Callable[[CommandBatchProgress], None] | None = None,
     ) -> CommandBatchResult[DeleteLoggedModelEntityOutcome]:
         return self._transport._command_batch(inputs, options, self.delete_logged_model_entity, progress)
+
+    def delete_mcpaccess_endpoint_entity(self, input: DeleteMCPAccessEndpointEntityInput) -> TypedCommandResult[DeleteMCPAccessEndpointEntityOutcome]:
+        raw = self._transport._execute_command(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            command_name="DeleteMCPAccessEndpointEntity", plan_hash=DELETE_MCPACCESS_ENDPOINT_ENTITY_PLAN_HASH,
+            input=encode_record(input), attempts=self._command_attempts,
+        )
+        outcomes = {
+            "MCPAccessEndpointDeleted": DeleteMCPAccessEndpointEntityMCPAccessEndpointDeleted,
+            "MCPAccessEndpointMissing": DeleteMCPAccessEndpointEntityMCPAccessEndpointMissing,
+        }
+        result: TypedCommandResult[DeleteMCPAccessEndpointEntityOutcome] = raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        if self._track_causal_writes and result.commit_sequence is not None and result.commit_sequence > 0:
+            self._read_after_commit = result.commit_sequence if self._read_after_commit is None or result.commit_sequence > self._read_after_commit else self._read_after_commit
+        return result
+
+    def delete_mcpaccess_endpoint_entity_batch(
+        self, inputs: Sequence[DeleteMCPAccessEndpointEntityInput], options: CommandBatchOptions,
+        progress: Callable[[CommandBatchProgress], None] | None = None,
+    ) -> CommandBatchResult[DeleteMCPAccessEndpointEntityOutcome]:
+        return self._transport._command_batch(inputs, options, self.delete_mcpaccess_endpoint_entity, progress)
+
+    def delete_mcpserver_entity(self, input: DeleteMCPServerEntityInput) -> TypedCommandResult[DeleteMCPServerEntityOutcome]:
+        raw = self._transport._execute_command(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            command_name="DeleteMCPServerEntity", plan_hash=DELETE_MCPSERVER_ENTITY_PLAN_HASH,
+            input=encode_record(input), attempts=self._command_attempts,
+        )
+        outcomes = {
+            "MCPServerDeleted": DeleteMCPServerEntityMCPServerDeleted,
+            "MCPServerMissing": DeleteMCPServerEntityMCPServerMissing,
+        }
+        result: TypedCommandResult[DeleteMCPServerEntityOutcome] = raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        if self._track_causal_writes and result.commit_sequence is not None and result.commit_sequence > 0:
+            self._read_after_commit = result.commit_sequence if self._read_after_commit is None or result.commit_sequence > self._read_after_commit else self._read_after_commit
+        return result
+
+    def delete_mcpserver_entity_batch(
+        self, inputs: Sequence[DeleteMCPServerEntityInput], options: CommandBatchOptions,
+        progress: Callable[[CommandBatchProgress], None] | None = None,
+    ) -> CommandBatchResult[DeleteMCPServerEntityOutcome]:
+        return self._transport._command_batch(inputs, options, self.delete_mcpserver_entity, progress)
+
+    def delete_model_version_entity(self, input: DeleteModelVersionEntityInput) -> TypedCommandResult[DeleteModelVersionEntityOutcome]:
+        raw = self._transport._execute_command(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            command_name="DeleteModelVersionEntity", plan_hash=DELETE_MODEL_VERSION_ENTITY_PLAN_HASH,
+            input=encode_record(input), attempts=self._command_attempts,
+        )
+        outcomes = {
+            "ModelVersionDeleted": DeleteModelVersionEntityModelVersionDeleted,
+            "ModelVersionMissing": DeleteModelVersionEntityModelVersionMissing,
+        }
+        result: TypedCommandResult[DeleteModelVersionEntityOutcome] = raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        if self._track_causal_writes and result.commit_sequence is not None and result.commit_sequence > 0:
+            self._read_after_commit = result.commit_sequence if self._read_after_commit is None or result.commit_sequence > self._read_after_commit else self._read_after_commit
+        return result
+
+    def delete_model_version_entity_batch(
+        self, inputs: Sequence[DeleteModelVersionEntityInput], options: CommandBatchOptions,
+        progress: Callable[[CommandBatchProgress], None] | None = None,
+    ) -> CommandBatchResult[DeleteModelVersionEntityOutcome]:
+        return self._transport._command_batch(inputs, options, self.delete_model_version_entity, progress)
+
+    def delete_registered_model_entity(self, input: DeleteRegisteredModelEntityInput) -> TypedCommandResult[DeleteRegisteredModelEntityOutcome]:
+        raw = self._transport._execute_command(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            command_name="DeleteRegisteredModelEntity", plan_hash=DELETE_REGISTERED_MODEL_ENTITY_PLAN_HASH,
+            input=encode_record(input), attempts=self._command_attempts,
+        )
+        outcomes = {
+            "RegisteredModelDeleted": DeleteRegisteredModelEntityRegisteredModelDeleted,
+            "RegisteredModelMissing": DeleteRegisteredModelEntityRegisteredModelMissing,
+        }
+        result: TypedCommandResult[DeleteRegisteredModelEntityOutcome] = raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        if self._track_causal_writes and result.commit_sequence is not None and result.commit_sequence > 0:
+            self._read_after_commit = result.commit_sequence if self._read_after_commit is None or result.commit_sequence > self._read_after_commit else self._read_after_commit
+        return result
+
+    def delete_registered_model_entity_batch(
+        self, inputs: Sequence[DeleteRegisteredModelEntityInput], options: CommandBatchOptions,
+        progress: Callable[[CommandBatchProgress], None] | None = None,
+    ) -> CommandBatchResult[DeleteRegisteredModelEntityOutcome]:
+        return self._transport._command_batch(inputs, options, self.delete_registered_model_entity, progress)
 
     def delete_run(self, input: DeleteRunInput) -> TypedCommandResult[DeleteRunOutcome]:
         raw = self._transport._execute_command(
@@ -4485,6 +8337,126 @@ class RiffDBMLflowClient:
     ) -> CommandBatchResult[UpsertLoggedModelOutcome]:
         return self._transport._command_batch(inputs, options, self.upsert_logged_model, progress)
 
+    def upsert_mcpaccess_endpoint_entity(self, input: UpsertMCPAccessEndpointEntityInput) -> TypedCommandResult[UpsertMCPAccessEndpointEntityOutcome]:
+        raw = self._transport._execute_command(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            command_name="UpsertMCPAccessEndpointEntity", plan_hash=UPSERT_MCPACCESS_ENDPOINT_ENTITY_PLAN_HASH,
+            input=encode_record(input), attempts=self._command_attempts,
+        )
+        outcomes = {
+            "MCPAccessEndpointUpserted": UpsertMCPAccessEndpointEntityMCPAccessEndpointUpserted,
+        }
+        result: TypedCommandResult[UpsertMCPAccessEndpointEntityOutcome] = raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        if self._track_causal_writes and result.commit_sequence is not None and result.commit_sequence > 0:
+            self._read_after_commit = result.commit_sequence if self._read_after_commit is None or result.commit_sequence > self._read_after_commit else self._read_after_commit
+        return result
+
+    def upsert_mcpaccess_endpoint_entity_batch(
+        self, inputs: Sequence[UpsertMCPAccessEndpointEntityInput], options: CommandBatchOptions,
+        progress: Callable[[CommandBatchProgress], None] | None = None,
+    ) -> CommandBatchResult[UpsertMCPAccessEndpointEntityOutcome]:
+        return self._transport._command_batch(inputs, options, self.upsert_mcpaccess_endpoint_entity, progress)
+
+    def upsert_mcpserver_entity(self, input: UpsertMCPServerEntityInput) -> TypedCommandResult[UpsertMCPServerEntityOutcome]:
+        raw = self._transport._execute_command(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            command_name="UpsertMCPServerEntity", plan_hash=UPSERT_MCPSERVER_ENTITY_PLAN_HASH,
+            input=encode_record(input), attempts=self._command_attempts,
+        )
+        outcomes = {
+            "MCPServerUpserted": UpsertMCPServerEntityMCPServerUpserted,
+        }
+        result: TypedCommandResult[UpsertMCPServerEntityOutcome] = raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        if self._track_causal_writes and result.commit_sequence is not None and result.commit_sequence > 0:
+            self._read_after_commit = result.commit_sequence if self._read_after_commit is None or result.commit_sequence > self._read_after_commit else self._read_after_commit
+        return result
+
+    def upsert_mcpserver_entity_batch(
+        self, inputs: Sequence[UpsertMCPServerEntityInput], options: CommandBatchOptions,
+        progress: Callable[[CommandBatchProgress], None] | None = None,
+    ) -> CommandBatchResult[UpsertMCPServerEntityOutcome]:
+        return self._transport._command_batch(inputs, options, self.upsert_mcpserver_entity, progress)
+
+    def upsert_mcpserver_version_entity(self, input: UpsertMCPServerVersionEntityInput) -> TypedCommandResult[UpsertMCPServerVersionEntityOutcome]:
+        raw = self._transport._execute_command(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            command_name="UpsertMCPServerVersionEntity", plan_hash=UPSERT_MCPSERVER_VERSION_ENTITY_PLAN_HASH,
+            input=encode_record(input), attempts=self._command_attempts,
+        )
+        outcomes = {
+            "MCPServerVersionUpserted": UpsertMCPServerVersionEntityMCPServerVersionUpserted,
+        }
+        result: TypedCommandResult[UpsertMCPServerVersionEntityOutcome] = raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        if self._track_causal_writes and result.commit_sequence is not None and result.commit_sequence > 0:
+            self._read_after_commit = result.commit_sequence if self._read_after_commit is None or result.commit_sequence > self._read_after_commit else self._read_after_commit
+        return result
+
+    def upsert_mcpserver_version_entity_batch(
+        self, inputs: Sequence[UpsertMCPServerVersionEntityInput], options: CommandBatchOptions,
+        progress: Callable[[CommandBatchProgress], None] | None = None,
+    ) -> CommandBatchResult[UpsertMCPServerVersionEntityOutcome]:
+        return self._transport._command_batch(inputs, options, self.upsert_mcpserver_version_entity, progress)
+
+    def upsert_model_version_entity(self, input: UpsertModelVersionEntityInput) -> TypedCommandResult[UpsertModelVersionEntityOutcome]:
+        raw = self._transport._execute_command(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            command_name="UpsertModelVersionEntity", plan_hash=UPSERT_MODEL_VERSION_ENTITY_PLAN_HASH,
+            input=encode_record(input), attempts=self._command_attempts,
+        )
+        outcomes = {
+            "ModelVersionUpserted": UpsertModelVersionEntityModelVersionUpserted,
+        }
+        result: TypedCommandResult[UpsertModelVersionEntityOutcome] = raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        if self._track_causal_writes and result.commit_sequence is not None and result.commit_sequence > 0:
+            self._read_after_commit = result.commit_sequence if self._read_after_commit is None or result.commit_sequence > self._read_after_commit else self._read_after_commit
+        return result
+
+    def upsert_model_version_entity_batch(
+        self, inputs: Sequence[UpsertModelVersionEntityInput], options: CommandBatchOptions,
+        progress: Callable[[CommandBatchProgress], None] | None = None,
+    ) -> CommandBatchResult[UpsertModelVersionEntityOutcome]:
+        return self._transport._command_batch(inputs, options, self.upsert_model_version_entity, progress)
+
+    def upsert_registered_model_entity(self, input: UpsertRegisteredModelEntityInput) -> TypedCommandResult[UpsertRegisteredModelEntityOutcome]:
+        raw = self._transport._execute_command(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            command_name="UpsertRegisteredModelEntity", plan_hash=UPSERT_REGISTERED_MODEL_ENTITY_PLAN_HASH,
+            input=encode_record(input), attempts=self._command_attempts,
+        )
+        outcomes = {
+            "RegisteredModelUpserted": UpsertRegisteredModelEntityRegisteredModelUpserted,
+        }
+        result: TypedCommandResult[UpsertRegisteredModelEntityOutcome] = raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        if self._track_causal_writes and result.commit_sequence is not None and result.commit_sequence > 0:
+            self._read_after_commit = result.commit_sequence if self._read_after_commit is None or result.commit_sequence > self._read_after_commit else self._read_after_commit
+        return result
+
+    def upsert_registered_model_entity_batch(
+        self, inputs: Sequence[UpsertRegisteredModelEntityInput], options: CommandBatchOptions,
+        progress: Callable[[CommandBatchProgress], None] | None = None,
+    ) -> CommandBatchResult[UpsertRegisteredModelEntityOutcome]:
+        return self._transport._command_batch(inputs, options, self.upsert_registered_model_entity, progress)
+
+    def upsert_registry_webhook_entity(self, input: UpsertRegistryWebhookEntityInput) -> TypedCommandResult[UpsertRegistryWebhookEntityOutcome]:
+        raw = self._transport._execute_command(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            command_name="UpsertRegistryWebhookEntity", plan_hash=UPSERT_REGISTRY_WEBHOOK_ENTITY_PLAN_HASH,
+            input=encode_record(input), attempts=self._command_attempts,
+        )
+        outcomes = {
+            "RegistryWebhookUpserted": UpsertRegistryWebhookEntityRegistryWebhookUpserted,
+        }
+        result: TypedCommandResult[UpsertRegistryWebhookEntityOutcome] = raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        if self._track_causal_writes and result.commit_sequence is not None and result.commit_sequence > 0:
+            self._read_after_commit = result.commit_sequence if self._read_after_commit is None or result.commit_sequence > self._read_after_commit else self._read_after_commit
+        return result
+
+    def upsert_registry_webhook_entity_batch(
+        self, inputs: Sequence[UpsertRegistryWebhookEntityInput], options: CommandBatchOptions,
+        progress: Callable[[CommandBatchProgress], None] | None = None,
+    ) -> CommandBatchResult[UpsertRegistryWebhookEntityOutcome]:
+        return self._transport._command_batch(inputs, options, self.upsert_registry_webhook_entity, progress)
+
     def upsert_run_lineage(self, input: UpsertRunLineageInput) -> TypedCommandResult[UpsertRunLineageOutcome]:
         raw = self._transport._execute_command(
             contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
@@ -4702,6 +8674,41 @@ class AsyncRiffDBMLflowClient:
             cursor = page.next_cursor
         return pages
 
+    async def batch_get_trace_assessments_all(self, parameters: BatchGetTraceAssessmentsParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> TypedQueryResult[BatchGetTraceAssessmentsFound]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if options.cursor is not None or parameters.after is not None:
+            raise ValueError("batch_get_trace_assessments_all does not accept an initial cursor")
+        items = tuple(dict.fromkeys(parameters.trace_ids))
+        if not items:
+            raise ValueError("trace_ids must contain at least 1 item")
+        pinned_head = options.read_after_commit if options.read_after_commit is not None else self._read_after_commit
+        highest_head = 0
+        merged: list[BatchGetTraceAssessmentsFoundAssessments] = []
+        latest_page: TypedQueryResult[BatchGetTraceAssessmentsResult] | None = None
+        pages_remaining = max_pages
+        for offset in range(0, len(items), BATCH_GET_TRACE_ASSESSMENTS_TRACE_IDS_MAX_ITEMS):
+            chunk = items[offset:offset + BATCH_GET_TRACE_ASSESSMENTS_TRACE_IDS_MAX_ITEMS]
+            chunk_cursor: str | None = None
+            while True:
+                if pages_remaining < 1:
+                    raise ValueError("batch_get_trace_assessments_all exceeded max_pages (1..=1024)")
+                pages_remaining -= 1
+                chunk_parameters = BatchGetTraceAssessmentsParams(experiment_id=parameters.experiment_id, trace_ids=chunk, limit=parameters.limit, after=None)
+                page = await self.batch_get_trace_assessments(chunk_parameters, QueryOptions(cursor=chunk_cursor, read_after_commit=pinned_head, consistency=options.consistency))
+                found = page.value.unwrap_found()
+                merged.extend(found.assessments)
+                latest_page = page
+                if page.application_head > highest_head:
+                    highest_head = page.application_head
+                if pinned_head is None or page.application_head > pinned_head:
+                    pinned_head = page.application_head
+                if not page.next_cursor:
+                    break
+                chunk_cursor = page.next_cursor
+        assert latest_page is not None
+        return TypedQueryResult(identity=latest_page.identity, value=BatchGetTraceAssessmentsFound(assessments=tuple(merged)), application_head=highest_head, next_cursor=None)
+
     async def batch_get_trace_spans(self, parameters: BatchGetTraceSpansParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[BatchGetTraceSpansResult]:
         if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 500):
             raise ValueError("limit must be an integer from 1 through 500")
@@ -4744,6 +8751,41 @@ class AsyncRiffDBMLflowClient:
                 break
             cursor = page.next_cursor
         return pages
+
+    async def batch_get_trace_spans_all(self, parameters: BatchGetTraceSpansParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> TypedQueryResult[BatchGetTraceSpansFound]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if options.cursor is not None or parameters.after is not None:
+            raise ValueError("batch_get_trace_spans_all does not accept an initial cursor")
+        items = tuple(dict.fromkeys(parameters.trace_ids))
+        if not items:
+            raise ValueError("trace_ids must contain at least 1 item")
+        pinned_head = options.read_after_commit if options.read_after_commit is not None else self._read_after_commit
+        highest_head = 0
+        merged: list[BatchGetTraceSpansFoundSpans] = []
+        latest_page: TypedQueryResult[BatchGetTraceSpansResult] | None = None
+        pages_remaining = max_pages
+        for offset in range(0, len(items), BATCH_GET_TRACE_SPANS_TRACE_IDS_MAX_ITEMS):
+            chunk = items[offset:offset + BATCH_GET_TRACE_SPANS_TRACE_IDS_MAX_ITEMS]
+            chunk_cursor: str | None = None
+            while True:
+                if pages_remaining < 1:
+                    raise ValueError("batch_get_trace_spans_all exceeded max_pages (1..=1024)")
+                pages_remaining -= 1
+                chunk_parameters = BatchGetTraceSpansParams(experiment_id=parameters.experiment_id, trace_ids=chunk, limit=parameters.limit, after=None)
+                page = await self.batch_get_trace_spans(chunk_parameters, QueryOptions(cursor=chunk_cursor, read_after_commit=pinned_head, consistency=options.consistency))
+                found = page.value.unwrap_found()
+                merged.extend(found.spans)
+                latest_page = page
+                if page.application_head > highest_head:
+                    highest_head = page.application_head
+                if pinned_head is None or page.application_head > pinned_head:
+                    pinned_head = page.application_head
+                if not page.next_cursor:
+                    break
+                chunk_cursor = page.next_cursor
+        assert latest_page is not None
+        return TypedQueryResult(identity=latest_page.identity, value=BatchGetTraceSpansFound(spans=tuple(merged)), application_head=highest_head, next_cursor=None)
 
     async def batch_get_traces(self, parameters: BatchGetTracesParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[BatchGetTracesResult]:
         if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 50):
@@ -4842,6 +8884,60 @@ class AsyncRiffDBMLflowClient:
     async def get_logged_model_after_commit(self, parameters: GetLoggedModelParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetLoggedModelResult]:
         return await self.get_logged_model(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
 
+    async def get_mcpaccess_endpoint(self, parameters: GetMCPAccessEndpointParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetMCPAccessEndpointResult]:
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = await self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="GetMCPAccessEndpoint", plan_hash=GET_MCPACCESS_ENDPOINT_QUERY_PLAN_HASH,
+            parameters=encode_record(parameters), options=options,
+        )
+        outcomes = {
+            "Found": GetMCPAccessEndpointFound,
+            "Missing": GetMCPAccessEndpointMissing,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    async def get_mcpaccess_endpoint_after_commit(self, parameters: GetMCPAccessEndpointParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetMCPAccessEndpointResult]:
+        return await self.get_mcpaccess_endpoint(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    async def get_mcpserver(self, parameters: GetMCPServerParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetMCPServerResult]:
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = await self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="GetMCPServer", plan_hash=GET_MCPSERVER_QUERY_PLAN_HASH,
+            parameters=encode_record(parameters), options=options,
+        )
+        outcomes = {
+            "Found": GetMCPServerFound,
+            "Missing": GetMCPServerMissing,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    async def get_mcpserver_after_commit(self, parameters: GetMCPServerParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetMCPServerResult]:
+        return await self.get_mcpserver(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    async def get_mcpserver_version(self, parameters: GetMCPServerVersionParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetMCPServerVersionResult]:
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = await self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="GetMCPServerVersion", plan_hash=GET_MCPSERVER_VERSION_QUERY_PLAN_HASH,
+            parameters=encode_record(parameters), options=options,
+        )
+        outcomes = {
+            "Found": GetMCPServerVersionFound,
+            "Missing": GetMCPServerVersionMissing,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    async def get_mcpserver_version_after_commit(self, parameters: GetMCPServerVersionParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetMCPServerVersionResult]:
+        return await self.get_mcpserver_version(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
     async def get_metric_history(self, parameters: GetMetricHistoryParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetMetricHistoryResult]:
         if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 499):
             raise ValueError("limit must be an integer from 1 through 499")
@@ -4884,6 +8980,60 @@ class AsyncRiffDBMLflowClient:
                 break
             cursor = page.next_cursor
         return pages
+
+    async def get_model_version(self, parameters: GetModelVersionParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetModelVersionResult]:
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = await self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="GetModelVersion", plan_hash=GET_MODEL_VERSION_QUERY_PLAN_HASH,
+            parameters=encode_record(parameters), options=options,
+        )
+        outcomes = {
+            "Found": GetModelVersionFound,
+            "Missing": GetModelVersionMissing,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    async def get_model_version_after_commit(self, parameters: GetModelVersionParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetModelVersionResult]:
+        return await self.get_model_version(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    async def get_registered_model(self, parameters: GetRegisteredModelParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetRegisteredModelResult]:
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = await self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="GetRegisteredModel", plan_hash=GET_REGISTERED_MODEL_QUERY_PLAN_HASH,
+            parameters=encode_record(parameters), options=options,
+        )
+        outcomes = {
+            "Found": GetRegisteredModelFound,
+            "Missing": GetRegisteredModelMissing,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    async def get_registered_model_after_commit(self, parameters: GetRegisteredModelParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetRegisteredModelResult]:
+        return await self.get_registered_model(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    async def get_registry_webhook(self, parameters: GetRegistryWebhookParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetRegistryWebhookResult]:
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = await self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="GetRegistryWebhook", plan_hash=GET_REGISTRY_WEBHOOK_QUERY_PLAN_HASH,
+            parameters=encode_record(parameters), options=options,
+        )
+        outcomes = {
+            "Found": GetRegistryWebhookFound,
+            "Missing": GetRegistryWebhookMissing,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    async def get_registry_webhook_after_commit(self, parameters: GetRegistryWebhookParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetRegistryWebhookResult]:
+        return await self.get_registry_webhook(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
 
     async def get_run(self, parameters: GetRunParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetRunResult]:
         if options.read_after_commit is None and self._read_after_commit is not None:
@@ -4938,6 +9088,178 @@ class AsyncRiffDBMLflowClient:
 
     async def get_trace_after_commit(self, parameters: GetTraceParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetTraceResult]:
         return await self.get_trace(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    async def list_mcpaccess_endpoints_by_server(self, parameters: ListMCPAccessEndpointsByServerParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[ListMCPAccessEndpointsByServerResult]:
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 50):
+            raise ValueError("limit must be an integer from 1 through 50")
+        encoded_parameters = encode_record(parameters)
+        generated_cursor = parameters.after
+        if generated_cursor is not None:
+            if options.cursor is not None:
+                raise ValueError("generated cursor conflicts with query options")
+            options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
+        encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = await self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="ListMCPAccessEndpointsByServer", plan_hash=LIST_MCPACCESS_ENDPOINTS_BY_SERVER_QUERY_PLAN_HASH,
+            parameters=encoded_parameters, options=options,
+        )
+        outcomes = {
+            "Found": ListMCPAccessEndpointsByServerFound,
+            "IntegrityFailure": ListMCPAccessEndpointsByServerIntegrityFailure,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    async def list_mcpaccess_endpoints_by_server_after_commit(self, parameters: ListMCPAccessEndpointsByServerParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[ListMCPAccessEndpointsByServerResult]:
+        return await self.list_mcpaccess_endpoints_by_server(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    async def list_mcpaccess_endpoints_by_server_pages(self, parameters: ListMCPAccessEndpointsByServerParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[ListMCPAccessEndpointsByServerResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[ListMCPAccessEndpointsByServerResult]] = []
+        for _ in range(max_pages):
+            page_parameters = ListMCPAccessEndpointsByServerParams(scope=parameters.scope, server_name=parameters.server_name, limit=parameters.limit, after=None)
+            page = await self.list_mcpaccess_endpoints_by_server(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
+
+    async def list_mcpserver_versions_by_server(self, parameters: ListMCPServerVersionsByServerParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[ListMCPServerVersionsByServerResult]:
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 10):
+            raise ValueError("limit must be an integer from 1 through 10")
+        encoded_parameters = encode_record(parameters)
+        generated_cursor = parameters.after
+        if generated_cursor is not None:
+            if options.cursor is not None:
+                raise ValueError("generated cursor conflicts with query options")
+            options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
+        encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = await self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="ListMCPServerVersionsByServer", plan_hash=LIST_MCPSERVER_VERSIONS_BY_SERVER_QUERY_PLAN_HASH,
+            parameters=encoded_parameters, options=options,
+        )
+        outcomes = {
+            "Found": ListMCPServerVersionsByServerFound,
+            "IntegrityFailure": ListMCPServerVersionsByServerIntegrityFailure,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    async def list_mcpserver_versions_by_server_after_commit(self, parameters: ListMCPServerVersionsByServerParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[ListMCPServerVersionsByServerResult]:
+        return await self.list_mcpserver_versions_by_server(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    async def list_mcpserver_versions_by_server_pages(self, parameters: ListMCPServerVersionsByServerParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[ListMCPServerVersionsByServerResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[ListMCPServerVersionsByServerResult]] = []
+        for _ in range(max_pages):
+            page_parameters = ListMCPServerVersionsByServerParams(scope=parameters.scope, name=parameters.name, limit=parameters.limit, after=None)
+            page = await self.list_mcpserver_versions_by_server(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
+
+    async def list_model_versions_by_model(self, parameters: ListModelVersionsByModelParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[ListModelVersionsByModelResult]:
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 25):
+            raise ValueError("limit must be an integer from 1 through 25")
+        encoded_parameters = encode_record(parameters)
+        generated_cursor = parameters.after
+        if generated_cursor is not None:
+            if options.cursor is not None:
+                raise ValueError("generated cursor conflicts with query options")
+            options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
+        encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = await self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="ListModelVersionsByModel", plan_hash=LIST_MODEL_VERSIONS_BY_MODEL_QUERY_PLAN_HASH,
+            parameters=encoded_parameters, options=options,
+        )
+        outcomes = {
+            "Found": ListModelVersionsByModelFound,
+            "IntegrityFailure": ListModelVersionsByModelIntegrityFailure,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    async def list_model_versions_by_model_after_commit(self, parameters: ListModelVersionsByModelParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[ListModelVersionsByModelResult]:
+        return await self.list_model_versions_by_model(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    async def list_model_versions_by_model_pages(self, parameters: ListModelVersionsByModelParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[ListModelVersionsByModelResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[ListModelVersionsByModelResult]] = []
+        for _ in range(max_pages):
+            page_parameters = ListModelVersionsByModelParams(scope=parameters.scope, name=parameters.name, limit=parameters.limit, after=None)
+            page = await self.list_model_versions_by_model(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
+
+    async def list_registry_webhooks(self, parameters: ListRegistryWebhooksParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[ListRegistryWebhooksResult]:
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 50):
+            raise ValueError("limit must be an integer from 1 through 50")
+        encoded_parameters = encode_record(parameters)
+        generated_cursor = parameters.after
+        if generated_cursor is not None:
+            if options.cursor is not None:
+                raise ValueError("generated cursor conflicts with query options")
+            options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
+        encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = await self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="ListRegistryWebhooks", plan_hash=LIST_REGISTRY_WEBHOOKS_QUERY_PLAN_HASH,
+            parameters=encoded_parameters, options=options,
+        )
+        outcomes = {
+            "Found": ListRegistryWebhooksFound,
+            "IntegrityFailure": ListRegistryWebhooksIntegrityFailure,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    async def list_registry_webhooks_after_commit(self, parameters: ListRegistryWebhooksParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[ListRegistryWebhooksResult]:
+        return await self.list_registry_webhooks(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    async def list_registry_webhooks_pages(self, parameters: ListRegistryWebhooksParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[ListRegistryWebhooksResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[ListRegistryWebhooksResult]] = []
+        for _ in range(max_pages):
+            page_parameters = ListRegistryWebhooksParams(scope=parameters.scope, limit=parameters.limit, after=None)
+            page = await self.list_registry_webhooks(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
 
     async def query_assessment_analytics(self, parameters: QueryAssessmentAnalyticsParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[QueryAssessmentAnalyticsResult]:
         if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 500):
@@ -5172,6 +9494,92 @@ class AsyncRiffDBMLflowClient:
             cursor = page.next_cursor
         return pages
 
+    async def search_experiments_by_name_and_tag(self, parameters: SearchExperimentsByNameAndTagParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByNameAndTagResult]:
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
+            raise ValueError("limit must be an integer from 1 through 4")
+        encoded_parameters = encode_record(parameters)
+        generated_cursor = parameters.after
+        if generated_cursor is not None:
+            if options.cursor is not None:
+                raise ValueError("generated cursor conflicts with query options")
+            options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
+        encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = await self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="SearchExperimentsByNameAndTag", plan_hash=SEARCH_EXPERIMENTS_BY_NAME_AND_TAG_QUERY_PLAN_HASH,
+            parameters=encoded_parameters, options=options,
+        )
+        outcomes = {
+            "Found": SearchExperimentsByNameAndTagFound,
+            "IntegrityFailure": SearchExperimentsByNameAndTagIntegrityFailure,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    async def search_experiments_by_name_and_tag_after_commit(self, parameters: SearchExperimentsByNameAndTagParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByNameAndTagResult]:
+        return await self.search_experiments_by_name_and_tag(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    async def search_experiments_by_name_and_tag_pages(self, parameters: SearchExperimentsByNameAndTagParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[SearchExperimentsByNameAndTagResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[SearchExperimentsByNameAndTagResult]] = []
+        for _ in range(max_pages):
+            page_parameters = SearchExperimentsByNameAndTagParams(scope=parameters.scope, name_digest=parameters.name_digest, tag_key=parameters.tag_key, value_digest=parameters.value_digest, lifecycle_stages=parameters.lifecycle_stages, order=parameters.order, limit=parameters.limit, after=None)
+            page = await self.search_experiments_by_name_and_tag(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
+
+    async def search_experiments_by_name_and_tag_is_null(self, parameters: SearchExperimentsByNameAndTagIsNullParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByNameAndTagIsNullResult]:
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
+            raise ValueError("limit must be an integer from 1 through 4")
+        encoded_parameters = encode_record(parameters)
+        generated_cursor = parameters.after
+        if generated_cursor is not None:
+            if options.cursor is not None:
+                raise ValueError("generated cursor conflicts with query options")
+            options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
+        encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = await self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="SearchExperimentsByNameAndTagIsNull", plan_hash=SEARCH_EXPERIMENTS_BY_NAME_AND_TAG_IS_NULL_QUERY_PLAN_HASH,
+            parameters=encoded_parameters, options=options,
+        )
+        outcomes = {
+            "Found": SearchExperimentsByNameAndTagIsNullFound,
+            "IntegrityFailure": SearchExperimentsByNameAndTagIsNullIntegrityFailure,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    async def search_experiments_by_name_and_tag_is_null_after_commit(self, parameters: SearchExperimentsByNameAndTagIsNullParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByNameAndTagIsNullResult]:
+        return await self.search_experiments_by_name_and_tag_is_null(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    async def search_experiments_by_name_and_tag_is_null_pages(self, parameters: SearchExperimentsByNameAndTagIsNullParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[SearchExperimentsByNameAndTagIsNullResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[SearchExperimentsByNameAndTagIsNullResult]] = []
+        for _ in range(max_pages):
+            page_parameters = SearchExperimentsByNameAndTagIsNullParams(scope=parameters.scope, name_digest=parameters.name_digest, tag_key=parameters.tag_key, lifecycle_stages=parameters.lifecycle_stages, order=parameters.order, limit=parameters.limit, after=None)
+            page = await self.search_experiments_by_name_and_tag_is_null(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
+
     async def search_experiments_by_name_ilike(self, parameters: SearchExperimentsByNameILikeParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByNameILikeResult]:
         if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
             raise ValueError("limit must be an integer from 1 through 4")
@@ -5209,6 +9617,178 @@ class AsyncRiffDBMLflowClient:
         for _ in range(max_pages):
             page_parameters = SearchExperimentsByNameILikeParams(scope=parameters.scope, pattern=parameters.pattern, lifecycle_stages=parameters.lifecycle_stages, order=parameters.order, limit=parameters.limit, after=None)
             page = await self.search_experiments_by_name_ilike(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
+
+    async def search_experiments_by_name_ilike_and_gateway_is_null(self, parameters: SearchExperimentsByNameILikeAndGatewayIsNullParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByNameILikeAndGatewayIsNullResult]:
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
+            raise ValueError("limit must be an integer from 1 through 4")
+        encoded_parameters = encode_record(parameters)
+        generated_cursor = parameters.after
+        if generated_cursor is not None:
+            if options.cursor is not None:
+                raise ValueError("generated cursor conflicts with query options")
+            options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
+        encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = await self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="SearchExperimentsByNameILikeAndGatewayIsNull", plan_hash=SEARCH_EXPERIMENTS_BY_NAME_ILIKE_AND_GATEWAY_IS_NULL_QUERY_PLAN_HASH,
+            parameters=encoded_parameters, options=options,
+        )
+        outcomes = {
+            "Found": SearchExperimentsByNameILikeAndGatewayIsNullFound,
+            "IntegrityFailure": SearchExperimentsByNameILikeAndGatewayIsNullIntegrityFailure,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    async def search_experiments_by_name_ilike_and_gateway_is_null_after_commit(self, parameters: SearchExperimentsByNameILikeAndGatewayIsNullParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByNameILikeAndGatewayIsNullResult]:
+        return await self.search_experiments_by_name_ilike_and_gateway_is_null(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    async def search_experiments_by_name_ilike_and_gateway_is_null_pages(self, parameters: SearchExperimentsByNameILikeAndGatewayIsNullParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[SearchExperimentsByNameILikeAndGatewayIsNullResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[SearchExperimentsByNameILikeAndGatewayIsNullResult]] = []
+        for _ in range(max_pages):
+            page_parameters = SearchExperimentsByNameILikeAndGatewayIsNullParams(scope=parameters.scope, pattern=parameters.pattern, lifecycle_stages=parameters.lifecycle_stages, order=parameters.order, limit=parameters.limit, after=None)
+            page = await self.search_experiments_by_name_ilike_and_gateway_is_null(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
+
+    async def search_experiments_by_name_ilike_and_tag(self, parameters: SearchExperimentsByNameILikeAndTagParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByNameILikeAndTagResult]:
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
+            raise ValueError("limit must be an integer from 1 through 4")
+        encoded_parameters = encode_record(parameters)
+        generated_cursor = parameters.after
+        if generated_cursor is not None:
+            if options.cursor is not None:
+                raise ValueError("generated cursor conflicts with query options")
+            options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
+        encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = await self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="SearchExperimentsByNameILikeAndTag", plan_hash=SEARCH_EXPERIMENTS_BY_NAME_ILIKE_AND_TAG_QUERY_PLAN_HASH,
+            parameters=encoded_parameters, options=options,
+        )
+        outcomes = {
+            "Found": SearchExperimentsByNameILikeAndTagFound,
+            "IntegrityFailure": SearchExperimentsByNameILikeAndTagIntegrityFailure,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    async def search_experiments_by_name_ilike_and_tag_after_commit(self, parameters: SearchExperimentsByNameILikeAndTagParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByNameILikeAndTagResult]:
+        return await self.search_experiments_by_name_ilike_and_tag(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    async def search_experiments_by_name_ilike_and_tag_pages(self, parameters: SearchExperimentsByNameILikeAndTagParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[SearchExperimentsByNameILikeAndTagResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[SearchExperimentsByNameILikeAndTagResult]] = []
+        for _ in range(max_pages):
+            page_parameters = SearchExperimentsByNameILikeAndTagParams(scope=parameters.scope, pattern=parameters.pattern, tag_key=parameters.tag_key, value_digest=parameters.value_digest, lifecycle_stages=parameters.lifecycle_stages, order=parameters.order, limit=parameters.limit, after=None)
+            page = await self.search_experiments_by_name_ilike_and_tag(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
+
+    async def search_experiments_by_name_ilike_and_tag_and_gateway_is_null(self, parameters: SearchExperimentsByNameILikeAndTagAndGatewayIsNullParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByNameILikeAndTagAndGatewayIsNullResult]:
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
+            raise ValueError("limit must be an integer from 1 through 4")
+        encoded_parameters = encode_record(parameters)
+        generated_cursor = parameters.after
+        if generated_cursor is not None:
+            if options.cursor is not None:
+                raise ValueError("generated cursor conflicts with query options")
+            options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
+        encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = await self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="SearchExperimentsByNameILikeAndTagAndGatewayIsNull", plan_hash=SEARCH_EXPERIMENTS_BY_NAME_ILIKE_AND_TAG_AND_GATEWAY_IS_NULL_QUERY_PLAN_HASH,
+            parameters=encoded_parameters, options=options,
+        )
+        outcomes = {
+            "Found": SearchExperimentsByNameILikeAndTagAndGatewayIsNullFound,
+            "IntegrityFailure": SearchExperimentsByNameILikeAndTagAndGatewayIsNullIntegrityFailure,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    async def search_experiments_by_name_ilike_and_tag_and_gateway_is_null_after_commit(self, parameters: SearchExperimentsByNameILikeAndTagAndGatewayIsNullParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByNameILikeAndTagAndGatewayIsNullResult]:
+        return await self.search_experiments_by_name_ilike_and_tag_and_gateway_is_null(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    async def search_experiments_by_name_ilike_and_tag_and_gateway_is_null_pages(self, parameters: SearchExperimentsByNameILikeAndTagAndGatewayIsNullParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[SearchExperimentsByNameILikeAndTagAndGatewayIsNullResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[SearchExperimentsByNameILikeAndTagAndGatewayIsNullResult]] = []
+        for _ in range(max_pages):
+            page_parameters = SearchExperimentsByNameILikeAndTagAndGatewayIsNullParams(scope=parameters.scope, pattern=parameters.pattern, tag_key=parameters.tag_key, value_digest=parameters.value_digest, lifecycle_stages=parameters.lifecycle_stages, order=parameters.order, limit=parameters.limit, after=None)
+            page = await self.search_experiments_by_name_ilike_and_tag_and_gateway_is_null(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
+
+    async def search_experiments_by_name_ilike_and_tag_is_not_null(self, parameters: SearchExperimentsByNameILikeAndTagIsNotNullParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByNameILikeAndTagIsNotNullResult]:
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
+            raise ValueError("limit must be an integer from 1 through 4")
+        encoded_parameters = encode_record(parameters)
+        generated_cursor = parameters.after
+        if generated_cursor is not None:
+            if options.cursor is not None:
+                raise ValueError("generated cursor conflicts with query options")
+            options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
+        encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = await self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="SearchExperimentsByNameILikeAndTagIsNotNull", plan_hash=SEARCH_EXPERIMENTS_BY_NAME_ILIKE_AND_TAG_IS_NOT_NULL_QUERY_PLAN_HASH,
+            parameters=encoded_parameters, options=options,
+        )
+        outcomes = {
+            "Found": SearchExperimentsByNameILikeAndTagIsNotNullFound,
+            "IntegrityFailure": SearchExperimentsByNameILikeAndTagIsNotNullIntegrityFailure,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    async def search_experiments_by_name_ilike_and_tag_is_not_null_after_commit(self, parameters: SearchExperimentsByNameILikeAndTagIsNotNullParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByNameILikeAndTagIsNotNullResult]:
+        return await self.search_experiments_by_name_ilike_and_tag_is_not_null(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    async def search_experiments_by_name_ilike_and_tag_is_not_null_pages(self, parameters: SearchExperimentsByNameILikeAndTagIsNotNullParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[SearchExperimentsByNameILikeAndTagIsNotNullResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[SearchExperimentsByNameILikeAndTagIsNotNullResult]] = []
+        for _ in range(max_pages):
+            page_parameters = SearchExperimentsByNameILikeAndTagIsNotNullParams(scope=parameters.scope, pattern=parameters.pattern, tag_key=parameters.tag_key, lifecycle_stages=parameters.lifecycle_stages, order=parameters.order, limit=parameters.limit, after=None)
+            page = await self.search_experiments_by_name_ilike_and_tag_is_not_null(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
             pages.append(page)
             if not page.next_cursor:
                 break
@@ -5258,6 +9838,178 @@ class AsyncRiffDBMLflowClient:
             cursor = page.next_cursor
         return pages
 
+    async def search_experiments_by_name_like_and_gateway_is_null(self, parameters: SearchExperimentsByNameLikeAndGatewayIsNullParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByNameLikeAndGatewayIsNullResult]:
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
+            raise ValueError("limit must be an integer from 1 through 4")
+        encoded_parameters = encode_record(parameters)
+        generated_cursor = parameters.after
+        if generated_cursor is not None:
+            if options.cursor is not None:
+                raise ValueError("generated cursor conflicts with query options")
+            options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
+        encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = await self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="SearchExperimentsByNameLikeAndGatewayIsNull", plan_hash=SEARCH_EXPERIMENTS_BY_NAME_LIKE_AND_GATEWAY_IS_NULL_QUERY_PLAN_HASH,
+            parameters=encoded_parameters, options=options,
+        )
+        outcomes = {
+            "Found": SearchExperimentsByNameLikeAndGatewayIsNullFound,
+            "IntegrityFailure": SearchExperimentsByNameLikeAndGatewayIsNullIntegrityFailure,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    async def search_experiments_by_name_like_and_gateway_is_null_after_commit(self, parameters: SearchExperimentsByNameLikeAndGatewayIsNullParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByNameLikeAndGatewayIsNullResult]:
+        return await self.search_experiments_by_name_like_and_gateway_is_null(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    async def search_experiments_by_name_like_and_gateway_is_null_pages(self, parameters: SearchExperimentsByNameLikeAndGatewayIsNullParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[SearchExperimentsByNameLikeAndGatewayIsNullResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[SearchExperimentsByNameLikeAndGatewayIsNullResult]] = []
+        for _ in range(max_pages):
+            page_parameters = SearchExperimentsByNameLikeAndGatewayIsNullParams(scope=parameters.scope, pattern=parameters.pattern, lifecycle_stages=parameters.lifecycle_stages, order=parameters.order, limit=parameters.limit, after=None)
+            page = await self.search_experiments_by_name_like_and_gateway_is_null(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
+
+    async def search_experiments_by_name_like_and_tag(self, parameters: SearchExperimentsByNameLikeAndTagParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByNameLikeAndTagResult]:
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
+            raise ValueError("limit must be an integer from 1 through 4")
+        encoded_parameters = encode_record(parameters)
+        generated_cursor = parameters.after
+        if generated_cursor is not None:
+            if options.cursor is not None:
+                raise ValueError("generated cursor conflicts with query options")
+            options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
+        encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = await self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="SearchExperimentsByNameLikeAndTag", plan_hash=SEARCH_EXPERIMENTS_BY_NAME_LIKE_AND_TAG_QUERY_PLAN_HASH,
+            parameters=encoded_parameters, options=options,
+        )
+        outcomes = {
+            "Found": SearchExperimentsByNameLikeAndTagFound,
+            "IntegrityFailure": SearchExperimentsByNameLikeAndTagIntegrityFailure,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    async def search_experiments_by_name_like_and_tag_after_commit(self, parameters: SearchExperimentsByNameLikeAndTagParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByNameLikeAndTagResult]:
+        return await self.search_experiments_by_name_like_and_tag(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    async def search_experiments_by_name_like_and_tag_pages(self, parameters: SearchExperimentsByNameLikeAndTagParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[SearchExperimentsByNameLikeAndTagResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[SearchExperimentsByNameLikeAndTagResult]] = []
+        for _ in range(max_pages):
+            page_parameters = SearchExperimentsByNameLikeAndTagParams(scope=parameters.scope, pattern=parameters.pattern, tag_key=parameters.tag_key, value_digest=parameters.value_digest, lifecycle_stages=parameters.lifecycle_stages, order=parameters.order, limit=parameters.limit, after=None)
+            page = await self.search_experiments_by_name_like_and_tag(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
+
+    async def search_experiments_by_name_not_equal(self, parameters: SearchExperimentsByNameNotEqualParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByNameNotEqualResult]:
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
+            raise ValueError("limit must be an integer from 1 through 4")
+        encoded_parameters = encode_record(parameters)
+        generated_cursor = parameters.after
+        if generated_cursor is not None:
+            if options.cursor is not None:
+                raise ValueError("generated cursor conflicts with query options")
+            options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
+        encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = await self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="SearchExperimentsByNameNotEqual", plan_hash=SEARCH_EXPERIMENTS_BY_NAME_NOT_EQUAL_QUERY_PLAN_HASH,
+            parameters=encoded_parameters, options=options,
+        )
+        outcomes = {
+            "Found": SearchExperimentsByNameNotEqualFound,
+            "IntegrityFailure": SearchExperimentsByNameNotEqualIntegrityFailure,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    async def search_experiments_by_name_not_equal_after_commit(self, parameters: SearchExperimentsByNameNotEqualParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByNameNotEqualResult]:
+        return await self.search_experiments_by_name_not_equal(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    async def search_experiments_by_name_not_equal_pages(self, parameters: SearchExperimentsByNameNotEqualParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[SearchExperimentsByNameNotEqualResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[SearchExperimentsByNameNotEqualResult]] = []
+        for _ in range(max_pages):
+            page_parameters = SearchExperimentsByNameNotEqualParams(scope=parameters.scope, name_digest=parameters.name_digest, lifecycle_stages=parameters.lifecycle_stages, order=parameters.order, limit=parameters.limit, after=None)
+            page = await self.search_experiments_by_name_not_equal(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
+
+    async def search_experiments_by_name_not_equal_and_tag_is_null(self, parameters: SearchExperimentsByNameNotEqualAndTagIsNullParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByNameNotEqualAndTagIsNullResult]:
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
+            raise ValueError("limit must be an integer from 1 through 4")
+        encoded_parameters = encode_record(parameters)
+        generated_cursor = parameters.after
+        if generated_cursor is not None:
+            if options.cursor is not None:
+                raise ValueError("generated cursor conflicts with query options")
+            options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
+        encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = await self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="SearchExperimentsByNameNotEqualAndTagIsNull", plan_hash=SEARCH_EXPERIMENTS_BY_NAME_NOT_EQUAL_AND_TAG_IS_NULL_QUERY_PLAN_HASH,
+            parameters=encoded_parameters, options=options,
+        )
+        outcomes = {
+            "Found": SearchExperimentsByNameNotEqualAndTagIsNullFound,
+            "IntegrityFailure": SearchExperimentsByNameNotEqualAndTagIsNullIntegrityFailure,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    async def search_experiments_by_name_not_equal_and_tag_is_null_after_commit(self, parameters: SearchExperimentsByNameNotEqualAndTagIsNullParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByNameNotEqualAndTagIsNullResult]:
+        return await self.search_experiments_by_name_not_equal_and_tag_is_null(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    async def search_experiments_by_name_not_equal_and_tag_is_null_pages(self, parameters: SearchExperimentsByNameNotEqualAndTagIsNullParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[SearchExperimentsByNameNotEqualAndTagIsNullResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[SearchExperimentsByNameNotEqualAndTagIsNullResult]] = []
+        for _ in range(max_pages):
+            page_parameters = SearchExperimentsByNameNotEqualAndTagIsNullParams(scope=parameters.scope, name_digest=parameters.name_digest, tag_key=parameters.tag_key, lifecycle_stages=parameters.lifecycle_stages, order=parameters.order, limit=parameters.limit, after=None)
+            page = await self.search_experiments_by_name_not_equal_and_tag_is_null(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
+
     async def search_experiments_by_tag(self, parameters: SearchExperimentsByTagParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByTagResult]:
         if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
             raise ValueError("limit must be an integer from 1 through 4")
@@ -5295,6 +10047,92 @@ class AsyncRiffDBMLflowClient:
         for _ in range(max_pages):
             page_parameters = SearchExperimentsByTagParams(scope=parameters.scope, tag_key=parameters.tag_key, value_digest=parameters.value_digest, lifecycle_stages=parameters.lifecycle_stages, order=parameters.order, limit=parameters.limit, after=None)
             page = await self.search_experiments_by_tag(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
+
+    async def search_experiments_by_tag_and_gateway_is_null(self, parameters: SearchExperimentsByTagAndGatewayIsNullParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByTagAndGatewayIsNullResult]:
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
+            raise ValueError("limit must be an integer from 1 through 4")
+        encoded_parameters = encode_record(parameters)
+        generated_cursor = parameters.after
+        if generated_cursor is not None:
+            if options.cursor is not None:
+                raise ValueError("generated cursor conflicts with query options")
+            options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
+        encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = await self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="SearchExperimentsByTagAndGatewayIsNull", plan_hash=SEARCH_EXPERIMENTS_BY_TAG_AND_GATEWAY_IS_NULL_QUERY_PLAN_HASH,
+            parameters=encoded_parameters, options=options,
+        )
+        outcomes = {
+            "Found": SearchExperimentsByTagAndGatewayIsNullFound,
+            "IntegrityFailure": SearchExperimentsByTagAndGatewayIsNullIntegrityFailure,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    async def search_experiments_by_tag_and_gateway_is_null_after_commit(self, parameters: SearchExperimentsByTagAndGatewayIsNullParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByTagAndGatewayIsNullResult]:
+        return await self.search_experiments_by_tag_and_gateway_is_null(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    async def search_experiments_by_tag_and_gateway_is_null_pages(self, parameters: SearchExperimentsByTagAndGatewayIsNullParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[SearchExperimentsByTagAndGatewayIsNullResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[SearchExperimentsByTagAndGatewayIsNullResult]] = []
+        for _ in range(max_pages):
+            page_parameters = SearchExperimentsByTagAndGatewayIsNullParams(scope=parameters.scope, tag_key=parameters.tag_key, value_digest=parameters.value_digest, lifecycle_stages=parameters.lifecycle_stages, order=parameters.order, limit=parameters.limit, after=None)
+            page = await self.search_experiments_by_tag_and_gateway_is_null(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
+
+    async def search_experiments_by_tag_and_tag_is_not_null(self, parameters: SearchExperimentsByTagAndTagIsNotNullParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByTagAndTagIsNotNullResult]:
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
+            raise ValueError("limit must be an integer from 1 through 4")
+        encoded_parameters = encode_record(parameters)
+        generated_cursor = parameters.after
+        if generated_cursor is not None:
+            if options.cursor is not None:
+                raise ValueError("generated cursor conflicts with query options")
+            options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
+        encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = await self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="SearchExperimentsByTagAndTagIsNotNull", plan_hash=SEARCH_EXPERIMENTS_BY_TAG_AND_TAG_IS_NOT_NULL_QUERY_PLAN_HASH,
+            parameters=encoded_parameters, options=options,
+        )
+        outcomes = {
+            "Found": SearchExperimentsByTagAndTagIsNotNullFound,
+            "IntegrityFailure": SearchExperimentsByTagAndTagIsNotNullIntegrityFailure,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    async def search_experiments_by_tag_and_tag_is_not_null_after_commit(self, parameters: SearchExperimentsByTagAndTagIsNotNullParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByTagAndTagIsNotNullResult]:
+        return await self.search_experiments_by_tag_and_tag_is_not_null(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    async def search_experiments_by_tag_and_tag_is_not_null_pages(self, parameters: SearchExperimentsByTagAndTagIsNotNullParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[SearchExperimentsByTagAndTagIsNotNullResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[SearchExperimentsByTagAndTagIsNotNullResult]] = []
+        for _ in range(max_pages):
+            page_parameters = SearchExperimentsByTagAndTagIsNotNullParams(scope=parameters.scope, first_tag_key=parameters.first_tag_key, first_value_digest=parameters.first_value_digest, second_tag_key=parameters.second_tag_key, lifecycle_stages=parameters.lifecycle_stages, order=parameters.order, limit=parameters.limit, after=None)
+            page = await self.search_experiments_by_tag_and_tag_is_not_null(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
             pages.append(page)
             if not page.next_cursor:
                 break
@@ -5344,6 +10182,135 @@ class AsyncRiffDBMLflowClient:
             cursor = page.next_cursor
         return pages
 
+    async def search_experiments_by_tag_is_not_null(self, parameters: SearchExperimentsByTagIsNotNullParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByTagIsNotNullResult]:
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
+            raise ValueError("limit must be an integer from 1 through 4")
+        encoded_parameters = encode_record(parameters)
+        generated_cursor = parameters.after
+        if generated_cursor is not None:
+            if options.cursor is not None:
+                raise ValueError("generated cursor conflicts with query options")
+            options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
+        encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = await self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="SearchExperimentsByTagIsNotNull", plan_hash=SEARCH_EXPERIMENTS_BY_TAG_IS_NOT_NULL_QUERY_PLAN_HASH,
+            parameters=encoded_parameters, options=options,
+        )
+        outcomes = {
+            "Found": SearchExperimentsByTagIsNotNullFound,
+            "IntegrityFailure": SearchExperimentsByTagIsNotNullIntegrityFailure,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    async def search_experiments_by_tag_is_not_null_after_commit(self, parameters: SearchExperimentsByTagIsNotNullParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByTagIsNotNullResult]:
+        return await self.search_experiments_by_tag_is_not_null(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    async def search_experiments_by_tag_is_not_null_pages(self, parameters: SearchExperimentsByTagIsNotNullParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[SearchExperimentsByTagIsNotNullResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[SearchExperimentsByTagIsNotNullResult]] = []
+        for _ in range(max_pages):
+            page_parameters = SearchExperimentsByTagIsNotNullParams(scope=parameters.scope, tag_key=parameters.tag_key, lifecycle_stages=parameters.lifecycle_stages, order=parameters.order, limit=parameters.limit, after=None)
+            page = await self.search_experiments_by_tag_is_not_null(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
+
+    async def search_experiments_by_tag_is_not_null_and_gateway_is_null(self, parameters: SearchExperimentsByTagIsNotNullAndGatewayIsNullParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByTagIsNotNullAndGatewayIsNullResult]:
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
+            raise ValueError("limit must be an integer from 1 through 4")
+        encoded_parameters = encode_record(parameters)
+        generated_cursor = parameters.after
+        if generated_cursor is not None:
+            if options.cursor is not None:
+                raise ValueError("generated cursor conflicts with query options")
+            options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
+        encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = await self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="SearchExperimentsByTagIsNotNullAndGatewayIsNull", plan_hash=SEARCH_EXPERIMENTS_BY_TAG_IS_NOT_NULL_AND_GATEWAY_IS_NULL_QUERY_PLAN_HASH,
+            parameters=encoded_parameters, options=options,
+        )
+        outcomes = {
+            "Found": SearchExperimentsByTagIsNotNullAndGatewayIsNullFound,
+            "IntegrityFailure": SearchExperimentsByTagIsNotNullAndGatewayIsNullIntegrityFailure,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    async def search_experiments_by_tag_is_not_null_and_gateway_is_null_after_commit(self, parameters: SearchExperimentsByTagIsNotNullAndGatewayIsNullParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByTagIsNotNullAndGatewayIsNullResult]:
+        return await self.search_experiments_by_tag_is_not_null_and_gateway_is_null(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    async def search_experiments_by_tag_is_not_null_and_gateway_is_null_pages(self, parameters: SearchExperimentsByTagIsNotNullAndGatewayIsNullParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[SearchExperimentsByTagIsNotNullAndGatewayIsNullResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[SearchExperimentsByTagIsNotNullAndGatewayIsNullResult]] = []
+        for _ in range(max_pages):
+            page_parameters = SearchExperimentsByTagIsNotNullAndGatewayIsNullParams(scope=parameters.scope, tag_key=parameters.tag_key, lifecycle_stages=parameters.lifecycle_stages, order=parameters.order, limit=parameters.limit, after=None)
+            page = await self.search_experiments_by_tag_is_not_null_and_gateway_is_null(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
+
+    async def search_experiments_by_tag_is_null(self, parameters: SearchExperimentsByTagIsNullParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByTagIsNullResult]:
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
+            raise ValueError("limit must be an integer from 1 through 4")
+        encoded_parameters = encode_record(parameters)
+        generated_cursor = parameters.after
+        if generated_cursor is not None:
+            if options.cursor is not None:
+                raise ValueError("generated cursor conflicts with query options")
+            options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
+        encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = await self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="SearchExperimentsByTagIsNull", plan_hash=SEARCH_EXPERIMENTS_BY_TAG_IS_NULL_QUERY_PLAN_HASH,
+            parameters=encoded_parameters, options=options,
+        )
+        outcomes = {
+            "Found": SearchExperimentsByTagIsNullFound,
+            "IntegrityFailure": SearchExperimentsByTagIsNullIntegrityFailure,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    async def search_experiments_by_tag_is_null_after_commit(self, parameters: SearchExperimentsByTagIsNullParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByTagIsNullResult]:
+        return await self.search_experiments_by_tag_is_null(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    async def search_experiments_by_tag_is_null_pages(self, parameters: SearchExperimentsByTagIsNullParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[SearchExperimentsByTagIsNullResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[SearchExperimentsByTagIsNullResult]] = []
+        for _ in range(max_pages):
+            page_parameters = SearchExperimentsByTagIsNullParams(scope=parameters.scope, tag_key=parameters.tag_key, lifecycle_stages=parameters.lifecycle_stages, order=parameters.order, limit=parameters.limit, after=None)
+            page = await self.search_experiments_by_tag_is_null(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
+
     async def search_experiments_by_tag_like(self, parameters: SearchExperimentsByTagLikeParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByTagLikeResult]:
         if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
             raise ValueError("limit must be an integer from 1 through 4")
@@ -5381,6 +10348,92 @@ class AsyncRiffDBMLflowClient:
         for _ in range(max_pages):
             page_parameters = SearchExperimentsByTagLikeParams(scope=parameters.scope, tag_key=parameters.tag_key, pattern=parameters.pattern, lifecycle_stages=parameters.lifecycle_stages, order=parameters.order, limit=parameters.limit, after=None)
             page = await self.search_experiments_by_tag_like(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
+
+    async def search_experiments_by_tag_not_equal(self, parameters: SearchExperimentsByTagNotEqualParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByTagNotEqualResult]:
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
+            raise ValueError("limit must be an integer from 1 through 4")
+        encoded_parameters = encode_record(parameters)
+        generated_cursor = parameters.after
+        if generated_cursor is not None:
+            if options.cursor is not None:
+                raise ValueError("generated cursor conflicts with query options")
+            options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
+        encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = await self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="SearchExperimentsByTagNotEqual", plan_hash=SEARCH_EXPERIMENTS_BY_TAG_NOT_EQUAL_QUERY_PLAN_HASH,
+            parameters=encoded_parameters, options=options,
+        )
+        outcomes = {
+            "Found": SearchExperimentsByTagNotEqualFound,
+            "IntegrityFailure": SearchExperimentsByTagNotEqualIntegrityFailure,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    async def search_experiments_by_tag_not_equal_after_commit(self, parameters: SearchExperimentsByTagNotEqualParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByTagNotEqualResult]:
+        return await self.search_experiments_by_tag_not_equal(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    async def search_experiments_by_tag_not_equal_pages(self, parameters: SearchExperimentsByTagNotEqualParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[SearchExperimentsByTagNotEqualResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[SearchExperimentsByTagNotEqualResult]] = []
+        for _ in range(max_pages):
+            page_parameters = SearchExperimentsByTagNotEqualParams(scope=parameters.scope, tag_key=parameters.tag_key, value_hash=parameters.value_hash, lifecycle_stages=parameters.lifecycle_stages, order=parameters.order, limit=parameters.limit, after=None)
+            page = await self.search_experiments_by_tag_not_equal(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
+
+    async def search_experiments_by_tag_not_equal_and_gateway_is_null(self, parameters: SearchExperimentsByTagNotEqualAndGatewayIsNullParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByTagNotEqualAndGatewayIsNullResult]:
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
+            raise ValueError("limit must be an integer from 1 through 4")
+        encoded_parameters = encode_record(parameters)
+        generated_cursor = parameters.after
+        if generated_cursor is not None:
+            if options.cursor is not None:
+                raise ValueError("generated cursor conflicts with query options")
+            options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
+        encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = await self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="SearchExperimentsByTagNotEqualAndGatewayIsNull", plan_hash=SEARCH_EXPERIMENTS_BY_TAG_NOT_EQUAL_AND_GATEWAY_IS_NULL_QUERY_PLAN_HASH,
+            parameters=encoded_parameters, options=options,
+        )
+        outcomes = {
+            "Found": SearchExperimentsByTagNotEqualAndGatewayIsNullFound,
+            "IntegrityFailure": SearchExperimentsByTagNotEqualAndGatewayIsNullIntegrityFailure,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    async def search_experiments_by_tag_not_equal_and_gateway_is_null_after_commit(self, parameters: SearchExperimentsByTagNotEqualAndGatewayIsNullParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByTagNotEqualAndGatewayIsNullResult]:
+        return await self.search_experiments_by_tag_not_equal_and_gateway_is_null(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    async def search_experiments_by_tag_not_equal_and_gateway_is_null_pages(self, parameters: SearchExperimentsByTagNotEqualAndGatewayIsNullParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[SearchExperimentsByTagNotEqualAndGatewayIsNullResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[SearchExperimentsByTagNotEqualAndGatewayIsNullResult]] = []
+        for _ in range(max_pages):
+            page_parameters = SearchExperimentsByTagNotEqualAndGatewayIsNullParams(scope=parameters.scope, tag_key=parameters.tag_key, value_hash=parameters.value_hash, lifecycle_stages=parameters.lifecycle_stages, order=parameters.order, limit=parameters.limit, after=None)
+            page = await self.search_experiments_by_tag_not_equal_and_gateway_is_null(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
             pages.append(page)
             if not page.next_cursor:
                 break
@@ -5430,6 +10483,135 @@ class AsyncRiffDBMLflowClient:
             cursor = page.next_cursor
         return pages
 
+    async def search_experiments_by_two_tags_ilike(self, parameters: SearchExperimentsByTwoTagsILikeParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByTwoTagsILikeResult]:
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
+            raise ValueError("limit must be an integer from 1 through 4")
+        encoded_parameters = encode_record(parameters)
+        generated_cursor = parameters.after
+        if generated_cursor is not None:
+            if options.cursor is not None:
+                raise ValueError("generated cursor conflicts with query options")
+            options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
+        encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = await self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="SearchExperimentsByTwoTagsILike", plan_hash=SEARCH_EXPERIMENTS_BY_TWO_TAGS_ILIKE_QUERY_PLAN_HASH,
+            parameters=encoded_parameters, options=options,
+        )
+        outcomes = {
+            "Found": SearchExperimentsByTwoTagsILikeFound,
+            "IntegrityFailure": SearchExperimentsByTwoTagsILikeIntegrityFailure,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    async def search_experiments_by_two_tags_ilike_after_commit(self, parameters: SearchExperimentsByTwoTagsILikeParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByTwoTagsILikeResult]:
+        return await self.search_experiments_by_two_tags_ilike(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    async def search_experiments_by_two_tags_ilike_pages(self, parameters: SearchExperimentsByTwoTagsILikeParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[SearchExperimentsByTwoTagsILikeResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[SearchExperimentsByTwoTagsILikeResult]] = []
+        for _ in range(max_pages):
+            page_parameters = SearchExperimentsByTwoTagsILikeParams(scope=parameters.scope, first_tag_key=parameters.first_tag_key, first_pattern=parameters.first_pattern, second_tag_key=parameters.second_tag_key, second_value_digest=parameters.second_value_digest, lifecycle_stages=parameters.lifecycle_stages, order=parameters.order, limit=parameters.limit, after=None)
+            page = await self.search_experiments_by_two_tags_ilike(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
+
+    async def search_experiments_by_two_tags_is_null(self, parameters: SearchExperimentsByTwoTagsIsNullParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByTwoTagsIsNullResult]:
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
+            raise ValueError("limit must be an integer from 1 through 4")
+        encoded_parameters = encode_record(parameters)
+        generated_cursor = parameters.after
+        if generated_cursor is not None:
+            if options.cursor is not None:
+                raise ValueError("generated cursor conflicts with query options")
+            options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
+        encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = await self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="SearchExperimentsByTwoTagsIsNull", plan_hash=SEARCH_EXPERIMENTS_BY_TWO_TAGS_IS_NULL_QUERY_PLAN_HASH,
+            parameters=encoded_parameters, options=options,
+        )
+        outcomes = {
+            "Found": SearchExperimentsByTwoTagsIsNullFound,
+            "IntegrityFailure": SearchExperimentsByTwoTagsIsNullIntegrityFailure,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    async def search_experiments_by_two_tags_is_null_after_commit(self, parameters: SearchExperimentsByTwoTagsIsNullParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByTwoTagsIsNullResult]:
+        return await self.search_experiments_by_two_tags_is_null(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    async def search_experiments_by_two_tags_is_null_pages(self, parameters: SearchExperimentsByTwoTagsIsNullParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[SearchExperimentsByTwoTagsIsNullResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[SearchExperimentsByTwoTagsIsNullResult]] = []
+        for _ in range(max_pages):
+            page_parameters = SearchExperimentsByTwoTagsIsNullParams(scope=parameters.scope, first_tag_key=parameters.first_tag_key, second_tag_key=parameters.second_tag_key, lifecycle_stages=parameters.lifecycle_stages, order=parameters.order, limit=parameters.limit, after=None)
+            page = await self.search_experiments_by_two_tags_is_null(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
+
+    async def search_experiments_by_two_tags_not_equal(self, parameters: SearchExperimentsByTwoTagsNotEqualParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByTwoTagsNotEqualResult]:
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
+            raise ValueError("limit must be an integer from 1 through 4")
+        encoded_parameters = encode_record(parameters)
+        generated_cursor = parameters.after
+        if generated_cursor is not None:
+            if options.cursor is not None:
+                raise ValueError("generated cursor conflicts with query options")
+            options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
+        encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = await self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="SearchExperimentsByTwoTagsNotEqual", plan_hash=SEARCH_EXPERIMENTS_BY_TWO_TAGS_NOT_EQUAL_QUERY_PLAN_HASH,
+            parameters=encoded_parameters, options=options,
+        )
+        outcomes = {
+            "Found": SearchExperimentsByTwoTagsNotEqualFound,
+            "IntegrityFailure": SearchExperimentsByTwoTagsNotEqualIntegrityFailure,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    async def search_experiments_by_two_tags_not_equal_after_commit(self, parameters: SearchExperimentsByTwoTagsNotEqualParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByTwoTagsNotEqualResult]:
+        return await self.search_experiments_by_two_tags_not_equal(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    async def search_experiments_by_two_tags_not_equal_pages(self, parameters: SearchExperimentsByTwoTagsNotEqualParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[SearchExperimentsByTwoTagsNotEqualResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[SearchExperimentsByTwoTagsNotEqualResult]] = []
+        for _ in range(max_pages):
+            page_parameters = SearchExperimentsByTwoTagsNotEqualParams(scope=parameters.scope, first_tag_key=parameters.first_tag_key, first_value_digest=parameters.first_value_digest, second_tag_key=parameters.second_tag_key, second_value_hash=parameters.second_value_hash, lifecycle_stages=parameters.lifecycle_stages, order=parameters.order, limit=parameters.limit, after=None)
+            page = await self.search_experiments_by_two_tags_not_equal(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
+
     async def search_logged_models(self, parameters: SearchLoggedModelsParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchLoggedModelsResult]:
         if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 50):
             raise ValueError("limit must be an integer from 1 through 50")
@@ -5467,6 +10649,178 @@ class AsyncRiffDBMLflowClient:
         for _ in range(max_pages):
             page_parameters = SearchLoggedModelsParams(experiment_id=parameters.experiment_id, limit=parameters.limit, after=None)
             page = await self.search_logged_models(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
+
+    async def search_mcpaccess_endpoints(self, parameters: SearchMCPAccessEndpointsParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchMCPAccessEndpointsResult]:
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 50):
+            raise ValueError("limit must be an integer from 1 through 50")
+        encoded_parameters = encode_record(parameters)
+        generated_cursor = parameters.after
+        if generated_cursor is not None:
+            if options.cursor is not None:
+                raise ValueError("generated cursor conflicts with query options")
+            options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
+        encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = await self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="SearchMCPAccessEndpoints", plan_hash=SEARCH_MCPACCESS_ENDPOINTS_QUERY_PLAN_HASH,
+            parameters=encoded_parameters, options=options,
+        )
+        outcomes = {
+            "Found": SearchMCPAccessEndpointsFound,
+            "IntegrityFailure": SearchMCPAccessEndpointsIntegrityFailure,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    async def search_mcpaccess_endpoints_after_commit(self, parameters: SearchMCPAccessEndpointsParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchMCPAccessEndpointsResult]:
+        return await self.search_mcpaccess_endpoints(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    async def search_mcpaccess_endpoints_pages(self, parameters: SearchMCPAccessEndpointsParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[SearchMCPAccessEndpointsResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[SearchMCPAccessEndpointsResult]] = []
+        for _ in range(max_pages):
+            page_parameters = SearchMCPAccessEndpointsParams(scope=parameters.scope, limit=parameters.limit, after=None)
+            page = await self.search_mcpaccess_endpoints(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
+
+    async def search_mcpservers(self, parameters: SearchMCPServersParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchMCPServersResult]:
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 25):
+            raise ValueError("limit must be an integer from 1 through 25")
+        encoded_parameters = encode_record(parameters)
+        generated_cursor = parameters.after
+        if generated_cursor is not None:
+            if options.cursor is not None:
+                raise ValueError("generated cursor conflicts with query options")
+            options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
+        encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = await self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="SearchMCPServers", plan_hash=SEARCH_MCPSERVERS_QUERY_PLAN_HASH,
+            parameters=encoded_parameters, options=options,
+        )
+        outcomes = {
+            "Found": SearchMCPServersFound,
+            "IntegrityFailure": SearchMCPServersIntegrityFailure,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    async def search_mcpservers_after_commit(self, parameters: SearchMCPServersParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchMCPServersResult]:
+        return await self.search_mcpservers(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    async def search_mcpservers_pages(self, parameters: SearchMCPServersParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[SearchMCPServersResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[SearchMCPServersResult]] = []
+        for _ in range(max_pages):
+            page_parameters = SearchMCPServersParams(scope=parameters.scope, limit=parameters.limit, after=None)
+            page = await self.search_mcpservers(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
+
+    async def search_model_versions(self, parameters: SearchModelVersionsParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchModelVersionsResult]:
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 25):
+            raise ValueError("limit must be an integer from 1 through 25")
+        encoded_parameters = encode_record(parameters)
+        generated_cursor = parameters.after
+        if generated_cursor is not None:
+            if options.cursor is not None:
+                raise ValueError("generated cursor conflicts with query options")
+            options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
+        encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = await self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="SearchModelVersions", plan_hash=SEARCH_MODEL_VERSIONS_QUERY_PLAN_HASH,
+            parameters=encoded_parameters, options=options,
+        )
+        outcomes = {
+            "Found": SearchModelVersionsFound,
+            "IntegrityFailure": SearchModelVersionsIntegrityFailure,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    async def search_model_versions_after_commit(self, parameters: SearchModelVersionsParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchModelVersionsResult]:
+        return await self.search_model_versions(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    async def search_model_versions_pages(self, parameters: SearchModelVersionsParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[SearchModelVersionsResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[SearchModelVersionsResult]] = []
+        for _ in range(max_pages):
+            page_parameters = SearchModelVersionsParams(scope=parameters.scope, limit=parameters.limit, after=None)
+            page = await self.search_model_versions(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
+
+    async def search_registered_models(self, parameters: SearchRegisteredModelsParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchRegisteredModelsResult]:
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 25):
+            raise ValueError("limit must be an integer from 1 through 25")
+        encoded_parameters = encode_record(parameters)
+        generated_cursor = parameters.after
+        if generated_cursor is not None:
+            if options.cursor is not None:
+                raise ValueError("generated cursor conflicts with query options")
+            options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
+        encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = await self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="SearchRegisteredModels", plan_hash=SEARCH_REGISTERED_MODELS_QUERY_PLAN_HASH,
+            parameters=encoded_parameters, options=options,
+        )
+        outcomes = {
+            "Found": SearchRegisteredModelsFound,
+            "IntegrityFailure": SearchRegisteredModelsIntegrityFailure,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    async def search_registered_models_after_commit(self, parameters: SearchRegisteredModelsParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchRegisteredModelsResult]:
+        return await self.search_registered_models(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    async def search_registered_models_pages(self, parameters: SearchRegisteredModelsParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[SearchRegisteredModelsResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[SearchRegisteredModelsResult]] = []
+        for _ in range(max_pages):
+            page_parameters = SearchRegisteredModelsParams(scope=parameters.scope, limit=parameters.limit, after=None)
+            page = await self.search_registered_models(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
             pages.append(page)
             if not page.next_cursor:
                 break
@@ -5516,6 +10870,41 @@ class AsyncRiffDBMLflowClient:
             cursor = page.next_cursor
         return pages
 
+    async def search_runs_all(self, parameters: SearchRunsParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchRunsFound]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if options.cursor is not None or parameters.after is not None:
+            raise ValueError("search_runs_all does not accept an initial cursor")
+        items = tuple(dict.fromkeys(parameters.experiment_ids))
+        if not items:
+            raise ValueError("experiment_ids must contain at least 1 item")
+        pinned_head = options.read_after_commit if options.read_after_commit is not None else self._read_after_commit
+        highest_head = 0
+        merged: list[SearchRunsFoundRuns] = []
+        latest_page: TypedQueryResult[SearchRunsResult] | None = None
+        pages_remaining = max_pages
+        for offset in range(0, len(items), SEARCH_RUNS_EXPERIMENT_IDS_MAX_ITEMS):
+            chunk = items[offset:offset + SEARCH_RUNS_EXPERIMENT_IDS_MAX_ITEMS]
+            chunk_cursor: str | None = None
+            while True:
+                if pages_remaining < 1:
+                    raise ValueError("search_runs_all exceeded max_pages (1..=1024)")
+                pages_remaining -= 1
+                chunk_parameters = SearchRunsParams(experiment_ids=chunk, limit=parameters.limit, after=None)
+                page = await self.search_runs(chunk_parameters, QueryOptions(cursor=chunk_cursor, read_after_commit=pinned_head, consistency=options.consistency))
+                found = page.value.unwrap_found()
+                merged.extend(found.runs)
+                latest_page = page
+                if page.application_head > highest_head:
+                    highest_head = page.application_head
+                if pinned_head is None or page.application_head > pinned_head:
+                    pinned_head = page.application_head
+                if not page.next_cursor:
+                    break
+                chunk_cursor = page.next_cursor
+        assert latest_page is not None
+        return TypedQueryResult(identity=latest_page.identity, value=SearchRunsFound(runs=tuple(merged)), application_head=highest_head, next_cursor=None)
+
     async def search_runs_by_lifecycle(self, parameters: SearchRunsByLifecycleParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchRunsByLifecycleResult]:
         if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 2):
             raise ValueError("limit must be an integer from 1 through 2")
@@ -5558,6 +10947,41 @@ class AsyncRiffDBMLflowClient:
                 break
             cursor = page.next_cursor
         return pages
+
+    async def search_runs_by_lifecycle_all(self, parameters: SearchRunsByLifecycleParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchRunsByLifecycleFound]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if options.cursor is not None or parameters.after is not None:
+            raise ValueError("search_runs_by_lifecycle_all does not accept an initial cursor")
+        items = tuple(dict.fromkeys(parameters.experiment_ids))
+        if not items:
+            raise ValueError("experiment_ids must contain at least 1 item")
+        pinned_head = options.read_after_commit if options.read_after_commit is not None else self._read_after_commit
+        highest_head = 0
+        merged: list[SearchRunsByLifecycleFoundRuns] = []
+        latest_page: TypedQueryResult[SearchRunsByLifecycleResult] | None = None
+        pages_remaining = max_pages
+        for offset in range(0, len(items), SEARCH_RUNS_BY_LIFECYCLE_EXPERIMENT_IDS_MAX_ITEMS):
+            chunk = items[offset:offset + SEARCH_RUNS_BY_LIFECYCLE_EXPERIMENT_IDS_MAX_ITEMS]
+            chunk_cursor: str | None = None
+            while True:
+                if pages_remaining < 1:
+                    raise ValueError("search_runs_by_lifecycle_all exceeded max_pages (1..=1024)")
+                pages_remaining -= 1
+                chunk_parameters = SearchRunsByLifecycleParams(experiment_ids=chunk, lifecycle_stage=parameters.lifecycle_stage, limit=parameters.limit, after=None)
+                page = await self.search_runs_by_lifecycle(chunk_parameters, QueryOptions(cursor=chunk_cursor, read_after_commit=pinned_head, consistency=options.consistency))
+                found = page.value.unwrap_found()
+                merged.extend(found.runs)
+                latest_page = page
+                if page.application_head > highest_head:
+                    highest_head = page.application_head
+                if pinned_head is None or page.application_head > pinned_head:
+                    pinned_head = page.application_head
+                if not page.next_cursor:
+                    break
+                chunk_cursor = page.next_cursor
+        assert latest_page is not None
+        return TypedQueryResult(identity=latest_page.identity, value=SearchRunsByLifecycleFound(runs=tuple(merged)), application_head=highest_head, next_cursor=None)
 
     async def search_traces(self, parameters: SearchTracesParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchTracesResult]:
         if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 50):
@@ -5674,6 +11098,69 @@ class AsyncRiffDBMLflowClient:
             if aggregate_element_bytes > 900000:
                 raise InputBudgetError(AGGREGATE_CANONICAL_ELEMENT_BYTES, "tags")
         return await self._transport._command_batch(inputs, options, self.create_experiment_with_tags, progress)
+
+    async def create_mcpserver_entity(self, input: CreateMCPServerEntityInput) -> TypedCommandResult[CreateMCPServerEntityOutcome]:
+        raw = await self._transport._execute_command(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            command_name="CreateMCPServerEntity", plan_hash=CREATE_MCPSERVER_ENTITY_PLAN_HASH,
+            input=encode_record(input), attempts=self._command_attempts,
+        )
+        outcomes = {
+            "MCPServerExists": CreateMCPServerEntityMCPServerExists,
+            "MCPServerCreated": CreateMCPServerEntityMCPServerCreated,
+        }
+        result: TypedCommandResult[CreateMCPServerEntityOutcome] = raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        if self._track_causal_writes and result.commit_sequence is not None and result.commit_sequence > 0:
+            self._read_after_commit = result.commit_sequence if self._read_after_commit is None or result.commit_sequence > self._read_after_commit else self._read_after_commit
+        return result
+
+    async def create_mcpserver_entity_batch(
+        self, inputs: Sequence[CreateMCPServerEntityInput], options: CommandBatchOptions,
+        progress: Callable[[CommandBatchProgress], None] | None = None,
+    ) -> CommandBatchResult[CreateMCPServerEntityOutcome]:
+        return await self._transport._command_batch(inputs, options, self.create_mcpserver_entity, progress)
+
+    async def create_mcpserver_version_entity(self, input: CreateMCPServerVersionEntityInput) -> TypedCommandResult[CreateMCPServerVersionEntityOutcome]:
+        raw = await self._transport._execute_command(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            command_name="CreateMCPServerVersionEntity", plan_hash=CREATE_MCPSERVER_VERSION_ENTITY_PLAN_HASH,
+            input=encode_record(input), attempts=self._command_attempts,
+        )
+        outcomes = {
+            "MCPServerVersionExists": CreateMCPServerVersionEntityMCPServerVersionExists,
+            "MCPServerVersionCreated": CreateMCPServerVersionEntityMCPServerVersionCreated,
+        }
+        result: TypedCommandResult[CreateMCPServerVersionEntityOutcome] = raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        if self._track_causal_writes and result.commit_sequence is not None and result.commit_sequence > 0:
+            self._read_after_commit = result.commit_sequence if self._read_after_commit is None or result.commit_sequence > self._read_after_commit else self._read_after_commit
+        return result
+
+    async def create_mcpserver_version_entity_batch(
+        self, inputs: Sequence[CreateMCPServerVersionEntityInput], options: CommandBatchOptions,
+        progress: Callable[[CommandBatchProgress], None] | None = None,
+    ) -> CommandBatchResult[CreateMCPServerVersionEntityOutcome]:
+        return await self._transport._command_batch(inputs, options, self.create_mcpserver_version_entity, progress)
+
+    async def create_registered_model_entity(self, input: CreateRegisteredModelEntityInput) -> TypedCommandResult[CreateRegisteredModelEntityOutcome]:
+        raw = await self._transport._execute_command(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            command_name="CreateRegisteredModelEntity", plan_hash=CREATE_REGISTERED_MODEL_ENTITY_PLAN_HASH,
+            input=encode_record(input), attempts=self._command_attempts,
+        )
+        outcomes = {
+            "RegisteredModelExists": CreateRegisteredModelEntityRegisteredModelExists,
+            "RegisteredModelCreated": CreateRegisteredModelEntityRegisteredModelCreated,
+        }
+        result: TypedCommandResult[CreateRegisteredModelEntityOutcome] = raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        if self._track_causal_writes and result.commit_sequence is not None and result.commit_sequence > 0:
+            self._read_after_commit = result.commit_sequence if self._read_after_commit is None or result.commit_sequence > self._read_after_commit else self._read_after_commit
+        return result
+
+    async def create_registered_model_entity_batch(
+        self, inputs: Sequence[CreateRegisteredModelEntityInput], options: CommandBatchOptions,
+        progress: Callable[[CommandBatchProgress], None] | None = None,
+    ) -> CommandBatchResult[CreateRegisteredModelEntityOutcome]:
+        return await self._transport._command_batch(inputs, options, self.create_registered_model_entity, progress)
 
     async def create_run(self, input: CreateRunInput) -> TypedCommandResult[CreateRunOutcome]:
         raw = await self._transport._execute_command(
@@ -5833,6 +11320,90 @@ class AsyncRiffDBMLflowClient:
         progress: Callable[[CommandBatchProgress], None] | None = None,
     ) -> CommandBatchResult[DeleteLoggedModelEntityOutcome]:
         return await self._transport._command_batch(inputs, options, self.delete_logged_model_entity, progress)
+
+    async def delete_mcpaccess_endpoint_entity(self, input: DeleteMCPAccessEndpointEntityInput) -> TypedCommandResult[DeleteMCPAccessEndpointEntityOutcome]:
+        raw = await self._transport._execute_command(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            command_name="DeleteMCPAccessEndpointEntity", plan_hash=DELETE_MCPACCESS_ENDPOINT_ENTITY_PLAN_HASH,
+            input=encode_record(input), attempts=self._command_attempts,
+        )
+        outcomes = {
+            "MCPAccessEndpointDeleted": DeleteMCPAccessEndpointEntityMCPAccessEndpointDeleted,
+            "MCPAccessEndpointMissing": DeleteMCPAccessEndpointEntityMCPAccessEndpointMissing,
+        }
+        result: TypedCommandResult[DeleteMCPAccessEndpointEntityOutcome] = raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        if self._track_causal_writes and result.commit_sequence is not None and result.commit_sequence > 0:
+            self._read_after_commit = result.commit_sequence if self._read_after_commit is None or result.commit_sequence > self._read_after_commit else self._read_after_commit
+        return result
+
+    async def delete_mcpaccess_endpoint_entity_batch(
+        self, inputs: Sequence[DeleteMCPAccessEndpointEntityInput], options: CommandBatchOptions,
+        progress: Callable[[CommandBatchProgress], None] | None = None,
+    ) -> CommandBatchResult[DeleteMCPAccessEndpointEntityOutcome]:
+        return await self._transport._command_batch(inputs, options, self.delete_mcpaccess_endpoint_entity, progress)
+
+    async def delete_mcpserver_entity(self, input: DeleteMCPServerEntityInput) -> TypedCommandResult[DeleteMCPServerEntityOutcome]:
+        raw = await self._transport._execute_command(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            command_name="DeleteMCPServerEntity", plan_hash=DELETE_MCPSERVER_ENTITY_PLAN_HASH,
+            input=encode_record(input), attempts=self._command_attempts,
+        )
+        outcomes = {
+            "MCPServerDeleted": DeleteMCPServerEntityMCPServerDeleted,
+            "MCPServerMissing": DeleteMCPServerEntityMCPServerMissing,
+        }
+        result: TypedCommandResult[DeleteMCPServerEntityOutcome] = raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        if self._track_causal_writes and result.commit_sequence is not None and result.commit_sequence > 0:
+            self._read_after_commit = result.commit_sequence if self._read_after_commit is None or result.commit_sequence > self._read_after_commit else self._read_after_commit
+        return result
+
+    async def delete_mcpserver_entity_batch(
+        self, inputs: Sequence[DeleteMCPServerEntityInput], options: CommandBatchOptions,
+        progress: Callable[[CommandBatchProgress], None] | None = None,
+    ) -> CommandBatchResult[DeleteMCPServerEntityOutcome]:
+        return await self._transport._command_batch(inputs, options, self.delete_mcpserver_entity, progress)
+
+    async def delete_model_version_entity(self, input: DeleteModelVersionEntityInput) -> TypedCommandResult[DeleteModelVersionEntityOutcome]:
+        raw = await self._transport._execute_command(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            command_name="DeleteModelVersionEntity", plan_hash=DELETE_MODEL_VERSION_ENTITY_PLAN_HASH,
+            input=encode_record(input), attempts=self._command_attempts,
+        )
+        outcomes = {
+            "ModelVersionDeleted": DeleteModelVersionEntityModelVersionDeleted,
+            "ModelVersionMissing": DeleteModelVersionEntityModelVersionMissing,
+        }
+        result: TypedCommandResult[DeleteModelVersionEntityOutcome] = raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        if self._track_causal_writes and result.commit_sequence is not None and result.commit_sequence > 0:
+            self._read_after_commit = result.commit_sequence if self._read_after_commit is None or result.commit_sequence > self._read_after_commit else self._read_after_commit
+        return result
+
+    async def delete_model_version_entity_batch(
+        self, inputs: Sequence[DeleteModelVersionEntityInput], options: CommandBatchOptions,
+        progress: Callable[[CommandBatchProgress], None] | None = None,
+    ) -> CommandBatchResult[DeleteModelVersionEntityOutcome]:
+        return await self._transport._command_batch(inputs, options, self.delete_model_version_entity, progress)
+
+    async def delete_registered_model_entity(self, input: DeleteRegisteredModelEntityInput) -> TypedCommandResult[DeleteRegisteredModelEntityOutcome]:
+        raw = await self._transport._execute_command(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            command_name="DeleteRegisteredModelEntity", plan_hash=DELETE_REGISTERED_MODEL_ENTITY_PLAN_HASH,
+            input=encode_record(input), attempts=self._command_attempts,
+        )
+        outcomes = {
+            "RegisteredModelDeleted": DeleteRegisteredModelEntityRegisteredModelDeleted,
+            "RegisteredModelMissing": DeleteRegisteredModelEntityRegisteredModelMissing,
+        }
+        result: TypedCommandResult[DeleteRegisteredModelEntityOutcome] = raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        if self._track_causal_writes and result.commit_sequence is not None and result.commit_sequence > 0:
+            self._read_after_commit = result.commit_sequence if self._read_after_commit is None or result.commit_sequence > self._read_after_commit else self._read_after_commit
+        return result
+
+    async def delete_registered_model_entity_batch(
+        self, inputs: Sequence[DeleteRegisteredModelEntityInput], options: CommandBatchOptions,
+        progress: Callable[[CommandBatchProgress], None] | None = None,
+    ) -> CommandBatchResult[DeleteRegisteredModelEntityOutcome]:
+        return await self._transport._command_batch(inputs, options, self.delete_registered_model_entity, progress)
 
     async def delete_run(self, input: DeleteRunInput) -> TypedCommandResult[DeleteRunOutcome]:
         raw = await self._transport._execute_command(
@@ -6190,6 +11761,126 @@ class AsyncRiffDBMLflowClient:
         progress: Callable[[CommandBatchProgress], None] | None = None,
     ) -> CommandBatchResult[UpsertLoggedModelOutcome]:
         return await self._transport._command_batch(inputs, options, self.upsert_logged_model, progress)
+
+    async def upsert_mcpaccess_endpoint_entity(self, input: UpsertMCPAccessEndpointEntityInput) -> TypedCommandResult[UpsertMCPAccessEndpointEntityOutcome]:
+        raw = await self._transport._execute_command(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            command_name="UpsertMCPAccessEndpointEntity", plan_hash=UPSERT_MCPACCESS_ENDPOINT_ENTITY_PLAN_HASH,
+            input=encode_record(input), attempts=self._command_attempts,
+        )
+        outcomes = {
+            "MCPAccessEndpointUpserted": UpsertMCPAccessEndpointEntityMCPAccessEndpointUpserted,
+        }
+        result: TypedCommandResult[UpsertMCPAccessEndpointEntityOutcome] = raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        if self._track_causal_writes and result.commit_sequence is not None and result.commit_sequence > 0:
+            self._read_after_commit = result.commit_sequence if self._read_after_commit is None or result.commit_sequence > self._read_after_commit else self._read_after_commit
+        return result
+
+    async def upsert_mcpaccess_endpoint_entity_batch(
+        self, inputs: Sequence[UpsertMCPAccessEndpointEntityInput], options: CommandBatchOptions,
+        progress: Callable[[CommandBatchProgress], None] | None = None,
+    ) -> CommandBatchResult[UpsertMCPAccessEndpointEntityOutcome]:
+        return await self._transport._command_batch(inputs, options, self.upsert_mcpaccess_endpoint_entity, progress)
+
+    async def upsert_mcpserver_entity(self, input: UpsertMCPServerEntityInput) -> TypedCommandResult[UpsertMCPServerEntityOutcome]:
+        raw = await self._transport._execute_command(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            command_name="UpsertMCPServerEntity", plan_hash=UPSERT_MCPSERVER_ENTITY_PLAN_HASH,
+            input=encode_record(input), attempts=self._command_attempts,
+        )
+        outcomes = {
+            "MCPServerUpserted": UpsertMCPServerEntityMCPServerUpserted,
+        }
+        result: TypedCommandResult[UpsertMCPServerEntityOutcome] = raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        if self._track_causal_writes and result.commit_sequence is not None and result.commit_sequence > 0:
+            self._read_after_commit = result.commit_sequence if self._read_after_commit is None or result.commit_sequence > self._read_after_commit else self._read_after_commit
+        return result
+
+    async def upsert_mcpserver_entity_batch(
+        self, inputs: Sequence[UpsertMCPServerEntityInput], options: CommandBatchOptions,
+        progress: Callable[[CommandBatchProgress], None] | None = None,
+    ) -> CommandBatchResult[UpsertMCPServerEntityOutcome]:
+        return await self._transport._command_batch(inputs, options, self.upsert_mcpserver_entity, progress)
+
+    async def upsert_mcpserver_version_entity(self, input: UpsertMCPServerVersionEntityInput) -> TypedCommandResult[UpsertMCPServerVersionEntityOutcome]:
+        raw = await self._transport._execute_command(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            command_name="UpsertMCPServerVersionEntity", plan_hash=UPSERT_MCPSERVER_VERSION_ENTITY_PLAN_HASH,
+            input=encode_record(input), attempts=self._command_attempts,
+        )
+        outcomes = {
+            "MCPServerVersionUpserted": UpsertMCPServerVersionEntityMCPServerVersionUpserted,
+        }
+        result: TypedCommandResult[UpsertMCPServerVersionEntityOutcome] = raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        if self._track_causal_writes and result.commit_sequence is not None and result.commit_sequence > 0:
+            self._read_after_commit = result.commit_sequence if self._read_after_commit is None or result.commit_sequence > self._read_after_commit else self._read_after_commit
+        return result
+
+    async def upsert_mcpserver_version_entity_batch(
+        self, inputs: Sequence[UpsertMCPServerVersionEntityInput], options: CommandBatchOptions,
+        progress: Callable[[CommandBatchProgress], None] | None = None,
+    ) -> CommandBatchResult[UpsertMCPServerVersionEntityOutcome]:
+        return await self._transport._command_batch(inputs, options, self.upsert_mcpserver_version_entity, progress)
+
+    async def upsert_model_version_entity(self, input: UpsertModelVersionEntityInput) -> TypedCommandResult[UpsertModelVersionEntityOutcome]:
+        raw = await self._transport._execute_command(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            command_name="UpsertModelVersionEntity", plan_hash=UPSERT_MODEL_VERSION_ENTITY_PLAN_HASH,
+            input=encode_record(input), attempts=self._command_attempts,
+        )
+        outcomes = {
+            "ModelVersionUpserted": UpsertModelVersionEntityModelVersionUpserted,
+        }
+        result: TypedCommandResult[UpsertModelVersionEntityOutcome] = raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        if self._track_causal_writes and result.commit_sequence is not None and result.commit_sequence > 0:
+            self._read_after_commit = result.commit_sequence if self._read_after_commit is None or result.commit_sequence > self._read_after_commit else self._read_after_commit
+        return result
+
+    async def upsert_model_version_entity_batch(
+        self, inputs: Sequence[UpsertModelVersionEntityInput], options: CommandBatchOptions,
+        progress: Callable[[CommandBatchProgress], None] | None = None,
+    ) -> CommandBatchResult[UpsertModelVersionEntityOutcome]:
+        return await self._transport._command_batch(inputs, options, self.upsert_model_version_entity, progress)
+
+    async def upsert_registered_model_entity(self, input: UpsertRegisteredModelEntityInput) -> TypedCommandResult[UpsertRegisteredModelEntityOutcome]:
+        raw = await self._transport._execute_command(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            command_name="UpsertRegisteredModelEntity", plan_hash=UPSERT_REGISTERED_MODEL_ENTITY_PLAN_HASH,
+            input=encode_record(input), attempts=self._command_attempts,
+        )
+        outcomes = {
+            "RegisteredModelUpserted": UpsertRegisteredModelEntityRegisteredModelUpserted,
+        }
+        result: TypedCommandResult[UpsertRegisteredModelEntityOutcome] = raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        if self._track_causal_writes and result.commit_sequence is not None and result.commit_sequence > 0:
+            self._read_after_commit = result.commit_sequence if self._read_after_commit is None or result.commit_sequence > self._read_after_commit else self._read_after_commit
+        return result
+
+    async def upsert_registered_model_entity_batch(
+        self, inputs: Sequence[UpsertRegisteredModelEntityInput], options: CommandBatchOptions,
+        progress: Callable[[CommandBatchProgress], None] | None = None,
+    ) -> CommandBatchResult[UpsertRegisteredModelEntityOutcome]:
+        return await self._transport._command_batch(inputs, options, self.upsert_registered_model_entity, progress)
+
+    async def upsert_registry_webhook_entity(self, input: UpsertRegistryWebhookEntityInput) -> TypedCommandResult[UpsertRegistryWebhookEntityOutcome]:
+        raw = await self._transport._execute_command(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            command_name="UpsertRegistryWebhookEntity", plan_hash=UPSERT_REGISTRY_WEBHOOK_ENTITY_PLAN_HASH,
+            input=encode_record(input), attempts=self._command_attempts,
+        )
+        outcomes = {
+            "RegistryWebhookUpserted": UpsertRegistryWebhookEntityRegistryWebhookUpserted,
+        }
+        result: TypedCommandResult[UpsertRegistryWebhookEntityOutcome] = raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        if self._track_causal_writes and result.commit_sequence is not None and result.commit_sequence > 0:
+            self._read_after_commit = result.commit_sequence if self._read_after_commit is None or result.commit_sequence > self._read_after_commit else self._read_after_commit
+        return result
+
+    async def upsert_registry_webhook_entity_batch(
+        self, inputs: Sequence[UpsertRegistryWebhookEntityInput], options: CommandBatchOptions,
+        progress: Callable[[CommandBatchProgress], None] | None = None,
+    ) -> CommandBatchResult[UpsertRegistryWebhookEntityOutcome]:
+        return await self._transport._command_batch(inputs, options, self.upsert_registry_webhook_entity, progress)
 
     async def upsert_run_lineage(self, input: UpsertRunLineageInput) -> TypedCommandResult[UpsertRunLineageOutcome]:
         raw = await self._transport._execute_command(

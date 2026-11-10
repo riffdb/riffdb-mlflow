@@ -1,0 +1,19 @@
+query SearchRegisteredModels(
+    $scope: RegisteredModelEntity.scope,
+    $limit: Limit<25> = 25,
+    $after: Cursor?,
+) {
+    many models from RegisteredModelEntity
+        where scope == $scope
+        order by name asc
+        take $limit after $after
+        else IntegrityFailure
+
+    return Found {
+        models: models {
+            name creation_timestamp_ms last_updated_timestamp_ms
+            description packed_tags packed_aliases latest_version
+        }
+    }
+    outcomes Found | IntegrityFailure
+}

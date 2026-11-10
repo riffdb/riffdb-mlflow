@@ -1,0 +1,22 @@
+query ListMCPAccessEndpointsByServer(
+    $scope: MCPAccessEndpointEntity.scope,
+    $server_name: MCPAccessEndpointEntity.server_name,
+    $limit: Limit<50> = 50,
+    $after: Cursor?,
+) {
+    many endpoints from MCPAccessEndpointEntity
+        where scope == $scope
+          && server_name == $server_name
+        order by endpoint_id asc
+        take $limit after $after
+        else IntegrityFailure
+
+    return Found {
+        endpoints: endpoints {
+            endpoint_id server_name url transport_type
+            server_version server_alias
+            created_by last_updated_by created_at_ms last_updated_at_ms
+        }
+    }
+    outcomes Found | IntegrityFailure
+}

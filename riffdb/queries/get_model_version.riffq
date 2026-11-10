@@ -1,0 +1,20 @@
+query GetModelVersion(
+    $scope: ModelVersionEntity.scope,
+    $name: ModelVersionEntity.name,
+    $version_num: ModelVersionEntity.version_num,
+) {
+    one mv from ModelVersionEntity
+        where scope == $scope
+          && name == $name
+          && version_num == $version_num
+        else Missing
+
+    return Found {
+        model_version: mv {
+            name version_num creation_timestamp_ms last_updated_timestamp_ms
+            description user_id current_stage source_path storage_location
+            run_id run_link status status_message packed_tags
+        }
+    }
+    outcomes Found | Missing
+}

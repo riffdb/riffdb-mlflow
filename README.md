@@ -1,67 +1,127 @@
 # riffdb-mlflow
 
-`riffdb-mlflow` is a compiled RiffDB tracking-store plugin for MLflow. It is an
-out-of-tree integration: no MLflow-specific code or vocabulary belongs in the
-RiffDB repository.
+`riffdb-mlflow` (`0.2.1`) is a compiled RiffDB tracking-store and model-registry
+plugin for **MLflow 3.15.1** targeting **RiffDB 0.2.1**. It is an out-of-tree
+integration: no MLflow-specific code, vocabulary, routes, or schemas belong in
+the RiffDB repository.
 
-The project targets **MLflow 3.15.1** and implements the complete `AbstractStore`
-tracking, tracing, evaluation assessment, trace analytics, logged-model, and
-run-lineage surface:
+## Supported MLflow 3.15.1 Surface
 
-- **Experiments & Runs**: atomic experiment creation with tags, lifecycle and
-  tag updates, `exact`/`LIKE`/`ILIKE` experiment search, atomic run creation
-  with tags, run get/update/delete/restore, bounded atomic `log_batch`
-  (metrics, parameters, tags), `get_metric_history`, `log_inputs`, `log_outputs`,
-  and `record_logged_model`.
-- **Traces & Out-of-Order Spans (`TraceInfo`, `Span`)**: `start_trace`,
-  `get_trace_info`, `batch_get_traces`, `log_spans`, `log_spans_async`,
-  `ingest_spans_out_of_order`, `search_traces`, `delete_traces`,
-  `set_trace_tag`, `delete_trace_tag`, `link_traces_to_run`,
-  `unlink_traces_from_run`, and `link_prompts_to_trace`. `IngestTraceSpans`
-  uses `init_or_mutate` across `Trace` and `TraceSpan` in one partition commit,
-  allowing child spans to arrive before parent/root spans and even before
-  `start_trace()` without foreign-key failures or read-time `FINAL` merges.
-- **Assessments (`Feedback` & `Expectation`)**: `create_assessment`,
-  `get_assessment`, `update_assessment`, and `delete_assessment`.
-- **Trace Metrics & Analytical Rollups (`query_trace_metrics`, `ADR-0315`)**:
-  backed by contract-declared scalar columnar projections (`TraceAnalytics`,
-  `SpanAnalytics`, `AssessmentAnalytics`) and event-driven rollups
-  (`SpanModelRollup` with `min`/`max`/`mean`/`sum`/`count` and `hour(...)`
-  temporal bucket keys) queried via `source projected` in `.riffq`.
-- **Logged Models (`LoggedModel`)**: `create_logged_model`, `get_logged_model`,
-  `delete_logged_model`, `finalize_logged_model`, `set_logged_model_tags`,
-  `delete_logged_model_tag`, `log_logged_model_params`, and
-  `search_logged_models`.
+The package registers the `riffdb` scheme in both official MLflow plugin groups:
 
-The intended server configuration is:
+- `mlflow.tracking_store` → `riffdb_mlflow.store:RiffDBTrackingStore`
+- `mlflow.model_registry_store` → `riffdb_mlflow.registry_store:RiffDBModelRegistryStore`
+
+| MLflow 3.15.1 Domain | Status | Notes |
+|---|---|---|
+| **Experiments & Runs** (`AbstractStore`) | Supported | Atomic experiment/run creation with tags, lifecycle transitions, `=`, `!=`, `LIKE`, `ILIKE`, `IS NULL`, and `IS NOT NULL` experiment search (including MLflow 3.15 UI gateway-tag filters), bounded atomic `log_batch` (IEEE-754 metrics, parameters, tags), `get_metric_history`, `log_inputs`, `log_outputs`, and `record_logged_model`. |
+| **Traces & Out-of-Order Spans** (`TraceInfo`, `Span`) | Supported | `start_trace`, `get_trace_info`, `batch_get_traces`, `log_spans`, `log_spans_async`, `ingest_spans_out_of_order`, `search_traces`, `delete_traces`, `set_trace_tag`, `delete_trace_tag`, `link_traces_to_run`, `unlink_traces_from_run`, and `link_prompts_to_trace`. |
+| **Assessments** (`Feedback`, `Expectation`) | Supported | `create_assessment`, `get_assessment`, `update_assessment`, and `delete_assessment`. |
+| **Columnar Trace Metrics & Rollups** (`query_trace_metrics`) | Supported | Contract-declared scalar columnar projections (`TraceAnalytics`, `SpanAnalytics`, `AssessmentAnalytics`) and event-driven rollups (`SpanModelRollup`) queried via `source projected` in RiffQL. Cold projections report ready on fresh RiffDB `0.2.1+` databases prior to first analytical query. |
+| **Logged Models** (`LoggedModel`) | Supported | `create_logged_model`, `get_logged_model`, `delete_logged_model`, `finalize_logged_model`, `set_logged_model_tags`, `delete_logged_model_tag`, `log_logged_model_params`, and `search_logged_models`. |
+| **Model Registry** (`mlflow.model_registry_store`) | Supported | All 21 abstract methods on `mlflow.store.model_registry.AbstractStore`: registered models, model versions, stages, aliases, tags, and download URIs. Works automatically when `--registry-store-uri` defaults to `--backend-store-uri riffdb://<db>`. |
+| **Prompt Registry** (`create_prompt`, `search_prompts`, etc.) | Supported | All 16 concrete Prompt Registry methods on `mlflow.store.model_registry.AbstractStore` backed by `RiffDBModelRegistryStore` registered-model and model-version primitives. |
+| **Registry Webhooks** (`create_webhook`, `list_webhooks`, etc.) | Supported | All 6 webhook lifecycle and event-filtering methods on `RiffDBModelRegistryStore`. |
+| **MCP Server Registry** (`MCPServerRegistryMixin`) | Supported | Implemented on `RiffDBTrackingStore` (`create_mcp_server`, `search_mcp_servers`, versions, aliases, tags, and access endpoints), backing `/ajax-api/3.0/mlflow/mcp-servers` and the MLflow 3.15 MCP Registry UI. |
+| **UI-Managed AI Gateway** (`GatewayStoreMixin`) | Unsupported (Upstream SQL check) | Upstream `mlflow.server.gateway_api._validate_store` rejects any non-`SqlAlchemyStore` tracking backend. Use the standalone config-based gateway via `riffdb-mlflow[gateway]` (`mlflow gateway start --config-path ...`). |
+| **Server-Side Job Runner** (`mlflow.server.jobs`) | Unsupported (Upstream SQL check) | Upstream MLflow server job execution requires a SQLAlchemy database URI (`postgresql://`, `sqlite://`, etc.) and disables background server jobs (such as server-side judge/scorer runs) when started with `riffdb://<db>`. |
+
+## Python Version Boundary & Optional Extras
+
+- **Tracking Server / Direct `riffdb://` Store Process (`Python 3.13+`)**: The
+  compiled RiffDB driver wheel targets `cp313-abi3`, so any process that loads
+  `riffdb-mlflow` directly (such as `mlflow server` or a client using
+  `MlflowClient(tracking_uri="riffdb://<db>")`) must run **Python 3.13 or newer**.
+- **HTTP Tracking Clients (`Python 3.10–3.13`)**: Standard MLflow training and
+  serving workloads that connect to the tracking server over HTTP/HTTPS
+  (`MLFLOW_TRACKING_URI=http://...`) do **not** install `riffdb-mlflow` and can
+  run on any Python version supported by MLflow (`3.10+`).
+
+Optional MLflow feature dependencies can be layered into the locked environment
+using package extras:
 
 ```bash
+# Install with standalone AI Gateway, GenAI, extras, or AWS artifact support:
+uv sync --extra gateway
+# or via pip:
+pip install "riffdb-mlflow[gateway,genai,extras,aws]"
+```
+
+## Deploying the Application & Provisioning Credentials
+
+Deploy the compiled application lock to a RiffDB `0.2.1+` server and provision
+the `MLflowTrackingServer` role. When running from a read-only checkout or
+installed package environment, pass `--deployment-dir` and `--credential-output`
+so deployment state and mode-`0600` role credentials are written to an external
+path rather than `.riffdb/deployments/` inside the working directory:
+
+```bash
+riffdb application deploy \
+  --endpoint https://riffdb.internal:8443 \
+  --database mlflow \
+  --provision-role MLflowTrackingServer \
+  --tls-trust-root /etc/riffdb/ca.pem \
+  --tls-server-name riffdb.internal \
+  --credential-file /etc/riffdb/bootstrap-admin.credential \
+  --deployment-dir /var/lib/riffdb-mlflow/deployments \
+  --credential-output /etc/riffdb-mlflow/tracking-server.credential
+```
+
+## Connection Configuration (`RIFFDB_MLFLOW_*`)
+
+The tracking and registry URI is `riffdb://<database>`. It never contains
+credentials or TLS parameters. All connection settings are read from environment
+variables and validated at store startup before opening a RiffDB transport:
+
+| Environment Variable | Validation Rules |
+|---|---|
+| `RIFFDB_MLFLOW_ENDPOINT` | Required. Must be `https://<host>[:<port>]` with an explicit host and no path, query, fragment, or userinfo. |
+| `RIFFDB_MLFLOW_SERVER_NAME` | Required. Must be a valid hostname or IP that **exactly matches** the host in `RIFFDB_MLFLOW_ENDPOINT`. |
+| `RIFFDB_MLFLOW_TRUST_ROOT` | Required. Must be an **absolute path** to an existing, readable regular PEM file containing `-----BEGIN CERTIFICATE-----`. |
+| `RIFFDB_MLFLOW_CREDENTIAL_FILE` | Required. Must be an **absolute path** to a non-empty regular file (not a symlink), owned by the current OS user, with permissions `0600` or `0400`. |
+
+If any variable is missing or violates these rules, `RiffDBTrackingStore` and
+`RiffDBModelRegistryStore` immediately raise an `MlflowException`
+(`INVALID_PARAMETER_VALUE`) naming the exact setting and rule.
+
+## Running the MLflow Server & Clients
+
+```bash
+export RIFFDB_MLFLOW_ENDPOINT="https://riffdb.internal:8443"
+export RIFFDB_MLFLOW_SERVER_NAME="riffdb.internal"
+export RIFFDB_MLFLOW_TRUST_ROOT="/etc/riffdb/ca.pem"
+export RIFFDB_MLFLOW_CREDENTIAL_FILE="/etc/riffdb-mlflow/tracking-server.credential"
+
 mlflow server \
-  --backend-store-uri riffdb://mlflow-development \
+  --backend-store-uri riffdb://mlflow \
   --default-artifact-root s3://example/mlflow-artifacts
 ```
 
-RiffDB TLS and credential material is supplied through protected environment
-configuration described in [DESIGN.md](DESIGN.md); it is never embedded in the
-tracking URI.
+When using `MlflowClient(tracking_uri="riffdb://mlflow")` directly without
+specifying an artifact root, the store defaults the artifact root to
+`_MLFLOW_SERVER_ARTIFACT_ROOT` if set, or `./mlruns` in the current working
+directory (matching MLflow's SQLite/FileStore fallback).
 
-Development and verification:
+## Artifact Storage & Backup Coordination
+
+By design, `riffdb-mlflow` stores tracking, tracing, and registry **metadata**
+in RiffDB while artifact bytes (logged models, plots, files) remain in MLflow's
+configured artifact repository (`s3://`, `gs://`, `abfss://`, or local
+filesystem). Consistent disaster-recovery backups require coordinating RiffDB
+database backups with backups of the underlying artifact storage.
+
+## Development & Verification
 
 ```bash
-uv sync
+uv sync --locked
 make check
 make conformance
 ```
 
-
-## RiffDB compatibility CI
+## RiffDB Compatibility CI
 
 This adapter owns its RiffDB compatibility checks. Pull requests compile the
 application sources and verify existing locks and generated artifacts against
-the full commit in `.github/riffdb-revision`. Scheduled checks use RiffDB
-`main`; manual dispatch accepts a full commit or `main`. Failures are reported
-here and do not block RiffDB itself. Framework conformance remains separate.
-
-To upgrade, update the pin, migrate sources as needed, review the result of
-`riffdb application lock --write`, and verify with `riffdb application check`.
-Commit the pin and migration together in this repository.
+the full commit in [`.github/riffdb-revision`](.github/riffdb-revision). To
+upgrade, update the pin, run `riffdb application lock --write` and
+`riffdb generate`, and verify with `make check` and `make conformance`.

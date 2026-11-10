@@ -1,0 +1,17 @@
+query GetRegisteredModel(
+    $scope: RegisteredModelEntity.scope,
+    $name: RegisteredModelEntity.name,
+) {
+    one model from RegisteredModelEntity
+        where scope == $scope
+          && name == $name
+        else Missing
+
+    return Found {
+        model: model {
+            name creation_timestamp_ms last_updated_timestamp_ms
+            description packed_tags packed_aliases latest_version
+        }
+    }
+    outcomes Found | Missing
+}

@@ -86,6 +86,10 @@ def _digest(value: str) -> bytes:
     return sha256(value.encode("utf-8")).digest()
 
 
+def _hash64(value: str) -> int:
+    return int.from_bytes(sha256(value.encode("utf-8")).digest()[:8], "big")
+
+
 def _metric_encoding(value: float) -> tuple[int, int, int, bool]:
     bits = struct.unpack(">Q", struct.pack(">d", value))[0]
     is_nan = math.isnan(value)
@@ -237,6 +241,7 @@ def _create(
             name_digest=_digest(name),
             artifact_location=f"s3://artifacts/{experiment_id}",
             packed_tags=json.dumps(tags, sort_keys=True, separators=(",", ":")).encode(),
+            is_gateway=False,
             tags=tuple(
                 ExperimentTag(
                     scope=_SCOPE,
@@ -244,6 +249,7 @@ def _create(
                     tag_key=key,
                     value=value,
                     value_digest=_digest(value),
+                    value_hash=_hash64(value),
                 )
                 for key, value in sorted(tags.items())
             ),
@@ -335,9 +341,11 @@ def run(endpoint: str, credential_file: str, database: str) -> dict[str, object]
                 tag_key="owner",
                 value="alice",
                 value_digest=_digest("alice"),
+                value_hash=_hash64("alice"),
                 packed_tags=json.dumps(
                     updated_tags, sort_keys=True, separators=(",", ":")
                 ).encode(),
+                is_gateway=False,
                 expected_revision=first_row.revision,
             )
         )
@@ -371,6 +379,7 @@ def run(endpoint: str, credential_file: str, database: str) -> dict[str, object]
                 packed_tags=json.dumps(
                     remaining_tags, sort_keys=True, separators=(",", ":")
                 ).encode(),
+                is_gateway=False,
                 expected_revision=tag_set.outcome.experiment.revision,
             )
         )
@@ -677,6 +686,33 @@ def _verify_tracking_store(transport: SyncApplicationTransport, database: str) -
     matched = store.search_experiments(filter_string="tag.team = 'ml-platform' AND tag.env = 'ci'")
     if [item.experiment_id for item in matched] != [exp_id]:
         raise RuntimeError("store search_experiments two-tag filter did not match")
+
+    # Verify MLflow 3.15 UI experiment filters (IS NULL, IS NOT NULL, !=, combined with ILIKE)
+    ui_default = store.search_experiments(
+        filter_string="tags.`mlflow.experiment.isGateway` IS NULL"
+    )
+    if exp_id not in [item.experiment_id for item in ui_default]:
+        raise RuntimeError("store search_experiments UI isGateway IS NULL filter did not match")
+
+    ui_search = store.search_experiments(
+        filter_string="name ILIKE '%Renamed%' AND tags.`mlflow.experiment.isGateway` IS NULL"
+    )
+    if [item.experiment_id for item in ui_search] != [exp_id]:
+        raise RuntimeError("store search_experiments UI ILIKE + isGateway IS NULL did not match")
+
+    ui_tag_search = store.search_experiments(
+        filter_string="tags.team = 'ml-platform' AND tags.`mlflow.experiment.isGateway` IS NULL"
+    )
+    if [item.experiment_id for item in ui_tag_search] != [exp_id]:
+        raise RuntimeError("store search_experiments UI tag + isGateway IS NULL did not match")
+
+    tag_not_null = store.search_experiments(filter_string="tags.team IS NOT NULL")
+    if exp_id not in [item.experiment_id for item in tag_not_null]:
+        raise RuntimeError("store search_experiments tag IS NOT NULL did not match")
+
+    tag_ne = store.search_experiments(filter_string="tags.team != 'research'")
+    if exp_id not in [item.experiment_id for item in tag_ne]:
+        raise RuntimeError("store search_experiments tag != did not match")
 
     run_one = store.create_run(
         exp_id,
@@ -1121,6 +1157,125 @@ def _verify_extended_tracking_store(store: object, exp_id: str, run_id: str) -> 
         raise RuntimeError("search_logged_models did not return matching model")
 
     s.delete_logged_model(created_model.model_id)
+
+    # 6. MCP Server Registry Mixin (MLflow 3.15)
+    from mlflow.entities.mcp_server import MCPRemoteTransportType, MCPStatus, MCPTool
+
+    mcp_server = s.create_mcp_server(
+        name="io.riffdb/analytics-mcp",
+        description="RiffDB Analytics MCP Server",
+        created_by="conformance",
+    )
+    if mcp_server.name != "io.riffdb/analytics-mcp":
+        raise RuntimeError("create_mcp_server failed")
+    s.set_mcp_server_tag("io.riffdb/analytics-mcp", "tier", "production")
+    sv = s.create_mcp_server_version(
+        server_json={"name": "io.riffdb/analytics-mcp", "version": "1.0.0"},
+        source="https://github.com/riffdb/analytics-mcp",
+        status=MCPStatus.DRAFT,
+        tools=[MCPTool(name="query_traces", description="Query trace analytics")],
+        created_by="conformance",
+    )
+    if sv.version != "1.0.0" or sv.status != MCPStatus.DRAFT:
+        raise RuntimeError("create_mcp_server_version failed")
+    s.update_mcp_server_version(
+        "io.riffdb/analytics-mcp",
+        "1.0.0",
+        status=MCPStatus.ACTIVE,
+    )
+    s.set_mcp_server_alias("io.riffdb/analytics-mcp", "stable", "1.0.0")
+    by_alias = s.get_mcp_server_version_by_alias("io.riffdb/analytics-mcp", "stable")
+    if by_alias.version != "1.0.0" or by_alias.status != MCPStatus.ACTIVE:
+        raise RuntimeError("get_mcp_server_version_by_alias failed")
+    ep = s.create_mcp_access_endpoint(
+        server_name="io.riffdb/analytics-mcp",
+        url="https://mcp.example.com/v1",
+        transport_type=MCPRemoteTransportType.STREAMABLE_HTTP,
+        server_alias="stable",
+    )
+    found_mcp = s.search_mcp_servers(filter_string="status = 'active'")
+    if [item.name for item in found_mcp] != ["io.riffdb/analytics-mcp"]:
+        raise RuntimeError("search_mcp_servers did not return active server")
+    s.delete_mcp_access_endpoint("io.riffdb/analytics-mcp", ep.id)
+    s.update_mcp_server_version(
+        "io.riffdb/analytics-mcp",
+        "1.0.0",
+        status=MCPStatus.DEPRECATED,
+    )
+    s.delete_mcp_server_version("io.riffdb/analytics-mcp", "1.0.0")
+    s.delete_mcp_server("io.riffdb/analytics-mcp")
+
+    # 7. Model Registry Store, Prompt Registry, and Webhooks
+    from mlflow.entities.model_registry import ModelVersionTag, RegisteredModelTag
+    from mlflow.entities.webhook import WebhookAction, WebhookEntity, WebhookEvent, WebhookStatus
+
+    from riffdb_mlflow.registry_store import RiffDBModelRegistryStore
+
+    reg_store = RiffDBModelRegistryStore(
+        f"riffdb://{s.database}", tracking_uri=f"riffdb://{s.database}"
+    )
+    reg_store._transport = s._transport
+    reg_store._client = s._client
+
+    rm = reg_store.create_registered_model(
+        "fraud-detector",
+        tags=[RegisteredModelTag("domain", "risk")],  # type: ignore[no-untyped-call]
+        description="Fraud detection model",
+    )
+    if rm.name != "fraud-detector":
+        raise RuntimeError("create_registered_model failed")
+    mv = reg_store.create_model_version(
+        "fraud-detector",
+        source=f"s3://mlflow-artifacts/{exp_id}/{run_id}/artifacts/model",
+        run_id=run_id,
+        tags=[ModelVersionTag("validated", "true")],  # type: ignore[no-untyped-call]
+        description="Initial version",
+    )
+    if int(mv.version) != 1:
+        raise RuntimeError("create_model_version did not assign version 1")
+    reg_store.transition_model_version_stage("fraud-detector", 1, "Production", False)
+    reg_store.set_registered_model_alias("fraud-detector", "champion", 1)
+    by_model_alias = reg_store.get_model_version_by_alias("fraud-detector", "champion")
+    if int(by_model_alias.version) != 1 or by_model_alias.current_stage != "Production":
+        raise RuntimeError("model registry alias/stage resolution failed")
+    searched_rms = reg_store.search_registered_models(filter_string="name = 'fraud-detector'")
+    if [item.name for item in searched_rms] != ["fraud-detector"]:
+        raise RuntimeError("search_registered_models failed")
+
+    # Prompt Registry via AbstractStore concrete methods
+    prompt = reg_store.create_prompt(
+        name="system-greeting",
+        description="System greeting prompt",
+        tags={"team": "assistant"},
+    )
+    if prompt.name != "system-greeting":
+        raise RuntimeError("create_prompt failed")
+    prompt_ver = reg_store.create_prompt_version(
+        name="system-greeting",
+        template="Hello {{user}}!",
+        description="Initial prompt",
+    )
+    if int(prompt_ver.version) != 1 or prompt_ver.template != "Hello {{user}}!":
+        raise RuntimeError("create_prompt_version failed")
+    searched_prompts = reg_store.search_prompts()
+    if [p.name for p in searched_prompts] != ["system-greeting"]:
+        raise RuntimeError("search_prompts failed")
+
+    # Registry Webhooks
+    wh = reg_store.create_webhook(
+        name="prod-hook",
+        url="https://93.184.216.34/mlflow",
+        events=[WebhookEvent(WebhookEntity.MODEL_VERSION, WebhookAction.CREATED)],
+        description="Notify on new model version",
+        status=WebhookStatus.ACTIVE,
+    )
+    listed_wh = reg_store.list_webhooks()
+    if [w.webhook_id for w in listed_wh] != [wh.webhook_id]:
+        raise RuntimeError("list_webhooks failed")
+    reg_store.delete_webhook(wh.webhook_id)
+    reg_store.delete_model_version("fraud-detector", 1)
+    reg_store.delete_registered_model("fraud-detector")
+    reg_store.delete_registered_model("system-greeting")
 
 
 def main() -> None:

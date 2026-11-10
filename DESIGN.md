@@ -2,53 +2,81 @@
 
 ## Compatibility target
 
-The first release pins MLflow `3.15.1` and registers the `riffdb` URI scheme in
-the official `mlflow.tracking_store` entry-point group. The package implements
-the tracking backend used for experiments, runs, metrics, parameters, tags,
-inputs, and search. Artifact payloads remain in the artifact repository named
-by MLflow's `artifact_uri` argument.
+`riffdb-mlflow` (`0.2.1`) pins **MLflow `3.15.1`** and **RiffDB `0.2.1`** and
+registers the `riffdb` URI scheme in both official MLflow entry-point groups:
 
-MLflow 3.15.1's tracking `AbstractStore` has sixteen abstract methods. The
-compatibility gate records those methods and fails when a pinned upstream
-upgrade changes the abstract surface. Concrete optional domains added by
-MLflow—traces, assessments, evaluation datasets, scorers, review queues, and
-similar GenAI metadata—remain explicitly unsupported until a profile and its
-upstream tests are added. They must never silently fall back to another store.
+- `mlflow.tracking_store` → `riffdb_mlflow.store:RiffDBTrackingStore`
+- `mlflow.model_registry_store` → `riffdb_mlflow.registry_store:RiffDBModelRegistryStore`
 
-The Python floor is 3.13, matching the published RiffDB Python driver rather
-than MLflow's broader interpreter matrix.
+The package implements the tracking, tracing, evaluation assessment, columnar
+trace metrics, logged-model, MCP server registry, model registry, prompt
+registry, and registry webhook backends. Artifact payloads remain in the
+artifact repository named by MLflow's `artifact_uri` argument (or default to
+`_MLFLOW_SERVER_ARTIFACT_ROOT` / `./mlruns` when `artifact_uri` is omitted).
+
+MLflow 3.15.1's tracking `AbstractStore` has sixteen abstract methods and its
+model registry `AbstractStore` has twenty-one abstract methods. The
+compatibility gate in `tests/test_surface.py` records both abstract surfaces as
+well as the concrete extended surfaces (`TraceInfo`/`Span`, `Assessment`,
+`LoggedModel`, `MCPServerRegistryMixin`, `Prompt`, and `Webhook`) and fails
+when a pinned upstream upgrade changes the surface.
+
+Two MLflow 3.15 features are gated upstream by explicit `SqlAlchemyStore` or
+SQL URI checks in MLflow itself rather than store polymorphism:
+
+1. **UI-managed AI Gateway** (`mlflow/server/gateway_api.py::_validate_store`
+   rejects any non-`SqlAlchemyStore` backend). `RiffDBTrackingStore` overrides
+   every `GatewayStoreMixin` method to raise an explicit `MlflowException`
+   (`FEATURE_DISABLED`) directing users to the standalone config-file gateway
+   (`riffdb-mlflow[gateway]`).
+2. **Server-side Job Execution** (`mlflow.server.jobs` requires a SQLAlchemy
+   database URI scheme and disables background server job workers when started
+   with `riffdb://<database>`).
+
+The Python floor for processes loading `riffdb-mlflow` directly is **3.13**,
+matching the published `cp313-abi3` RiffDB Python driver. HTTP clients talking
+to `mlflow server` over REST are unaffected and support Python 3.10–3.13.
 
 ## Core behavior
 
 | Domain | Required behavior |
 |---|---|
-| Experiments | Unique names, create/get/search, rename, soft delete/restore, tags, stable pages |
+| Experiments | Unique names, create/get/search (`=`, `!=`, `LIKE`, `ILIKE`, `IS NULL`, `IS NOT NULL`, and 2-/3-predicate UI combinations including `mlflow.experiment.isGateway`), rename, soft delete/restore, tags, stable pages |
 | Runs | Create/get/search, lifecycle updates, soft delete/restore, exact latest data |
 | Metrics | Atomic bounded batches, full paged history, exact IEEE-754 values, MLflow latest-value tie-breaking |
 | Parameters | Immutable per-run key/value binding and duplicate-conflict behavior |
 | Tags | Last-write-wins set and exact deletion semantics |
-| Inputs | Atomic dataset/model input associations with deterministic bounded encoding |
-| Authorization | Per-experiment and per-run row policy through the compiled profile, never Python filtering |
+| Inputs & Outputs | Atomic dataset/model input and output associations with deterministic bounded encoding |
+| Traces & Spans | Out-of-order span ingestion (`init_or_mutate`), trace tags, run/prompt links, search, and assessments |
+| Trace Analytics | Contract-declared scalar columnar projections (`TraceAnalytics`, `SpanAnalytics`, `AssessmentAnalytics`) and event-driven rollups (`SpanModelRollup`). Cold projections report ready prior to first demand in RiffDB `0.2.1+` |
+| Logged Models | Full `LoggedModel` lifecycle, params, tags, and search |
+| Model & Prompt Registry | Registered models, versions, stage transitions, aliases, tags, prompt registry (`create_prompt`, `create_prompt_version`, `search_prompts`), and registry webhooks |
+| MCP Server Registry | MCP servers, versions, aliases, tags, and access endpoints via `RiffDBMCPServerRegistryMixin` |
+| Authorization | Role-based contract policy through the compiled `MLflowTrackingServer` profile, never Python filtering |
 
 The SQL store is the behavioral reference. RiffDB is not treated as SQL and
 the adapter does not emulate SQL transactions; it exposes equivalent MLflow
-semantics through compiled commands and named queries.
+semantics through 36 compiled RiffDB commands and 64 named RiffQL queries.
 
 ## Configuration
 
-MLflow constructs the plugin with `(store_uri, artifact_uri)`. The canonical
-tracking URI is `riffdb://<database>`. It contains no credential or TLS
-material. Connection authority comes from protected process configuration:
+MLflow constructs the tracking plugin with `(store_uri, artifact_uri)` and the
+model registry plugin with `(store_uri, tracking_uri)`. The canonical URI is
+`riffdb://<database>`. It contains no credential or TLS material. Connection
+authority comes from protected process configuration validated by
+`ConnectionConfig.from_env()` before any transport initialization:
 
-- `RIFFDB_MLFLOW_ENDPOINT`
-- `RIFFDB_MLFLOW_TRUST_ROOT`
-- `RIFFDB_MLFLOW_SERVER_NAME`
-- `RIFFDB_MLFLOW_CREDENTIAL_FILE`
+- `RIFFDB_MLFLOW_ENDPOINT`: `https://<host>[:<port>]` without path, query, fragment, or userinfo.
+- `RIFFDB_MLFLOW_SERVER_NAME`: hostname or IP matching the endpoint host.
+- `RIFFDB_MLFLOW_TRUST_ROOT`: absolute path to a readable PEM certificate file (`-----BEGIN CERTIFICATE-----`).
+- `RIFFDB_MLFLOW_CREDENTIAL_FILE`: absolute path to a non-empty regular file (not a symlink), owned by the current user, with mode `0600` or `0400`.
 
 The credential file is consumed through RiffDB's nonextractable protected-file
 API. The database in the URI becomes `CallMetadata`'s database alias. Unknown
-URI components, user information, ports, paths, query parameters, and fragments
-fail before any transport work.
+URI components, user information, ports, paths, query parameters, fragments, or
+invalid `RIFFDB_MLFLOW_*` settings fail immediately with
+`MlflowException(error_code=INVALID_PARAMETER_VALUE)` naming the offending
+setting.
 
 ## IDs and time
 
@@ -75,10 +103,10 @@ MLflow accepts a textual search grammar. Python parses that grammar using
 MLflow's own parser and normalizes it into a closed internal shape. The shape
 selects a generated named query; it never supplies field, operator, index,
 order, or raw predicate text to RiffDB. Unsupported conjunctions, fields, or
-orders fail with MLflow's invalid-parameter error.
+orders fail with MLflow's invalid-parameter error before contacting RiffDB.
 
-Search result hydration must be bounded in the query or command result. N+1
-reads, fetch-and-filter, adapter sorting, and offset simulation are prohibited.
+Search result hydration is bounded in the query or command result. N+1 reads,
+fetch-and-filter, adapter sorting, and offset simulation are prohibited.
 
 ## Error mapping
 

@@ -4,19 +4,28 @@ build-backend = "hatchling.build"
 
 [project]
 name = "riffdb-mlflow"
-version = "0.2.0"
-description = "Compiled RiffDB tracking-store adapter for MLflow"
+version = "0.2.1"
+description = "Compiled RiffDB tracking and model-registry store adapter for MLflow"
 readme = "README.md"
 requires-python = ">=3.13"
 license = { text = "MIT OR Apache-2.0" }
 authors = [{ name = "RiffDB contributors" }]
 dependencies = [
   "mlflow==3.15.1",
-  "riffdb==0.2.0",
+  "riffdb==0.2.1",
 ]
+
+[project.optional-dependencies]
+gateway = ["mlflow[gateway]==3.15.1"]
+genai = ["mlflow[genai]==3.15.1"]
+extras = ["mlflow[extras]==3.15.1"]
+aws = ["boto3>=1.28"]
 
 [project.entry-points."mlflow.tracking_store"]
 riffdb = "riffdb_mlflow.store:RiffDBTrackingStore"
+
+[project.entry-points."mlflow.model_registry_store"]
+riffdb = "riffdb_mlflow.registry_store:RiffDBModelRegistryStore"
 
 [dependency-groups]
 dev = [

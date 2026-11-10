@@ -1,0 +1,21 @@
+query GetMCPServerVersion(
+    $scope: MCPServerVersionEntity.scope,
+    $name: MCPServerVersionEntity.name,
+    $server_version: MCPServerVersionEntity.server_version,
+) {
+    one sv from MCPServerVersionEntity
+        where scope == $scope
+          && name == $name
+          && server_version == $server_version
+        else Missing
+
+    return Found {
+        server_version: sv {
+            name server_version version_major version_minor version_patch
+            version_prerelease_sort_key server_json status
+            packed_tools packed_tags packed_connect_options
+            source_url created_by last_updated_by created_at_ms last_updated_at_ms
+        }
+    }
+    outcomes Found | Missing
+}

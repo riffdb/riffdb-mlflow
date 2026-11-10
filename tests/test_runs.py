@@ -61,6 +61,7 @@ class FakeRunClient:
             creation_time=Timestamp(seconds=1_800_000_000, nanos=0),
             last_update_time=Timestamp(seconds=1_800_000_000, nanos=0),
             packed_tags=b"{}",
+            is_gateway=False,
             revision=0,
         )
         self.rows: dict[str, Run] = {}

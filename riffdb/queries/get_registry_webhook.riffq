@@ -1,0 +1,17 @@
+query GetRegistryWebhook(
+    $scope: RegistryWebhookEntity.scope,
+    $webhook_id: RegistryWebhookEntity.webhook_id,
+) {
+    one webhook from RegistryWebhookEntity
+        where scope == $scope
+          && webhook_id == $webhook_id
+        else Missing
+
+    return Found {
+        webhook: webhook {
+            webhook_id name description url status secret packed_events
+            creation_timestamp_ms last_updated_timestamp_ms deleted_timestamp_ms
+        }
+    }
+    outcomes Found | Missing
+}

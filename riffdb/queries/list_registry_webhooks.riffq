@@ -1,0 +1,19 @@
+query ListRegistryWebhooks(
+    $scope: RegistryWebhookEntity.scope,
+    $limit: Limit<50> = 50,
+    $after: Cursor?,
+) {
+    many webhooks from RegistryWebhookEntity
+        where scope == $scope
+        order by creation_timestamp_ms desc, webhook_id asc
+        take $limit after $after
+        else IntegrityFailure
+
+    return Found {
+        webhooks: webhooks {
+            webhook_id name description url status secret packed_events
+            creation_timestamp_ms last_updated_timestamp_ms deleted_timestamp_ms
+        }
+    }
+    outcomes Found | IntegrityFailure
+}
