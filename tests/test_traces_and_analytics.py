@@ -1510,9 +1510,15 @@ def _find_riffdb_binary() -> str | None:
     env_bin = os.environ.get("RIFFDB")
     if env_bin and Path(env_bin).is_file():
         return env_bin
-    sibling_bin = Path(__file__).resolve().parents[2] / "riffdb" / "target" / "release" / "riffdb"
-    if sibling_bin.is_file():
-        return str(sibling_bin)
+    repo_base = Path(__file__).resolve().parents[2] / "riffdb" / "target"
+    debug_bin = repo_base / "debug" / "riffdb"
+    release_bin = repo_base / "release" / "riffdb"
+    if debug_bin.is_file() and (
+        not release_bin.is_file() or debug_bin.stat().st_mtime >= release_bin.stat().st_mtime
+    ):
+        return str(debug_bin)
+    if release_bin.is_file():
+        return str(release_bin)
     return shutil.which("riffdb")
 
 

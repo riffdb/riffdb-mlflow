@@ -2,7 +2,7 @@ query SearchRunsByName(
     $experiment_id: Run.experiment_id,
     $run_name: Run.run_name,
     $lifecycle_stages: Set<Run.lifecycle_stage>,
-    $limit: Limit<2> = 2,
+    $limit: Limit<100> = 100,
     $after: Cursor?,
 ) {
     candidates matching_runs: Run.run_id

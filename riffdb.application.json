@@ -15,96 +15,370 @@
       "name": "riffdb_mlflow",
       "version": 1,
       "queries": [
-        { "name": "AggregateSpanAnalyticsByModel", "source": "riffdb/queries/aggregate_span_analytics_by_model.riffq" },
-        { "name": "AggregateSpanAnalyticsByNameStatus", "source": "riffdb/queries/aggregate_span_analytics_by_name_status.riffq" },
-        { "name": "AggregateTraceAnalyticsByName", "source": "riffdb/queries/aggregate_trace_analytics_by_name.riffq" },
-        { "name": "AggregateTraceAnalyticsByStatus", "source": "riffdb/queries/aggregate_trace_analytics_by_status.riffq" },
-        { "name": "BatchGetTraceAssessments", "source": "riffdb/queries/batch_get_trace_assessments.riffq" },
-        { "name": "BatchGetTraceSpans", "source": "riffdb/queries/batch_get_trace_spans.riffq" },
-        { "name": "BatchGetTraces", "source": "riffdb/queries/batch_get_traces.riffq" },
-        { "name": "GetEvaluationDataset", "source": "riffdb/queries/get_evaluation_dataset.riffq" },
-        { "name": "GetExperiment", "source": "riffdb/queries/get_experiment.riffq" },
-        { "name": "GetExperimentByName", "source": "riffdb/queries/get_experiment_by_name.riffq" },
-        { "name": "GetGatewayBudgetPolicy", "source": "riffdb/queries/get_gateway_budget_policy.riffq" },
-        { "name": "GetGatewayEndpoint", "source": "riffdb/queries/get_gateway_endpoint.riffq" },
-        { "name": "GetGatewayGuardrail", "source": "riffdb/queries/get_gateway_guardrail.riffq" },
-        { "name": "GetGatewayModelDefinition", "source": "riffdb/queries/get_gateway_model_definition.riffq" },
-        { "name": "GetGatewaySecret", "source": "riffdb/queries/get_gateway_secret.riffq" },
-        { "name": "GetIssue", "source": "riffdb/queries/get_issue.riffq" },
-        { "name": "GetLabelSchema", "source": "riffdb/queries/get_label_schema.riffq" },
-        { "name": "GetLoggedModel", "source": "riffdb/queries/get_logged_model.riffq" },
-        { "name": "GetMCPAccessEndpoint", "source": "riffdb/queries/get_mcp_access_endpoint.riffq" },
-        { "name": "GetMCPServer", "source": "riffdb/queries/get_mcp_server.riffq" },
-        { "name": "GetMCPServerVersion", "source": "riffdb/queries/get_mcp_server_version.riffq" },
-        { "name": "GetMetricHistory", "source": "riffdb/queries/get_metric_history.riffq" },
-        { "name": "GetModelVersion", "source": "riffdb/queries/get_model_version.riffq" },
-        { "name": "GetRegisteredModel", "source": "riffdb/queries/get_registered_model.riffq" },
-        { "name": "GetRegistryWebhook", "source": "riffdb/queries/get_registry_webhook.riffq" },
-        { "name": "GetReviewQueue", "source": "riffdb/queries/get_review_queue.riffq" },
-        { "name": "GetRun", "source": "riffdb/queries/get_run.riffq" },
-        { "name": "GetRunLineage", "source": "riffdb/queries/get_run_lineage.riffq" },
-        { "name": "GetScorer", "source": "riffdb/queries/get_scorer.riffq" },
-        { "name": "GetServerJob", "source": "riffdb/queries/get_server_job.riffq" },
-        { "name": "GetTrace", "source": "riffdb/queries/get_trace.riffq" },
-        { "name": "ListEvaluationDatasets", "source": "riffdb/queries/list_evaluation_datasets.riffq" },
-        { "name": "ListGatewayBudgetPolicies", "source": "riffdb/queries/list_gateway_budget_policies.riffq" },
-        { "name": "ListGatewayEndpoints", "source": "riffdb/queries/list_gateway_endpoints.riffq" },
-        { "name": "ListGatewayGuardrails", "source": "riffdb/queries/list_gateway_guardrails.riffq" },
-        { "name": "ListGatewayModelDefinitions", "source": "riffdb/queries/list_gateway_model_definitions.riffq" },
-        { "name": "ListGatewaySecrets", "source": "riffdb/queries/list_gateway_secrets.riffq" },
-        { "name": "ListIssues", "source": "riffdb/queries/list_issues.riffq" },
-        { "name": "ListLabelSchemas", "source": "riffdb/queries/list_label_schemas.riffq" },
-        { "name": "ListMCPAccessEndpointsByServer", "source": "riffdb/queries/list_mcp_access_endpoints_by_server.riffq" },
-        { "name": "ListMCPServerVersionsByServer", "source": "riffdb/queries/list_mcp_server_versions_by_server.riffq" },
-        { "name": "ListModelVersionsByModel", "source": "riffdb/queries/list_model_versions_by_model.riffq" },
-        { "name": "ListRegistryWebhooks", "source": "riffdb/queries/list_registry_webhooks.riffq" },
-        { "name": "ListReviewQueues", "source": "riffdb/queries/list_review_queues.riffq" },
-        { "name": "ListScorers", "source": "riffdb/queries/list_scorers.riffq" },
-        { "name": "ListServerJobs", "source": "riffdb/queries/list_server_jobs.riffq" },
-        { "name": "QueryAssessmentAnalytics", "source": "riffdb/queries/query_assessment_analytics.riffq" },
-        { "name": "QuerySpanAnalytics", "source": "riffdb/queries/query_span_analytics.riffq" },
-        { "name": "QuerySpanModelRollup", "source": "riffdb/queries/query_span_model_rollup.riffq" },
-        { "name": "QueryTraceAnalytics", "source": "riffdb/queries/query_trace_analytics.riffq" },
-        { "name": "SearchExperiments", "source": "riffdb/queries/search_experiments.riffq" },
-        { "name": "SearchExperimentsByName", "source": "riffdb/queries/search_experiments_by_name.riffq" },
-        { "name": "SearchExperimentsByNameAndTag", "source": "riffdb/queries/search_experiments_by_name_and_tag.riffq" },
-        { "name": "SearchExperimentsByNameAndTagIsNull", "source": "riffdb/queries/search_experiments_by_name_and_tag_is_null.riffq" },
-        { "name": "SearchExperimentsByNameILike", "source": "riffdb/queries/search_experiments_by_name_ilike.riffq" },
-        { "name": "SearchExperimentsByNameILikeAndGatewayIsNull", "source": "riffdb/queries/search_experiments_by_name_ilike_and_gateway_is_null.riffq" },
-        { "name": "SearchExperimentsByNameILikeAndTag", "source": "riffdb/queries/search_experiments_by_name_ilike_and_tag.riffq" },
-        { "name": "SearchExperimentsByNameILikeAndTagAndGatewayIsNull", "source": "riffdb/queries/search_experiments_by_name_ilike_and_tag_and_gateway_is_null.riffq" },
-        { "name": "SearchExperimentsByNameILikeAndTagIsNotNull", "source": "riffdb/queries/search_experiments_by_name_ilike_and_tag_is_not_null.riffq" },
-        { "name": "SearchExperimentsByNameLike", "source": "riffdb/queries/search_experiments_by_name_like.riffq" },
-        { "name": "SearchExperimentsByNameLikeAndGatewayIsNull", "source": "riffdb/queries/search_experiments_by_name_like_and_gateway_is_null.riffq" },
-        { "name": "SearchExperimentsByNameLikeAndTag", "source": "riffdb/queries/search_experiments_by_name_like_and_tag.riffq" },
-        { "name": "SearchExperimentsByNameNotEqual", "source": "riffdb/queries/search_experiments_by_name_not_equal.riffq" },
-        { "name": "SearchExperimentsByNameNotEqualAndTagIsNull", "source": "riffdb/queries/search_experiments_by_name_not_equal_and_tag_is_null.riffq" },
-        { "name": "SearchExperimentsByTag", "source": "riffdb/queries/search_experiments_by_tag.riffq" },
-        { "name": "SearchExperimentsByTagAndGatewayIsNull", "source": "riffdb/queries/search_experiments_by_tag_and_gateway_is_null.riffq" },
-        { "name": "SearchExperimentsByTagAndTagIsNotNull", "source": "riffdb/queries/search_experiments_by_tag_and_tag_is_not_null.riffq" },
-        { "name": "SearchExperimentsByTagILike", "source": "riffdb/queries/search_experiments_by_tag_ilike.riffq" },
-        { "name": "SearchExperimentsByTagIsNotNull", "source": "riffdb/queries/search_experiments_by_tag_is_not_null.riffq" },
-        { "name": "SearchExperimentsByTagIsNotNullAndGatewayIsNull", "source": "riffdb/queries/search_experiments_by_tag_is_not_null_and_gateway_is_null.riffq" },
-        { "name": "SearchExperimentsByTagIsNull", "source": "riffdb/queries/search_experiments_by_tag_is_null.riffq" },
-        { "name": "SearchExperimentsByTagLike", "source": "riffdb/queries/search_experiments_by_tag_like.riffq" },
-        { "name": "SearchExperimentsByTagNotEqual", "source": "riffdb/queries/search_experiments_by_tag_not_equal.riffq" },
-        { "name": "SearchExperimentsByTagNotEqualAndGatewayIsNull", "source": "riffdb/queries/search_experiments_by_tag_not_equal_and_gateway_is_null.riffq" },
-        { "name": "SearchExperimentsByTwoTags", "source": "riffdb/queries/search_experiments_by_two_tags.riffq" },
-        { "name": "SearchExperimentsByTwoTagsILike", "source": "riffdb/queries/search_experiments_by_two_tags_ilike.riffq" },
-        { "name": "SearchExperimentsByTwoTagsIsNull", "source": "riffdb/queries/search_experiments_by_two_tags_is_null.riffq" },
-        { "name": "SearchExperimentsByTwoTagsNotEqual", "source": "riffdb/queries/search_experiments_by_two_tags_not_equal.riffq" },
-        { "name": "SearchLoggedModels", "source": "riffdb/queries/search_logged_models.riffq" },
-        { "name": "SearchMCPAccessEndpoints", "source": "riffdb/queries/search_mcp_access_endpoints.riffq" },
-        { "name": "SearchMCPServers", "source": "riffdb/queries/search_mcp_servers.riffq" },
-        { "name": "SearchModelVersions", "source": "riffdb/queries/search_model_versions.riffq" },
-        { "name": "SearchRegisteredModels", "source": "riffdb/queries/search_registered_models.riffq" },
-        { "name": "SearchRuns", "source": "riffdb/queries/search_runs.riffq" },
-        { "name": "SearchRunsByDatumDigest", "source": "riffdb/queries/search_runs_by_datum_digest.riffq" },
-        { "name": "SearchRunsByIds", "source": "riffdb/queries/search_runs_by_ids.riffq" },
-        { "name": "SearchRunsByLifecycle", "source": "riffdb/queries/search_runs_by_lifecycle.riffq" },
-        { "name": "SearchRunsByName", "source": "riffdb/queries/search_runs_by_name.riffq" },
-        { "name": "SearchRunsByStatus", "source": "riffdb/queries/search_runs_by_status.riffq" },
-        { "name": "SearchTraces", "source": "riffdb/queries/search_traces.riffq" }
+        {
+          "name": "AggregateSpanAnalyticsByModel",
+          "source": "riffdb/queries/aggregate_span_analytics_by_model.riffq"
+        },
+        {
+          "name": "AggregateSpanAnalyticsByNameStatus",
+          "source": "riffdb/queries/aggregate_span_analytics_by_name_status.riffq"
+        },
+        {
+          "name": "AggregateTraceAnalyticsByName",
+          "source": "riffdb/queries/aggregate_trace_analytics_by_name.riffq"
+        },
+        {
+          "name": "AggregateTraceAnalyticsByStatus",
+          "source": "riffdb/queries/aggregate_trace_analytics_by_status.riffq"
+        },
+        {
+          "name": "BatchGetTraceAssessments",
+          "source": "riffdb/queries/batch_get_trace_assessments.riffq"
+        },
+        {
+          "name": "BatchGetTraceSpans",
+          "source": "riffdb/queries/batch_get_trace_spans.riffq"
+        },
+        {
+          "name": "BatchGetTraces",
+          "source": "riffdb/queries/batch_get_traces.riffq"
+        },
+        {
+          "name": "GetEvaluationDataset",
+          "source": "riffdb/queries/get_evaluation_dataset.riffq"
+        },
+        {
+          "name": "GetExperiment",
+          "source": "riffdb/queries/get_experiment.riffq"
+        },
+        {
+          "name": "GetExperimentByName",
+          "source": "riffdb/queries/get_experiment_by_name.riffq"
+        },
+        {
+          "name": "GetGatewayBudgetPolicy",
+          "source": "riffdb/queries/get_gateway_budget_policy.riffq"
+        },
+        {
+          "name": "GetGatewayEndpoint",
+          "source": "riffdb/queries/get_gateway_endpoint.riffq"
+        },
+        {
+          "name": "GetGatewayGuardrail",
+          "source": "riffdb/queries/get_gateway_guardrail.riffq"
+        },
+        {
+          "name": "GetGatewayModelDefinition",
+          "source": "riffdb/queries/get_gateway_model_definition.riffq"
+        },
+        {
+          "name": "GetGatewaySecret",
+          "source": "riffdb/queries/get_gateway_secret.riffq"
+        },
+        {
+          "name": "GetIssue",
+          "source": "riffdb/queries/get_issue.riffq"
+        },
+        {
+          "name": "GetLabelSchema",
+          "source": "riffdb/queries/get_label_schema.riffq"
+        },
+        {
+          "name": "GetLoggedModel",
+          "source": "riffdb/queries/get_logged_model.riffq"
+        },
+        {
+          "name": "GetMCPAccessEndpoint",
+          "source": "riffdb/queries/get_mcp_access_endpoint.riffq"
+        },
+        {
+          "name": "GetMCPServer",
+          "source": "riffdb/queries/get_mcp_server.riffq"
+        },
+        {
+          "name": "GetMCPServerVersion",
+          "source": "riffdb/queries/get_mcp_server_version.riffq"
+        },
+        {
+          "name": "GetMetricHistory",
+          "source": "riffdb/queries/get_metric_history.riffq"
+        },
+        {
+          "name": "GetModelVersion",
+          "source": "riffdb/queries/get_model_version.riffq"
+        },
+        {
+          "name": "GetRegisteredModel",
+          "source": "riffdb/queries/get_registered_model.riffq"
+        },
+        {
+          "name": "GetRegistryWebhook",
+          "source": "riffdb/queries/get_registry_webhook.riffq"
+        },
+        {
+          "name": "GetReviewQueue",
+          "source": "riffdb/queries/get_review_queue.riffq"
+        },
+        {
+          "name": "GetRun",
+          "source": "riffdb/queries/get_run.riffq"
+        },
+        {
+          "name": "GetRunLineage",
+          "source": "riffdb/queries/get_run_lineage.riffq"
+        },
+        {
+          "name": "GetScorer",
+          "source": "riffdb/queries/get_scorer.riffq"
+        },
+        {
+          "name": "GetServerJob",
+          "source": "riffdb/queries/get_server_job.riffq"
+        },
+        {
+          "name": "GetTrace",
+          "source": "riffdb/queries/get_trace.riffq"
+        },
+        {
+          "name": "ListEvaluationDatasets",
+          "source": "riffdb/queries/list_evaluation_datasets.riffq"
+        },
+        {
+          "name": "ListGatewayBudgetPolicies",
+          "source": "riffdb/queries/list_gateway_budget_policies.riffq"
+        },
+        {
+          "name": "ListGatewayEndpoints",
+          "source": "riffdb/queries/list_gateway_endpoints.riffq"
+        },
+        {
+          "name": "ListGatewayGuardrails",
+          "source": "riffdb/queries/list_gateway_guardrails.riffq"
+        },
+        {
+          "name": "ListGatewayModelDefinitions",
+          "source": "riffdb/queries/list_gateway_model_definitions.riffq"
+        },
+        {
+          "name": "ListGatewaySecrets",
+          "source": "riffdb/queries/list_gateway_secrets.riffq"
+        },
+        {
+          "name": "ListIssues",
+          "source": "riffdb/queries/list_issues.riffq"
+        },
+        {
+          "name": "ListLabelSchemas",
+          "source": "riffdb/queries/list_label_schemas.riffq"
+        },
+        {
+          "name": "ListMCPAccessEndpointsByServer",
+          "source": "riffdb/queries/list_mcp_access_endpoints_by_server.riffq"
+        },
+        {
+          "name": "ListMCPServerVersionsByServer",
+          "source": "riffdb/queries/list_mcp_server_versions_by_server.riffq"
+        },
+        {
+          "name": "ListModelVersionsByModel",
+          "source": "riffdb/queries/list_model_versions_by_model.riffq"
+        },
+        {
+          "name": "ListRegistryWebhooks",
+          "source": "riffdb/queries/list_registry_webhooks.riffq"
+        },
+        {
+          "name": "ListReviewQueues",
+          "source": "riffdb/queries/list_review_queues.riffq"
+        },
+        {
+          "name": "ListScorers",
+          "source": "riffdb/queries/list_scorers.riffq"
+        },
+        {
+          "name": "ListServerJobs",
+          "source": "riffdb/queries/list_server_jobs.riffq"
+        },
+        {
+          "name": "QueryAssessmentAnalytics",
+          "source": "riffdb/queries/query_assessment_analytics.riffq"
+        },
+        {
+          "name": "QuerySpanAnalytics",
+          "source": "riffdb/queries/query_span_analytics.riffq"
+        },
+        {
+          "name": "QuerySpanModelRollup",
+          "source": "riffdb/queries/query_span_model_rollup.riffq"
+        },
+        {
+          "name": "QueryTraceAnalytics",
+          "source": "riffdb/queries/query_trace_analytics.riffq"
+        },
+        {
+          "name": "SearchExperiments",
+          "source": "riffdb/queries/search_experiments.riffq"
+        },
+        {
+          "name": "SearchExperimentsByName",
+          "source": "riffdb/queries/search_experiments_by_name.riffq"
+        },
+        {
+          "name": "SearchExperimentsByNameAndTag",
+          "source": "riffdb/queries/search_experiments_by_name_and_tag.riffq"
+        },
+        {
+          "name": "SearchExperimentsByNameAndTagIsNull",
+          "source": "riffdb/queries/search_experiments_by_name_and_tag_is_null.riffq"
+        },
+        {
+          "name": "SearchExperimentsByNameILike",
+          "source": "riffdb/queries/search_experiments_by_name_ilike.riffq"
+        },
+        {
+          "name": "SearchExperimentsByNameILikeAndGatewayIsNull",
+          "source": "riffdb/queries/search_experiments_by_name_ilike_and_gateway_is_null.riffq"
+        },
+        {
+          "name": "SearchExperimentsByNameILikeAndTag",
+          "source": "riffdb/queries/search_experiments_by_name_ilike_and_tag.riffq"
+        },
+        {
+          "name": "SearchExperimentsByNameILikeAndTagAndGatewayIsNull",
+          "source": "riffdb/queries/search_experiments_by_name_ilike_and_tag_and_gateway_is_null.riffq"
+        },
+        {
+          "name": "SearchExperimentsByNameILikeAndTagIsNotNull",
+          "source": "riffdb/queries/search_experiments_by_name_ilike_and_tag_is_not_null.riffq"
+        },
+        {
+          "name": "SearchExperimentsByNameLike",
+          "source": "riffdb/queries/search_experiments_by_name_like.riffq"
+        },
+        {
+          "name": "SearchExperimentsByNameLikeAndGatewayIsNull",
+          "source": "riffdb/queries/search_experiments_by_name_like_and_gateway_is_null.riffq"
+        },
+        {
+          "name": "SearchExperimentsByNameLikeAndTag",
+          "source": "riffdb/queries/search_experiments_by_name_like_and_tag.riffq"
+        },
+        {
+          "name": "SearchExperimentsByNameNotEqual",
+          "source": "riffdb/queries/search_experiments_by_name_not_equal.riffq"
+        },
+        {
+          "name": "SearchExperimentsByNameNotEqualAndTagIsNull",
+          "source": "riffdb/queries/search_experiments_by_name_not_equal_and_tag_is_null.riffq"
+        },
+        {
+          "name": "SearchExperimentsByTag",
+          "source": "riffdb/queries/search_experiments_by_tag.riffq"
+        },
+        {
+          "name": "SearchExperimentsByTagAndGatewayIsNull",
+          "source": "riffdb/queries/search_experiments_by_tag_and_gateway_is_null.riffq"
+        },
+        {
+          "name": "SearchExperimentsByTagAndTagIsNotNull",
+          "source": "riffdb/queries/search_experiments_by_tag_and_tag_is_not_null.riffq"
+        },
+        {
+          "name": "SearchExperimentsByTagILike",
+          "source": "riffdb/queries/search_experiments_by_tag_ilike.riffq"
+        },
+        {
+          "name": "SearchExperimentsByTagIsNotNull",
+          "source": "riffdb/queries/search_experiments_by_tag_is_not_null.riffq"
+        },
+        {
+          "name": "SearchExperimentsByTagIsNotNullAndGatewayIsNull",
+          "source": "riffdb/queries/search_experiments_by_tag_is_not_null_and_gateway_is_null.riffq"
+        },
+        {
+          "name": "SearchExperimentsByTagIsNull",
+          "source": "riffdb/queries/search_experiments_by_tag_is_null.riffq"
+        },
+        {
+          "name": "SearchExperimentsByTagLike",
+          "source": "riffdb/queries/search_experiments_by_tag_like.riffq"
+        },
+        {
+          "name": "SearchExperimentsByTagNotEqual",
+          "source": "riffdb/queries/search_experiments_by_tag_not_equal.riffq"
+        },
+        {
+          "name": "SearchExperimentsByTagNotEqualAndGatewayIsNull",
+          "source": "riffdb/queries/search_experiments_by_tag_not_equal_and_gateway_is_null.riffq"
+        },
+        {
+          "name": "SearchExperimentsByTwoTags",
+          "source": "riffdb/queries/search_experiments_by_two_tags.riffq"
+        },
+        {
+          "name": "SearchExperimentsByTwoTagsILike",
+          "source": "riffdb/queries/search_experiments_by_two_tags_ilike.riffq"
+        },
+        {
+          "name": "SearchExperimentsByTwoTagsIsNull",
+          "source": "riffdb/queries/search_experiments_by_two_tags_is_null.riffq"
+        },
+        {
+          "name": "SearchExperimentsByTwoTagsNotEqual",
+          "source": "riffdb/queries/search_experiments_by_two_tags_not_equal.riffq"
+        },
+        {
+          "name": "SearchLoggedModels",
+          "source": "riffdb/queries/search_logged_models.riffq"
+        },
+        {
+          "name": "SearchMCPAccessEndpoints",
+          "source": "riffdb/queries/search_mcp_access_endpoints.riffq"
+        },
+        {
+          "name": "SearchMCPServers",
+          "source": "riffdb/queries/search_mcp_servers.riffq"
+        },
+        {
+          "name": "SearchModelVersions",
+          "source": "riffdb/queries/search_model_versions.riffq"
+        },
+        {
+          "name": "SearchRegisteredModels",
+          "source": "riffdb/queries/search_registered_models.riffq"
+        },
+        {
+          "name": "SearchRuns",
+          "source": "riffdb/queries/search_runs.riffq"
+        },
+        {
+          "name": "SearchRunsByDatumDigest",
+          "source": "riffdb/queries/search_runs_by_datum_digest.riffq"
+        },
+        {
+          "name": "SearchRunsByIds",
+          "source": "riffdb/queries/search_runs_by_ids.riffq"
+        },
+        {
+          "name": "SearchRunsByLifecycle",
+          "source": "riffdb/queries/search_runs_by_lifecycle.riffq"
+        },
+        {
+          "name": "SearchRunsByName",
+          "source": "riffdb/queries/search_runs_by_name.riffq"
+        },
+        {
+          "name": "SearchRunsByStatus",
+          "source": "riffdb/queries/search_runs_by_status.riffq"
+        },
+        {
+          "name": "SearchRunsComposable",
+          "source": "riffdb/queries/search_runs_composable.riffq"
+        },
+        {
+          "name": "SearchTraces",
+          "source": "riffdb/queries/search_traces.riffq"
+        }
       ]
     }
   ],
@@ -204,6 +478,331 @@
         "SearchRunsByLifecycle",
         "SearchRunsByName",
         "SearchRunsByStatus",
+        "SearchRunsComposable",
+        "SearchTraces"
+      ],
+      "commands": [
+        "CreateExperiment",
+        "CreateExperimentWithTags",
+        "CreateMCPServerEntity",
+        "CreateMCPServerVersionEntity",
+        "CreateRegisteredModelEntity",
+        "CreateRun",
+        "CreateRunWithTags",
+        "DeleteEvaluationDatasetEntity",
+        "DeleteExperiment",
+        "DeleteExperimentTag",
+        "DeleteGatewayBudgetPolicyEntity",
+        "DeleteGatewayEndpointEntity",
+        "DeleteGatewayGuardrailEntity",
+        "DeleteGatewayModelDefinitionEntity",
+        "DeleteGatewaySecretEntity",
+        "DeleteIssueEntity",
+        "DeleteLabelSchemaEntity",
+        "DeleteLoggedModelEntity",
+        "DeleteMCPAccessEndpointEntity",
+        "DeleteMCPServerEntity",
+        "DeleteModelVersionEntity",
+        "DeleteRegisteredModelEntity",
+        "DeleteReviewQueueEntity",
+        "DeleteRun",
+        "DeleteScorerEntity",
+        "DeleteServerJobEntity",
+        "DeleteTrace",
+        "DeleteTraceAssessment",
+        "DeleteTraceSpan",
+        "IngestTraceSpans",
+        "LogBatch",
+        "RenameExperiment",
+        "RestoreExperiment",
+        "RestoreRun",
+        "SetExperimentTag",
+        "UpdateRunInfo",
+        "UpsertEvaluationDatasetEntity",
+        "UpsertGatewayBudgetPolicyEntity",
+        "UpsertGatewayEndpointEntity",
+        "UpsertGatewayGuardrailEntity",
+        "UpsertGatewayModelDefinitionEntity",
+        "UpsertGatewaySecretEntity",
+        "UpsertIssueEntity",
+        "UpsertLabelSchemaEntity",
+        "UpsertLoggedModel",
+        "UpsertMCPAccessEndpointEntity",
+        "UpsertMCPServerEntity",
+        "UpsertMCPServerVersionEntity",
+        "UpsertModelVersionEntity",
+        "UpsertRegisteredModelEntity",
+        "UpsertRegistryWebhookEntity",
+        "UpsertReviewQueueEntity",
+        "UpsertRunLineage",
+        "UpsertScorerEntity",
+        "UpsertServerJobEntity",
+        "UpsertTrace",
+        "UpsertTraceAssessment",
+        "ValidateRunActive"
+      ],
+      "event_streams": [],
+      "watch_queries": [],
+      "agent_subscriptions": [],
+      "row_policies": []
+    },
+    {
+      "name": "MLflowTrackingServerProduction",
+      "environment": "production",
+      "tenant_scope": "global",
+      "queries": [
+        "AggregateSpanAnalyticsByModel",
+        "AggregateSpanAnalyticsByNameStatus",
+        "AggregateTraceAnalyticsByName",
+        "AggregateTraceAnalyticsByStatus",
+        "BatchGetTraceAssessments",
+        "BatchGetTraceSpans",
+        "BatchGetTraces",
+        "GetEvaluationDataset",
+        "GetExperiment",
+        "GetExperimentByName",
+        "GetGatewayBudgetPolicy",
+        "GetGatewayEndpoint",
+        "GetGatewayGuardrail",
+        "GetGatewayModelDefinition",
+        "GetGatewaySecret",
+        "GetIssue",
+        "GetLabelSchema",
+        "GetLoggedModel",
+        "GetMCPAccessEndpoint",
+        "GetMCPServer",
+        "GetMCPServerVersion",
+        "GetMetricHistory",
+        "GetModelVersion",
+        "GetRegisteredModel",
+        "GetRegistryWebhook",
+        "GetReviewQueue",
+        "GetRun",
+        "GetRunLineage",
+        "GetScorer",
+        "GetServerJob",
+        "GetTrace",
+        "ListEvaluationDatasets",
+        "ListGatewayBudgetPolicies",
+        "ListGatewayEndpoints",
+        "ListGatewayGuardrails",
+        "ListGatewayModelDefinitions",
+        "ListGatewaySecrets",
+        "ListIssues",
+        "ListLabelSchemas",
+        "ListMCPAccessEndpointsByServer",
+        "ListMCPServerVersionsByServer",
+        "ListModelVersionsByModel",
+        "ListRegistryWebhooks",
+        "ListReviewQueues",
+        "ListScorers",
+        "ListServerJobs",
+        "QueryAssessmentAnalytics",
+        "QuerySpanAnalytics",
+        "QuerySpanModelRollup",
+        "QueryTraceAnalytics",
+        "SearchExperiments",
+        "SearchExperimentsByName",
+        "SearchExperimentsByNameAndTag",
+        "SearchExperimentsByNameAndTagIsNull",
+        "SearchExperimentsByNameILike",
+        "SearchExperimentsByNameILikeAndGatewayIsNull",
+        "SearchExperimentsByNameILikeAndTag",
+        "SearchExperimentsByNameILikeAndTagAndGatewayIsNull",
+        "SearchExperimentsByNameILikeAndTagIsNotNull",
+        "SearchExperimentsByNameLike",
+        "SearchExperimentsByNameLikeAndGatewayIsNull",
+        "SearchExperimentsByNameLikeAndTag",
+        "SearchExperimentsByNameNotEqual",
+        "SearchExperimentsByNameNotEqualAndTagIsNull",
+        "SearchExperimentsByTag",
+        "SearchExperimentsByTagAndGatewayIsNull",
+        "SearchExperimentsByTagAndTagIsNotNull",
+        "SearchExperimentsByTagILike",
+        "SearchExperimentsByTagIsNotNull",
+        "SearchExperimentsByTagIsNotNullAndGatewayIsNull",
+        "SearchExperimentsByTagIsNull",
+        "SearchExperimentsByTagLike",
+        "SearchExperimentsByTagNotEqual",
+        "SearchExperimentsByTagNotEqualAndGatewayIsNull",
+        "SearchExperimentsByTwoTags",
+        "SearchExperimentsByTwoTagsILike",
+        "SearchExperimentsByTwoTagsIsNull",
+        "SearchExperimentsByTwoTagsNotEqual",
+        "SearchLoggedModels",
+        "SearchMCPAccessEndpoints",
+        "SearchMCPServers",
+        "SearchModelVersions",
+        "SearchRegisteredModels",
+        "SearchRuns",
+        "SearchRunsByDatumDigest",
+        "SearchRunsByIds",
+        "SearchRunsByLifecycle",
+        "SearchRunsByName",
+        "SearchRunsByStatus",
+        "SearchRunsComposable",
+        "SearchTraces"
+      ],
+      "commands": [
+        "CreateExperiment",
+        "CreateExperimentWithTags",
+        "CreateMCPServerEntity",
+        "CreateMCPServerVersionEntity",
+        "CreateRegisteredModelEntity",
+        "CreateRun",
+        "CreateRunWithTags",
+        "DeleteEvaluationDatasetEntity",
+        "DeleteExperiment",
+        "DeleteExperimentTag",
+        "DeleteGatewayBudgetPolicyEntity",
+        "DeleteGatewayEndpointEntity",
+        "DeleteGatewayGuardrailEntity",
+        "DeleteGatewayModelDefinitionEntity",
+        "DeleteGatewaySecretEntity",
+        "DeleteIssueEntity",
+        "DeleteLabelSchemaEntity",
+        "DeleteLoggedModelEntity",
+        "DeleteMCPAccessEndpointEntity",
+        "DeleteMCPServerEntity",
+        "DeleteModelVersionEntity",
+        "DeleteRegisteredModelEntity",
+        "DeleteReviewQueueEntity",
+        "DeleteRun",
+        "DeleteScorerEntity",
+        "DeleteServerJobEntity",
+        "DeleteTrace",
+        "DeleteTraceAssessment",
+        "DeleteTraceSpan",
+        "IngestTraceSpans",
+        "LogBatch",
+        "RenameExperiment",
+        "RestoreExperiment",
+        "RestoreRun",
+        "SetExperimentTag",
+        "UpdateRunInfo",
+        "UpsertEvaluationDatasetEntity",
+        "UpsertGatewayBudgetPolicyEntity",
+        "UpsertGatewayEndpointEntity",
+        "UpsertGatewayGuardrailEntity",
+        "UpsertGatewayModelDefinitionEntity",
+        "UpsertGatewaySecretEntity",
+        "UpsertIssueEntity",
+        "UpsertLabelSchemaEntity",
+        "UpsertLoggedModel",
+        "UpsertMCPAccessEndpointEntity",
+        "UpsertMCPServerEntity",
+        "UpsertMCPServerVersionEntity",
+        "UpsertModelVersionEntity",
+        "UpsertRegisteredModelEntity",
+        "UpsertRegistryWebhookEntity",
+        "UpsertReviewQueueEntity",
+        "UpsertRunLineage",
+        "UpsertScorerEntity",
+        "UpsertServerJobEntity",
+        "UpsertTrace",
+        "UpsertTraceAssessment",
+        "ValidateRunActive"
+      ],
+      "event_streams": [],
+      "watch_queries": [],
+      "agent_subscriptions": [],
+      "row_policies": []
+    },
+    {
+      "name": "MLflowTrackingServerStaging",
+      "environment": "staging",
+      "tenant_scope": "global",
+      "queries": [
+        "AggregateSpanAnalyticsByModel",
+        "AggregateSpanAnalyticsByNameStatus",
+        "AggregateTraceAnalyticsByName",
+        "AggregateTraceAnalyticsByStatus",
+        "BatchGetTraceAssessments",
+        "BatchGetTraceSpans",
+        "BatchGetTraces",
+        "GetEvaluationDataset",
+        "GetExperiment",
+        "GetExperimentByName",
+        "GetGatewayBudgetPolicy",
+        "GetGatewayEndpoint",
+        "GetGatewayGuardrail",
+        "GetGatewayModelDefinition",
+        "GetGatewaySecret",
+        "GetIssue",
+        "GetLabelSchema",
+        "GetLoggedModel",
+        "GetMCPAccessEndpoint",
+        "GetMCPServer",
+        "GetMCPServerVersion",
+        "GetMetricHistory",
+        "GetModelVersion",
+        "GetRegisteredModel",
+        "GetRegistryWebhook",
+        "GetReviewQueue",
+        "GetRun",
+        "GetRunLineage",
+        "GetScorer",
+        "GetServerJob",
+        "GetTrace",
+        "ListEvaluationDatasets",
+        "ListGatewayBudgetPolicies",
+        "ListGatewayEndpoints",
+        "ListGatewayGuardrails",
+        "ListGatewayModelDefinitions",
+        "ListGatewaySecrets",
+        "ListIssues",
+        "ListLabelSchemas",
+        "ListMCPAccessEndpointsByServer",
+        "ListMCPServerVersionsByServer",
+        "ListModelVersionsByModel",
+        "ListRegistryWebhooks",
+        "ListReviewQueues",
+        "ListScorers",
+        "ListServerJobs",
+        "QueryAssessmentAnalytics",
+        "QuerySpanAnalytics",
+        "QuerySpanModelRollup",
+        "QueryTraceAnalytics",
+        "SearchExperiments",
+        "SearchExperimentsByName",
+        "SearchExperimentsByNameAndTag",
+        "SearchExperimentsByNameAndTagIsNull",
+        "SearchExperimentsByNameILike",
+        "SearchExperimentsByNameILikeAndGatewayIsNull",
+        "SearchExperimentsByNameILikeAndTag",
+        "SearchExperimentsByNameILikeAndTagAndGatewayIsNull",
+        "SearchExperimentsByNameILikeAndTagIsNotNull",
+        "SearchExperimentsByNameLike",
+        "SearchExperimentsByNameLikeAndGatewayIsNull",
+        "SearchExperimentsByNameLikeAndTag",
+        "SearchExperimentsByNameNotEqual",
+        "SearchExperimentsByNameNotEqualAndTagIsNull",
+        "SearchExperimentsByTag",
+        "SearchExperimentsByTagAndGatewayIsNull",
+        "SearchExperimentsByTagAndTagIsNotNull",
+        "SearchExperimentsByTagILike",
+        "SearchExperimentsByTagIsNotNull",
+        "SearchExperimentsByTagIsNotNullAndGatewayIsNull",
+        "SearchExperimentsByTagIsNull",
+        "SearchExperimentsByTagLike",
+        "SearchExperimentsByTagNotEqual",
+        "SearchExperimentsByTagNotEqualAndGatewayIsNull",
+        "SearchExperimentsByTwoTags",
+        "SearchExperimentsByTwoTagsILike",
+        "SearchExperimentsByTwoTagsIsNull",
+        "SearchExperimentsByTwoTagsNotEqual",
+        "SearchLoggedModels",
+        "SearchMCPAccessEndpoints",
+        "SearchMCPServers",
+        "SearchModelVersions",
+        "SearchRegisteredModels",
+        "SearchRuns",
+        "SearchRunsByDatumDigest",
+        "SearchRunsByIds",
+        "SearchRunsByLifecycle",
+        "SearchRunsByName",
+        "SearchRunsByStatus",
+        "SearchRunsComposable",
         "SearchTraces"
       ],
       "commands": [

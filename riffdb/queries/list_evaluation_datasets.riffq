@@ -1,6 +1,6 @@
 query ListEvaluationDatasets(
     $scope: EvaluationDatasetEntity.scope,
-    $limit: Limit<5> = 5,
+    $limit: Limit<100> = 100,
     $after: Cursor?,
 ) {
     many datasets from EvaluationDatasetEntity

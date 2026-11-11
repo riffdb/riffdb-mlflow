@@ -102,3 +102,20 @@ def test_connection_config_pre_flight_validation(
     monkeypatch.setenv("RIFFDB_MLFLOW_CREDENTIAL_FILE", str(empty_cred))
     with pytest.raises(MlflowException, match="RIFFDB_MLFLOW_CREDENTIAL_FILE.*empty"):
         ConnectionConfig.from_env()
+
+    # 8. Driver socket mode (RIFFDB_DRIVER_SOCKET)
+    monkeypatch.setenv("RIFFDB_MLFLOW_CREDENTIAL_FILE", str(cred_file))
+    for name in (
+        "RIFFDB_MLFLOW_ENDPOINT",
+        "RIFFDB_MLFLOW_TRUST_ROOT",
+        "RIFFDB_MLFLOW_SERVER_NAME",
+    ):
+        monkeypatch.delenv(name, raising=False)
+    monkeypatch.setenv("RIFFDB_DRIVER_SOCKET", str(tmp_path / "driverd.sock"))
+    socket_cfg = ConnectionConfig.from_env()
+    assert socket_cfg.driver_socket == str(tmp_path / "driverd.sock")
+    assert socket_cfg.credential_file == str(cred_file)
+
+    monkeypatch.setenv("RIFFDB_DRIVER_SOCKET", "relative/driverd.sock")
+    with pytest.raises(MlflowException, match="RIFFDB_DRIVER_SOCKET"):
+        ConnectionConfig.from_env()

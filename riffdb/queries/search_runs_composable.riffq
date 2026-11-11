@@ -1,0 +1,92 @@
+query SearchRunsComposable(
+    $experiment_id: Run.experiment_id,
+    $lifecycle_stages: Set<Run.lifecycle_stage>,
+    $latest_metric_kind: RunDatum.kind,
+    $zero_digest: RunDatum.value_digest,
+    $m1_key: RunDatum.item_key?,
+    $m1_min_sort: RunDatum.sort_key?,
+    $m1_max_sort: RunDatum.sort_key?,
+    $m2_key: RunDatum.item_key?,
+    $m2_min_sort: RunDatum.sort_key?,
+    $m2_max_sort: RunDatum.sort_key?,
+    $d1_kind: RunDatum.kind?,
+    $d1_key: RunDatum.item_key?,
+    $d1_digest: RunDatum.value_digest?,
+    $d2_kind: RunDatum.kind?,
+    $d2_key: RunDatum.item_key?,
+    $d2_digest: RunDatum.value_digest?,
+    $status: Run.status?,
+    $run_name: Run.run_name?,
+    $min_start_time: Run.start_time?,
+    $max_start_time: Run.start_time?,
+    $order_metric_key: RunDatum.item_key?,
+    $order: RunOrder,
+    $limit: Limit<100> = 100,
+    $after: Cursor?,
+) {
+    candidates matched_runs: Run.run_id
+        from intersect {
+            RunDatum.run_id using by_run_data
+                where experiment_id == $experiment_id
+                  && kind == $latest_metric_kind
+                  && when $m1_key { item_key == $m1_key }
+                  && value_digest == $zero_digest
+                  && when $m1_min_sort { sort_key >= $m1_min_sort }
+                  && when $m1_max_sort { sort_key <= $m1_max_sort },
+            RunDatum.run_id using by_run_data
+                where experiment_id == $experiment_id
+                  && kind == $latest_metric_kind
+                  && when $m2_key { item_key == $m2_key }
+                  && value_digest == $zero_digest
+                  && when $m2_min_sort { sort_key >= $m2_min_sort }
+                  && when $m2_max_sort { sort_key <= $m2_max_sort },
+            RunDatum.run_id using by_run_data
+                where experiment_id == $experiment_id
+                  && when $d1_kind { kind == $d1_kind }
+                  && when $d1_key { item_key == $d1_key }
+                  && when $d1_digest { value_digest == $d1_digest },
+            RunDatum.run_id using by_run_data
+                where experiment_id == $experiment_id
+                  && when $d2_kind { kind == $d2_kind }
+                  && when $d2_key { item_key == $d2_key }
+                  && when $d2_digest { value_digest == $d2_digest },
+            Run.run_id using by_id
+                where experiment_id == $experiment_id,
+        }
+        within 200
+        else IntegrityFailure
+
+    many metric_ranks from RunDatum
+        where experiment_id == $experiment_id
+          && kind == $latest_metric_kind
+          && when $order_metric_key { item_key == $order_metric_key }
+          && value_digest == $zero_digest
+        order by sort_key asc, run_id asc, entry_id asc
+        take 200
+
+    many runs from Run
+        where experiment_id == $experiment_id
+          && run_id in matched_runs
+          && lifecycle_stage in $lifecycle_stages
+          && when $status { status == $status }
+          && when $run_name { run_name == $run_name }
+          && when $min_start_time { start_time >= $min_start_time }
+          && when $max_start_time { start_time <= $max_start_time }
+        order by $order {
+            MetricAsc: metric_ranks.sort_key asc nulls last, start_time desc, run_id asc;
+            MetricDesc: metric_ranks.sort_key desc nulls last, start_time desc, run_id asc;
+            StartTimeDesc: start_time desc, run_id asc;
+            StartTimeAsc: start_time asc, run_id asc;
+        }
+        take $limit after $after
+        else IntegrityFailure
+
+    return Found {
+        runs: runs {
+            experiment_id run_id user_id status start_time end_time
+            lifecycle_stage artifact_uri run_name packed_tags packed_params
+            packed_latest_metrics revision initialized
+        }
+    }
+    outcomes Found | IntegrityFailure
+}

@@ -122,6 +122,7 @@ from riffdb_mlflow.generated.client import (
     RiffDBMLflowClient,
     RunDataKind,
     RunDatum,
+    RunOrder,
     SearchExperimentsByNameAndTagIsNullParams,
     SearchExperimentsByNameAndTagParams,
     SearchExperimentsByNameILikeAndGatewayIsNullParams,
@@ -155,6 +156,7 @@ from riffdb_mlflow.generated.client import (
     SearchRunsByLifecycleParams,
     SearchRunsByNameParams,
     SearchRunsByStatusParams,
+    SearchRunsComposableParams,
     SearchRunsParams,
     SetExperimentTagExperimentInactive,
     SetExperimentTagExperimentMissing,
@@ -182,8 +184,8 @@ _DEFAULT_EXPERIMENT_NAME = "Default"
 _PACKED_TAGS_MAX_BYTES = 900_000
 _PACKED_PARAMS_MAX_BYTES = 700_000
 _PACKED_LATEST_METRICS_MAX_BYTES = 400_000
-_COMPILED_SEARCH_PAGE_SIZE = 4
-_COMPILED_RUN_SEARCH_PAGE_SIZE = 2
+_COMPILED_SEARCH_PAGE_SIZE = 100
+_COMPILED_RUN_SEARCH_PAGE_SIZE = 100
 _COMPILED_METRIC_HISTORY_PAGE_SIZE = 499
 _MAX_METRIC_HISTORY_RESULTS = 10_000
 _MAX_RUN_SEARCH_EXPERIMENTS = 1_000
@@ -242,12 +244,17 @@ class RiffDBTrackingStore(RiffDBExtendedStoreMixin):
             metadata = CallMetadata.authenticated(credential).with_database(
                 DatabaseAlias(self.database)
             )
-            tls = VerifiedTlsConfig(
-                endpoint=conn.endpoint,
-                trust_root=conn.trust_root,
-                server_name=conn.server_name,
-            )
-            self._transport = SyncApplicationTransport.connect_verified_tls(tls, metadata)
+            if conn.driver_socket is not None:
+                self._transport = SyncApplicationTransport.connect_driver_socket(
+                    conn.driver_socket, metadata
+                )
+            else:
+                tls = VerifiedTlsConfig(
+                    endpoint=conn.endpoint,
+                    trust_root=conn.trust_root,
+                    server_name=conn.server_name,
+                )
+                self._transport = SyncApplicationTransport.connect_verified_tls(tls, metadata)
             self._client = RiffDBMLflowClient(self._transport, AttemptBudget(3))
         if not self._default_ready:
             self._ensure_default_experiment(self._client)
@@ -1749,18 +1756,11 @@ class RiffDBTrackingStore(RiffDBExtendedStoreMixin):
             )
             for item in (order_by or ())
         ]
-        natural_order = [
-            ("attribute", "start_time", False),
-            ("attribute", "run_id", True),
-        ]
-        if parsed_order not in ([], natural_order[:1], natural_order):
-            raise MlflowException.invalid_parameter_value(
-                "RiffDB run search currently supports start_time DESC, run_id ASC"
-            )
+        run_order, order_metric_key, is_natural_order = self._resolve_run_order(parsed_order)
         if run_view_type not in (ViewType.ACTIVE_ONLY, ViewType.DELETED_ONLY, ViewType.ALL):
             raise MlflowException.invalid_parameter_value(f"Invalid run view type: {run_view_type}")
-        if filters:
-            self._validate_run_search_filters(numeric_ids, filters)
+        if filters or not is_natural_order:
+            self._validate_run_search_filters(numeric_ids, filters, is_natural_order)
 
         client = self._application()
         cursor = page_token
@@ -1774,6 +1774,9 @@ class RiffDBTrackingStore(RiffDBExtendedStoreMixin):
                 run_view_type,
                 limit,
                 cursor,
+                run_order=run_order,
+                order_metric_key=order_metric_key,
+                is_natural_order=is_natural_order,
             )
             rows = getattr(result.value, "runs", None)
             if rows is None:
@@ -1788,40 +1791,191 @@ class RiffDBTrackingStore(RiffDBExtendedStoreMixin):
                 raise MlflowException("RiffDB returned a non-advancing run cursor")
         return runs, cursor
 
-    def _validate_run_search_filters(
-        self, numeric_ids: tuple[int, ...], filters: list[dict[str, Any]]
-    ) -> None:
-        if len(filters) != 1 or len(numeric_ids) != 1:
+    @staticmethod
+    def _resolve_run_order(
+        parsed_order: list[tuple[str, str, bool]],
+    ) -> tuple[RunOrder, str | None, bool]:
+        natural_order = [
+            ("attribute", "start_time", False),
+            ("attribute", "run_id", True),
+        ]
+        asc_order = [
+            ("attribute", "start_time", True),
+            ("attribute", "run_id", True),
+        ]
+        if parsed_order in ([], natural_order[:1], natural_order):
+            return RunOrder.START_TIME_DESC, None, True
+        if parsed_order in (asc_order[:1], asc_order):
+            return RunOrder.START_TIME_ASC, None, False
+        if parsed_order and parsed_order[0][0] == "metric":
+            tail = parsed_order[1:]
+            if tail in ([], natural_order[:1], [("attribute", "run_id", True)], natural_order):
+                mkey = str(parsed_order[0][1])
+                is_asc = bool(parsed_order[0][2])
+                if not mkey or len(mkey) > 250:
+                    raise MlflowException.invalid_parameter_value("Invalid metric order_by key")
+                return (
+                    RunOrder.METRIC_ASC if is_asc else RunOrder.METRIC_DESC,
+                    mkey,
+                    False,
+                )
+        raise MlflowException.invalid_parameter_value(
+            "RiffDB run search currently supports start_time ASC/DESC or metric.<key> ASC/DESC"
+        )
+
+    def _compile_composable_run_filters(
+        self, filters: list[dict[str, Any]]
+    ) -> dict[str, Any]:
+        metric_clauses: dict[str, tuple[str | None, str | None]] = {}
+        datum_clauses: list[tuple[RunDataKind, str, bytes]] = []
+        status_val: RiffDBRunStatus | None = None
+        run_name_val: str | None = None
+        min_start_time: int | None = None
+        max_start_time: int | None = None
+
+        for f in filters:
+            ftype = f.get("type")
+            key = str(f.get("key", ""))
+            comp = f.get("comparator")
+            val = f.get("value")
+            if ftype == "metric" and comp in ("=", ">", ">=", "<", "<=") and key:
+                try:
+                    numeric_val = float(val)  # type: ignore[arg-type]
+                except (TypeError, ValueError) as error:
+                    raise MlflowException.invalid_parameter_value(
+                        f"Invalid metric filter value: {val!r}"
+                    ) from error
+                if math.isnan(numeric_val):
+                    raise MlflowException.invalid_parameter_value(
+                        "Metric filter value must not be NaN"
+                    )
+                _, _, order, _, _ = self._metric_encoding(numeric_val)
+                c_min: str | None = None
+                c_max: str | None = None
+                if comp == "=":
+                    c_min = f"{order:016x}"
+                    c_max = f"{order:016x}"
+                elif comp == ">=":
+                    c_min = f"{order:016x}"
+                elif comp == ">":
+                    c_min = f"{min(order + 1, 0xFFFFFFFFFFFFFFFF):016x}"
+                elif comp == "<=":
+                    c_max = f"{order:016x}"
+                elif comp == "<":
+                    c_max = f"{max(order - 1, 0):016x}"
+                prev_min, prev_max = metric_clauses.get(key, (None, None))
+                next_min = (
+                    c_min
+                    if prev_min is None
+                    else (max(prev_min, c_min) if c_min is not None else prev_min)
+                )
+                next_max = (
+                    c_max
+                    if prev_max is None
+                    else (min(prev_max, c_max) if c_max is not None else prev_max)
+                )
+                metric_clauses[key] = (next_min, next_max)
+                if len(metric_clauses) > 2:
+                    raise MlflowException.invalid_parameter_value(
+                        "RiffDB run search supports at most 2 distinct metric filter keys"
+                    )
+                continue
+            if ftype in ("tag", "parameter") and comp == "=" and isinstance(val, str) and key:
+                kind = RunDataKind.TAG if ftype == "tag" else RunDataKind.PARAM
+                datum_clauses.append((kind, key, self._digest(val)))
+                if len(datum_clauses) > 2:
+                    raise MlflowException.invalid_parameter_value(
+                        "RiffDB run search supports at most 2 tag/parameter equality filters"
+                    )
+                continue
+            if (
+                ftype == "attribute"
+                and key in ("run_name", "run name")
+                and comp == "="
+                and isinstance(val, str)
+            ):
+                run_name_val = val
+                continue
+            if ftype == "attribute" and key == "status" and comp == "=" and isinstance(val, str):
+                try:
+                    status_val = RiffDBRunStatus[val.upper()]
+                except KeyError as error:
+                    raise MlflowException.invalid_parameter_value(
+                        f"Invalid run status: {val!r}"
+                    ) from error
+                continue
+            if ftype == "attribute" and key in ("start_time", "start time") and comp in (
+                "=",
+                ">",
+                ">=",
+                "<",
+                "<=",
+            ):
+                try:
+                    st_val = int(val)  # type: ignore[arg-type]
+                except (TypeError, ValueError) as error:
+                    raise MlflowException.invalid_parameter_value(
+                        f"Invalid start_time filter value: {val!r}"
+                    ) from error
+                if comp == "=":
+                    min_start_time = st_val if min_start_time is None else max(min_start_time, st_val)
+                    max_start_time = st_val if max_start_time is None else min(max_start_time, st_val)
+                elif comp == ">=":
+                    min_start_time = st_val if min_start_time is None else max(min_start_time, st_val)
+                elif comp == ">":
+                    min_start_time = (
+                        st_val + 1 if min_start_time is None else max(min_start_time, st_val + 1)
+                    )
+                elif comp == "<=":
+                    max_start_time = st_val if max_start_time is None else min(max_start_time, st_val)
+                elif comp == "<":
+                    max_start_time = (
+                        st_val - 1 if max_start_time is None else min(max_start_time, st_val - 1)
+                    )
+                continue
             raise MlflowException.invalid_parameter_value(
                 "RiffDB run search filters are not implemented yet"
             )
-        f = filters[0]
-        ftype = f.get("type")
-        key = str(f.get("key", ""))
-        comp = f.get("comparator")
-        val = f.get("value")
-        if ftype in ("tag", "parameter") and comp == "=" and isinstance(val, str):
-            return
-        if ftype == "attribute" and key in ("run_id", "run_uuid") and comp in ("=", "IN"):
-            return
+
+        m_items = list(metric_clauses.items())
+        return {
+            "m1_key": m_items[0][0] if len(m_items) >= 1 else None,
+            "m1_min_sort": m_items[0][1][0] if len(m_items) >= 1 else None,
+            "m1_max_sort": m_items[0][1][1] if len(m_items) >= 1 else None,
+            "m2_key": m_items[1][0] if len(m_items) >= 2 else None,
+            "m2_min_sort": m_items[1][1][0] if len(m_items) >= 2 else None,
+            "m2_max_sort": m_items[1][1][1] if len(m_items) >= 2 else None,
+            "d1_kind": datum_clauses[0][0] if len(datum_clauses) >= 1 else None,
+            "d1_key": datum_clauses[0][1] if len(datum_clauses) >= 1 else None,
+            "d1_digest": datum_clauses[0][2] if len(datum_clauses) >= 1 else None,
+            "d2_kind": datum_clauses[1][0] if len(datum_clauses) >= 2 else None,
+            "d2_key": datum_clauses[1][1] if len(datum_clauses) >= 2 else None,
+            "d2_digest": datum_clauses[1][2] if len(datum_clauses) >= 2 else None,
+            "status": status_val,
+            "run_name": run_name_val,
+            "min_start_time": min_start_time,
+            "max_start_time": max_start_time,
+        }
+
+    def _validate_run_search_filters(
+        self,
+        numeric_ids: tuple[int, ...],
+        filters: list[dict[str, Any]],
+        is_natural_order: bool = True,
+    ) -> None:
+        if len(numeric_ids) != 1:
+            raise MlflowException.invalid_parameter_value(
+                "RiffDB filtered or custom-ordered run search requires a single experiment ID"
+            )
         if (
-            ftype == "attribute"
-            and key in ("run_name", "run name")
-            and comp == "="
-            and isinstance(val, str)
+            len(filters) == 1
+            and is_natural_order
+            and filters[0].get("type") == "attribute"
+            and str(filters[0].get("key", "")) in ("run_id", "run_uuid")
+            and filters[0].get("comparator") in ("=", "IN")
         ):
             return
-        if ftype == "attribute" and key == "status" and comp == "=" and isinstance(val, str):
-            try:
-                RiffDBRunStatus[val.upper()]
-            except KeyError as error:
-                raise MlflowException.invalid_parameter_value(
-                    f"Invalid run status: {val!r}"
-                ) from error
-            return
-        raise MlflowException.invalid_parameter_value(
-            "RiffDB run search filters are not implemented yet"
-        )
+        self._compile_composable_run_filters(filters)
 
     def _dispatch_run_search(
         self,
@@ -1831,8 +1985,12 @@ class RiffDBTrackingStore(RiffDBExtendedStoreMixin):
         run_view_type: Any,
         limit: int,
         cursor: str | None,
+        *,
+        run_order: RunOrder = RunOrder.START_TIME_DESC,
+        order_metric_key: str | None = None,
+        is_natural_order: bool = True,
     ) -> Any:
-        if not filters:
+        if not filters and is_natural_order:
             if run_view_type == ViewType.ALL:
                 return client.search_runs(
                     SearchRunsParams(
@@ -1856,66 +2014,96 @@ class RiffDBTrackingStore(RiffDBExtendedStoreMixin):
             )
         exp_id = numeric_ids[0]
         lifecycle_stages = self._search_lifecycle_stages(run_view_type)
-        f = filters[0]
-        ftype = f.get("type")
-        key = str(f.get("key", ""))
-        comp = f.get("comparator")
-        val = f.get("value")
-        if ftype in ("tag", "parameter") and comp == "=" and isinstance(val, str):
-            kind = RunDataKind.TAG if ftype == "tag" else RunDataKind.PARAM
-            return client.search_runs_by_datum_digest(
-                SearchRunsByDatumDigestParams(
-                    experiment_id=exp_id,
-                    kind=kind,
-                    item_key=key,
-                    value_digest=self._digest(val),
-                    lifecycle_stages=lifecycle_stages,
-                    limit=limit,
-                    after=cursor,
+        if len(filters) == 1 and is_natural_order:
+            f = filters[0]
+            ftype = f.get("type")
+            key = str(f.get("key", ""))
+            comp = f.get("comparator")
+            val = f.get("value")
+            if ftype in ("tag", "parameter") and comp == "=" and isinstance(val, str):
+                kind = RunDataKind.TAG if ftype == "tag" else RunDataKind.PARAM
+                return client.search_runs_by_datum_digest(
+                    SearchRunsByDatumDigestParams(
+                        experiment_id=exp_id,
+                        kind=kind,
+                        item_key=key,
+                        value_digest=self._digest(val),
+                        lifecycle_stages=lifecycle_stages,
+                        limit=limit,
+                        after=cursor,
+                    )
                 )
-            )
-        if ftype == "attribute" and key in ("run_id", "run_uuid") and comp in ("=", "IN"):
-            run_ids = (
-                (str(val),)
-                if comp == "="
-                else tuple(str(v) for v in (val if isinstance(val, list | tuple | set) else ()))
-            )
-            return client.search_runs_by_ids(
-                SearchRunsByIdsParams(
-                    experiment_id=exp_id,
-                    run_ids=run_ids,
-                    lifecycle_stages=lifecycle_stages,
-                    limit=limit,
-                    after=cursor,
+            if ftype == "attribute" and key in ("run_id", "run_uuid") and comp in ("=", "IN"):
+                run_ids = (
+                    (str(val),)
+                    if comp == "="
+                    else tuple(
+                        str(v) for v in (val if isinstance(val, list | tuple | set) else ())
+                    )
                 )
-            )
-        if (
-            ftype == "attribute"
-            and key in ("run_name", "run name")
-            and comp == "="
-            and isinstance(val, str)
-        ):
-            return client.search_runs_by_name(
-                SearchRunsByNameParams(
-                    experiment_id=exp_id,
-                    run_name=val,
-                    lifecycle_stages=lifecycle_stages,
-                    limit=limit,
-                    after=cursor,
+                return client.search_runs_by_ids(
+                    SearchRunsByIdsParams(
+                        experiment_id=exp_id,
+                        run_ids=run_ids,
+                        lifecycle_stages=lifecycle_stages,
+                        limit=limit,
+                        after=cursor,
+                    )
                 )
-            )
-        if ftype == "attribute" and key == "status" and comp == "=" and isinstance(val, str):
-            return client.search_runs_by_status(
-                SearchRunsByStatusParams(
-                    experiment_id=exp_id,
-                    status=RiffDBRunStatus[val.upper()],
-                    lifecycle_stages=lifecycle_stages,
-                    limit=limit,
-                    after=cursor,
+            if (
+                ftype == "attribute"
+                and key in ("run_name", "run name")
+                and comp == "="
+                and isinstance(val, str)
+            ):
+                return client.search_runs_by_name(
+                    SearchRunsByNameParams(
+                        experiment_id=exp_id,
+                        run_name=val,
+                        lifecycle_stages=lifecycle_stages,
+                        limit=limit,
+                        after=cursor,
+                    )
                 )
+            if ftype == "attribute" and key == "status" and comp == "=" and isinstance(val, str):
+                return client.search_runs_by_status(
+                    SearchRunsByStatusParams(
+                        experiment_id=exp_id,
+                        status=RiffDBRunStatus[val.upper()],
+                        lifecycle_stages=lifecycle_stages,
+                        limit=limit,
+                        after=cursor,
+                    )
+                )
+
+        compiled = self._compile_composable_run_filters(filters)
+        return client.search_runs_composable(
+            SearchRunsComposableParams(
+                experiment_id=exp_id,
+                lifecycle_stages=lifecycle_stages,
+                latest_metric_kind=RunDataKind.LATEST_METRIC,
+                zero_digest=bytes(32),
+                m1_key=compiled["m1_key"],
+                m1_min_sort=compiled["m1_min_sort"],
+                m1_max_sort=compiled["m1_max_sort"],
+                m2_key=compiled["m2_key"],
+                m2_min_sort=compiled["m2_min_sort"],
+                m2_max_sort=compiled["m2_max_sort"],
+                d1_kind=compiled["d1_kind"],
+                d1_key=compiled["d1_key"],
+                d1_digest=compiled["d1_digest"],
+                d2_kind=compiled["d2_kind"],
+                d2_key=compiled["d2_key"],
+                d2_digest=compiled["d2_digest"],
+                status=compiled["status"],
+                run_name=compiled["run_name"],
+                min_start_time=compiled["min_start_time"],
+                max_start_time=compiled["max_start_time"],
+                order_metric_key=order_metric_key,
+                order=run_order,
+                limit=limit,
+                after=cursor,
             )
-        raise MlflowException.invalid_parameter_value(
-            "RiffDB run search filters are not implemented yet"
         )
 
     def log_batch(self, run_id: Any, metrics: Any, params: Any, tags: Any) -> None:

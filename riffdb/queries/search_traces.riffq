@@ -1,6 +1,6 @@
 query SearchTraces(
     $experiment_id: Trace.experiment_id,
-    $limit: Limit<50> = 50,
+    $limit: Limit<100> = 100,
     $after: Cursor?,
 ) {
     many traces from Trace

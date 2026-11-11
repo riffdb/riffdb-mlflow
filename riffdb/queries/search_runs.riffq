@@ -1,7 +1,7 @@
 query SearchRuns(
     $experiment_ids: Set<Run.experiment_id, 1000>,
     // Internal transport page; the adapter coalesces these pages to MLflow's request.
-    $limit: Limit<2> = 2,
+    $limit: Limit<100> = 100,
     $after: Cursor?,
 ) {
     many runs from Run

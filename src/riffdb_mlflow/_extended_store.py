@@ -1280,7 +1280,7 @@ class RiffDBExtendedStoreMixin(RiffDBMCPServerRegistryMixin):
         outputs_preview = _attr("mlflow.spanOutputs")
 
         packed_json = json.dumps(span_dict, cls=TraceJSONEncoder, separators=(",", ":"))
-        if len(packed_json.encode("utf-8")) > 32000:
+        if len(packed_json.encode("utf-8")) > 1_000_000:
             compact_dict = dict(span_dict)
             if isinstance(compact_dict.get("events"), list):
                 new_events = []
@@ -1725,7 +1725,7 @@ class RiffDBExtendedStoreMixin(RiffDBMCPServerRegistryMixin):
             cursor: str | None = None
             while True:
                 res = client.search_traces(
-                    SearchTracesParams(experiment_id=exp_id, limit=50, after=cursor)
+                    SearchTracesParams(experiment_id=exp_id, limit=100, after=cursor)
                 )
                 if not isinstance(res.value, SearchTracesFound):
                     raise MlflowException("Invalid SearchTraces response from RiffDB")
@@ -1803,7 +1803,7 @@ class RiffDBExtendedStoreMixin(RiffDBMCPServerRegistryMixin):
             candidates: list[tuple[int, str]] = []
             while True:
                 res = client.search_traces(
-                    SearchTracesParams(experiment_id=exp_id, limit=50, after=cursor)
+                    SearchTracesParams(experiment_id=exp_id, limit=100, after=cursor)
                 )
                 if not isinstance(res.value, SearchTracesFound):
                     break

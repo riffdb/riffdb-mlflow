@@ -53,16 +53,40 @@ class StoreConfig:
 
 @dataclass(frozen=True, slots=True)
 class ConnectionConfig:
-    """Validated RiffDB TLS and bearer-credential settings from environment variables."""
+    """Validated RiffDB TLS or driver-socket and bearer-credential settings from environment variables."""
 
     endpoint: str
     trust_root: str
     server_name: str
     credential_file: str
+    driver_socket: str | None = None
 
     @classmethod
     def from_env(cls, env: Mapping[str, str] | None = None) -> ConnectionConfig:
         source = os.environ if env is None else env
+        driver_socket = source.get("RIFFDB_MLFLOW_DRIVER_SOCKET") or source.get(
+            "RIFFDB_DRIVER_SOCKET"
+        )
+        if driver_socket:
+            credential_file = source.get("RIFFDB_MLFLOW_CREDENTIAL_FILE") or source.get(
+                "RIFFDB_CREDENTIAL_FILE"
+            )
+            if not credential_file:
+                raise MlflowException(
+                    "Missing required RiffDB MLflow connection configuration: "
+                    "RIFFDB_MLFLOW_CREDENTIAL_FILE",
+                    error_code=INVALID_PARAMETER_VALUE,
+                )
+            cls._validate_driver_socket(str(driver_socket))
+            cls._validate_credential_file(str(credential_file))
+            return cls(
+                endpoint=str(source.get("RIFFDB_MLFLOW_ENDPOINT", "")),
+                trust_root=str(source.get("RIFFDB_MLFLOW_TRUST_ROOT", "")),
+                server_name=str(source.get("RIFFDB_MLFLOW_SERVER_NAME", "")),
+                credential_file=str(credential_file),
+                driver_socket=str(driver_socket),
+            )
+
         required = {name: source.get(name) for name in _REQUIRED_ENV_VARS}
         missing = sorted(name for name, value in required.items() if not value)
         if missing:
@@ -92,7 +116,16 @@ class ConnectionConfig:
             trust_root=trust_root,
             server_name=server_name,
             credential_file=credential_file,
+            driver_socket=None,
         )
+
+    @staticmethod
+    def _validate_driver_socket(driver_socket: str) -> None:
+        if not os.path.isabs(driver_socket):
+            raise MlflowException(
+                "Invalid RIFFDB_DRIVER_SOCKET: must be an absolute Unix socket path",
+                error_code=INVALID_PARAMETER_VALUE,
+            )
 
     @staticmethod
     def _validate_endpoint(endpoint: str) -> str:

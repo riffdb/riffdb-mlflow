@@ -794,6 +794,27 @@ def _verify_tracking_store(transport: SyncApplicationTransport, database: str) -
     if [item.info.run_id for item in all_runs] != [run_two.info.run_id, run_one.info.run_id]:
         raise RuntimeError("store search_runs ALL did not return restored runs in start_time DESC")
 
+    composable_runs = store.search_runs(  # type: ignore[no-untyped-call]
+        [exp_id],
+        "metrics.loss <= 0.5 AND params.lr = '0.01' AND tags.stage = 'eval' "
+        "AND attributes.status = 'FINISHED'",
+        ViewType.ACTIVE_ONLY,
+    )
+    if [item.info.run_id for item in composable_runs] != [run_one.info.run_id]:
+        raise RuntimeError("store composable search_runs did not match expected run")
+
+    ordered_by_metric = store.search_runs(  # type: ignore[no-untyped-call]
+        [exp_id],
+        "",
+        ViewType.ACTIVE_ONLY,
+        order_by=["metrics.loss ASC"],
+    )
+    if [item.info.run_id for item in ordered_by_metric] != [
+        run_one.info.run_id,
+        run_two.info.run_id,
+    ]:
+        raise RuntimeError("store search_runs metric ASC NULLS LAST ordering failed")
+
     _verify_extended_tracking_store(store, exp_id, run_one.info.run_id)
 
 

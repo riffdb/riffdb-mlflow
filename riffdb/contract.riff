@@ -18,6 +18,12 @@ contract RiffDBMLflow version 1 {
     IdAsc,
     IdDesc
   }
+  enum RunOrder {
+    MetricAsc,
+    MetricDesc,
+    StartTimeDesc,
+    StartTimeAsc
+  }
 
   entity Experiment {
     key (scope: string<32>, experiment_id: u64)
@@ -187,6 +193,7 @@ contract RiffDBMLflow version 1 {
     index by_run_data (
       experiment_id, kind, item_key, value_digest, sort_key, run_id, entry_id
     ) cover(logical_key, value_bits, metric_timestamp, metric_step, is_nan)
+      text_key(sort_key, binary_utf8_v1)
     reference run (experiment_id, run_id) -> Run(experiment_id, run_id)
     delete_policy no_inbound
   }
@@ -250,7 +257,7 @@ contract RiffDBMLflow version 1 {
     field output_cost_micros: i64
     field total_cost_micros: i64
     field started_at: timestamp
-    field packed_span_json: string<32768>
+    field packed_span_json: string<1048576>
     index by_trace_start (experiment_id, trace_id, start_time_ns, span_id)
     index by_exp_start (experiment_id, start_time_ns, trace_id, span_id)
     delete_policy no_inbound
@@ -513,7 +520,7 @@ contract RiffDBMLflow version 1 {
     field last_updated_by: optional<string<256>>
     field packed_tags: bytes<16384>
     field packed_experiment_ids: bytes<16384>
-    field packed_records: bytes<262144>
+    field packed_records: bytes<1048576>
     index by_id (scope, dataset_id)
     delete_policy no_inbound
   }
@@ -1337,7 +1344,7 @@ contract RiffDBMLflow version 1 {
     input packed_prompt_versions: bytes<16384>
     input requested_at: timestamp
     input initialized: bool
-    input spans: list<TraceSpan, 1..64> aggregate_bytes <= 1000000
+    input spans: list<TraceSpan, 1..64> aggregate_bytes <= 1048576
     idempotency_key request_id
     init_or_mutate Trace(experiment_id, trace_id) as trace initialize {
       request_time_ms: request_time_ms,
@@ -2245,7 +2252,7 @@ contract RiffDBMLflow version 1 {
     input last_updated_by: optional<string<256>>
     input packed_tags: bytes<16384>
     input packed_experiment_ids: bytes<16384>
-    input packed_records: bytes<262144>
+    input packed_records: bytes<1048576>
     idempotency_key request_id
     init_or_mutate EvaluationDatasetEntity("global", dataset_id) as dataset initialize {
       name: name,

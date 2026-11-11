@@ -304,14 +304,15 @@ def test_search_coalesces_compiled_pages_without_skipping_rows() -> None:
     assert [experiment.experiment_id for experiment in first] == ["0"]
     assert first.token == "1"
 
-    second = store.search_experiments(max_results=100, page_token=first.token)
+    second = store.search_experiments(max_results=110, page_token=first.token)
     assert [experiment.experiment_id for experiment in second] == [
-        str(value) for value in range(1, 101)
+        str(value) for value in range(1, 111)
     ]
-    assert second.token == "101"
+    assert second.token == "111"
     assert [(call[1].limit, call[1].after) for call in client.calls] == [
         (1, None),
-        *((4, str(offset)) for offset in range(1, 101, 4)),
+        (100, "1"),
+        (10, "101"),
     ]
 
 

@@ -1912,7 +1912,7 @@ class RiffDBGatewayAndScorerMixin(AbstractStore):
             cursor: str | None = None
             while True:
                 res = client.search_traces(
-                    SearchTracesParams(experiment_id=exp_id, limit=25, after=cursor)
+                    SearchTracesParams(experiment_id=exp_id, limit=100, after=cursor)
                 )
                 if not isinstance(res.value, SearchTracesFound):
                     raise MlflowException("Invalid SearchTraces response from RiffDB")
@@ -3066,7 +3066,7 @@ class RiffDBGatewayAndScorerMixin(AbstractStore):
         cursor: str | None = None
         while True:
             res = client.list_evaluation_datasets(
-                ListEvaluationDatasetsParams(scope=_SCOPE, limit=5, after=cursor)
+                ListEvaluationDatasetsParams(scope=_SCOPE, limit=100, after=cursor)
             )
             if not isinstance(res.value, ListEvaluationDatasetsFound):
                 break

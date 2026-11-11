@@ -35,6 +35,7 @@ from riffdb_mlflow.generated.client import (
     Run,
     RunDataKind,
     RunDatum,
+    RunOrder,
     UpdateRunInfoRunInactive,
     UpdateRunInfoRunMissing,
     UpdateRunInfoRunStale,
@@ -299,6 +300,81 @@ class FakeRunClient:
     def search_runs_by_status(self, parameters: Any) -> SimpleNamespace:
         return self._search("SearchRunsByStatus", parameters)
 
+    def search_runs_composable(self, parameters: Any) -> SimpleNamespace:
+        self.search_calls.append(("SearchRunsComposable", parameters))
+        rows = [
+            row
+            for row in self.rows.values()
+            if row.experiment_id == parameters.experiment_id
+            and row.lifecycle_stage in parameters.lifecycle_stages
+            and (parameters.status is None or row.status == parameters.status)
+            and (parameters.run_name is None or row.run_name == parameters.run_name)
+            and (parameters.min_start_time is None or row.start_time >= parameters.min_start_time)
+            and (parameters.max_start_time is None or row.start_time <= parameters.max_start_time)
+        ]
+
+        def _matches_metric(row: Run, key: str | None, min_s: str | None, max_s: str | None) -> bool:
+            if key is None:
+                return True
+            item = self.data.get((row.run_id, RunDataKind.LATEST_METRIC, key, ""))
+            if item is None:
+                return False
+            if min_s is not None and item.sort_key < min_s:
+                return False
+            if max_s is not None and item.sort_key > max_s:
+                return False
+            return True
+
+        def _matches_datum(
+            row: Run, kind: RunDataKind | None, key: str | None, digest: bytes | None
+        ) -> bool:
+            if kind is None or key is None or digest is None:
+                return True
+            item = self.data.get((row.run_id, kind, key, ""))
+            return item is not None and item.value_digest == digest
+
+        rows = [
+            row
+            for row in rows
+            if _matches_metric(
+                row, parameters.m1_key, parameters.m1_min_sort, parameters.m1_max_sort
+            )
+            and _matches_metric(
+                row, parameters.m2_key, parameters.m2_min_sort, parameters.m2_max_sort
+            )
+            and _matches_datum(row, parameters.d1_kind, parameters.d1_key, parameters.d1_digest)
+            and _matches_datum(row, parameters.d2_kind, parameters.d2_key, parameters.d2_digest)
+        ]
+
+        if parameters.order == RunOrder.START_TIME_ASC:
+            rows.sort(key=lambda row: (row.start_time, row.run_id))
+        elif parameters.order in (RunOrder.METRIC_ASC, RunOrder.METRIC_DESC):
+            desc = parameters.order == RunOrder.METRIC_DESC
+
+            def _metric_rank(row: Run) -> tuple[int, int, int, str]:
+                mkey = parameters.order_metric_key or ""
+                item = self.data.get((row.run_id, RunDataKind.LATEST_METRIC, mkey, ""))
+                if item is None:
+                    return (1, 0, -row.start_time, row.run_id)
+                order_int = int(item.sort_key, 16)
+                return (
+                    0,
+                    -order_int if desc else order_int,
+                    -row.start_time,
+                    row.run_id,
+                )
+
+            rows.sort(key=_metric_rank)
+        else:
+            rows.sort(key=lambda row: (-row.start_time, row.run_id))
+
+        offset = int(parameters.after) if parameters.after is not None else 0
+        end = min(offset + parameters.limit, len(rows))
+        return SimpleNamespace(
+            value=SimpleNamespace(runs=tuple(rows[offset:end])),
+            next_cursor=str(end) if end < len(rows) else None,
+        )
+
 
 @pytest.fixture
 def store() -> RiffDBTrackingStore:
@@ -389,12 +465,12 @@ def test_run_search_coalesces_compiled_pages_and_dispatches_lifecycle() -> None:
         ["7"],
         "",
         ViewType.ACTIVE_ONLY,
-        max_results=100,
+        max_results=110,
         page_token=first.token,
     )
-    assert len(second) == 100
-    assert second.token == "101"
-    assert [call[1].limit for call in client.search_calls] == [1] + [2] * 50
+    assert len(second) == 110
+    assert second.token == "111"
+    assert [call[1].limit for call in client.search_calls] == [1, 100, 10]
     assert {call[0] for call in client.search_calls} == {"SearchRunsByLifecycle"}
 
     by_status = store.search_runs(
@@ -403,9 +479,15 @@ def test_run_search_coalesces_compiled_pages_and_dispatches_lifecycle() -> None:
     assert len(by_status) == 2
     assert client.search_calls[-1][0] == "SearchRunsByStatus"
 
+    composable = store.search_runs(
+        ["7"], "metrics.loss < 0.5", ViewType.ALL, max_results=10
+    )
+    assert len(composable) == 0
+    assert client.search_calls[-1][0] == "SearchRunsComposable"
+
     before = len(client.search_calls)
     with pytest.raises(MlflowException, match="filters are not implemented"):
-        store.search_runs(["7"], "metrics.loss < 0.5", ViewType.ALL)
+        store.search_runs(["7"], "tags.team LIKE 'res%'", ViewType.ALL)
     assert len(client.search_calls) == before
 
 
@@ -499,3 +581,60 @@ def test_log_batch_maps_transaction_current_param_conflict_and_empty_validation(
     store.delete_run(run_id)
     with pytest.raises(MlflowException, match="active state"):
         store.log_batch(run_id, metrics=[], params=[], tags=[])
+
+
+def test_composable_run_search_and_metric_ordering_with_nulls_last(
+    store: RiffDBTrackingStore, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    tokens = iter(["0000000000000001", "0000000000000002", "0000000000000003"])
+    monkeypatch.setattr("riffdb_mlflow.store.secrets.token_hex", lambda _: next(tokens))
+
+    r1 = store.create_run("7", "alice", 100, [RunTag("env", "prod")], "run-1").info.run_id
+    r2 = store.create_run("7", "alice", 200, [RunTag("env", "prod")], "run-2").info.run_id
+    r3 = store.create_run("7", "alice", 300, [RunTag("env", "prod")], "run-3").info.run_id
+
+    store.log_batch(
+        r1,
+        metrics=[Metric("rmse", 0.42, 10, 1), Metric("acc", 0.91, 10, 1)],
+        params=[Param("lr", "0.01")],
+        tags=[RunTag("env", "prod")],
+    )
+    store.log_batch(
+        r2,
+        metrics=[Metric("rmse", 0.18, 10, 1), Metric("acc", 0.97, 10, 1)],
+        params=[Param("lr", "0.01")],
+        tags=[RunTag("env", "prod")],
+    )
+    store.log_batch(
+        r3,
+        metrics=[],
+        params=[Param("lr", "0.01")],
+        tags=[RunTag("env", "prod")],
+    )
+
+    # 1. Multi-clause composable filter (metric + metric + param + tag + status + start_time)
+    filtered = store.search_runs(
+        ["7"],
+        "metrics.rmse <= 0.5 AND metrics.acc >= 0.95 AND params.lr = '0.01' "
+        "AND tags.env = 'prod' AND attributes.status = 'RUNNING' AND attributes.start_time >= 150",
+        ViewType.ACTIVE_ONLY,
+    )
+    assert [r.info.run_id for r in filtered] == [r2]
+
+    # 2. Metric ASC ordering with NULLS LAST (r2=0.18, r1=0.42, r3=missing)
+    asc_runs = store.search_runs(
+        ["7"],
+        "params.lr = '0.01'",
+        ViewType.ACTIVE_ONLY,
+        order_by=["metrics.rmse ASC"],
+    )
+    assert [r.info.run_id for r in asc_runs] == [r2, r1, r3]
+
+    # 3. Metric DESC ordering with NULLS LAST (r1=0.42, r2=0.18, r3=missing)
+    desc_runs = store.search_runs(
+        ["7"],
+        "params.lr = '0.01'",
+        ViewType.ACTIVE_ONLY,
+        order_by=["metrics.rmse DESC"],
+    )
+    assert [r.info.run_id for r in desc_runs] == [r1, r2, r3]

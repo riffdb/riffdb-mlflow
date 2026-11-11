@@ -70,12 +70,17 @@ class RiffDBJobStore(AbstractJobStore):
             metadata = CallMetadata.authenticated(credential).with_database(
                 DatabaseAlias(self.database)
             )
-            tls = VerifiedTlsConfig(
-                endpoint=conn.endpoint,
-                trust_root=conn.trust_root,
-                server_name=conn.server_name,
-            )
-            self._transport = SyncApplicationTransport.connect_verified_tls(tls, metadata)
+            if conn.driver_socket is not None:
+                self._transport = SyncApplicationTransport.connect_driver_socket(
+                    conn.driver_socket, metadata
+                )
+            else:
+                tls = VerifiedTlsConfig(
+                    endpoint=conn.endpoint,
+                    trust_root=conn.trust_root,
+                    server_name=conn.server_name,
+                )
+                self._transport = SyncApplicationTransport.connect_verified_tls(tls, metadata)
             self._client = RiffDBMLflowClient(self._transport, AttemptBudget(3))
         return self._client
 

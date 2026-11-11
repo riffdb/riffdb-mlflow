@@ -4,7 +4,7 @@ query SearchExperimentsByTagILike(
     $pattern: ExperimentTag.value,
     $lifecycle_stages: Set<Experiment.lifecycle_stage>,
     $order: ExperimentOrder,
-    $limit: Limit<4> = 4,
+    $limit: Limit<100> = 100,
     $after: Cursor?,
 ) {
     candidates matching_experiments: Experiment.experiment_id

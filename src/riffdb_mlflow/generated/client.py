@@ -22,8 +22,8 @@ def _compact_tag(value: object, tag: str, keys: frozenset[str]) -> dict[str, obj
 
 CONTRACT_LINEAGE: Final[str] = "RiffDBMLflow"
 CONTRACT_VERSION: Final[int] = 1
-CONTRACT_BUNDLE_HASH: Final[str] = "4f358f0b300fc43a76db61fa740a0aef1d55a1a74496c2807b85be6c9ed4ea4e"
-QUERY_MODULE_HASH: Final[str] = "7288e5b9d115737e564fe2aa13170c0a88c5091a473ab419f2a91d1e97f563c2"
+CONTRACT_BUNDLE_HASH: Final[str] = "0a87359f8c09b832d156bdef71f4d4fcbdc1c01ae2dea6e37ae46589bdc35b1d"
+QUERY_MODULE_HASH: Final[str] = "876c014a535ae114295225444a69e6979fcedc47247e25801b31d7be5b6d3225"
 
 COLLECTION_COUNT: Final[str] = "collection_count"
 INDIVIDUAL_VALUE_BYTES: Final[str] = "individual_value_bytes"
@@ -36,6 +36,12 @@ class InputBudgetError(ValueError):
         self.index = index
         self.leaf = leaf
         super().__init__("generated command input exceeds its compiled budget")
+
+class RunOrder(StrEnum):
+    METRIC_ASC = "MetricAsc"
+    METRIC_DESC = "MetricDesc"
+    START_TIME_ASC = "StartTimeAsc"
+    START_TIME_DESC = "StartTimeDesc"
 
 class RunStatus(StrEnum):
     FAILED = "Failed"
@@ -478,7 +484,7 @@ class GatewayModelDefinitionEntity:
     last_updated_at_ms: Annotated[int, "i64"]
     model_definition_id: str
 
-AGGREGATE_SPAN_ANALYTICS_BY_MODEL_QUERY_PLAN_HASH: Final[str] = "69a52e35b2b0fa8d21bccbab29c0dbbda0dd2ee6583c57f31b64a1ad58b4314a"
+AGGREGATE_SPAN_ANALYTICS_BY_MODEL_QUERY_PLAN_HASH: Final[str] = "925b44072daf062e3b4b646496ceb545466bcdfad3d771747568e4d51e8bf905"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class AggregateSpanAnalyticsByModelParams:
@@ -515,7 +521,7 @@ class AggregateSpanAnalyticsByModelFound:
 
 AggregateSpanAnalyticsByModelResult: TypeAlias = AggregateSpanAnalyticsByModelFound
 
-AGGREGATE_SPAN_ANALYTICS_BY_NAME_STATUS_QUERY_PLAN_HASH: Final[str] = "035614c3a14e5dbfb53d03e87a3f1a87163c232e4a7b17d6cbad3f660721ce1a"
+AGGREGATE_SPAN_ANALYTICS_BY_NAME_STATUS_QUERY_PLAN_HASH: Final[str] = "016aa2f13f687b90b37caaa2627785baf5ea2e269b520cbdf953c657f6ddc136"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class AggregateSpanAnalyticsByNameStatusParams:
@@ -550,7 +556,7 @@ class AggregateSpanAnalyticsByNameStatusFound:
 
 AggregateSpanAnalyticsByNameStatusResult: TypeAlias = AggregateSpanAnalyticsByNameStatusFound
 
-AGGREGATE_TRACE_ANALYTICS_BY_NAME_QUERY_PLAN_HASH: Final[str] = "966b5744406fb945913a2bf8dad5db8365952c4b819a296df59b142ee42c848a"
+AGGREGATE_TRACE_ANALYTICS_BY_NAME_QUERY_PLAN_HASH: Final[str] = "3ff99bed3a8d987949e1dff78bb71533f13c80ac63bd573797069d10f4c38cff"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class AggregateTraceAnalyticsByNameParams:
@@ -584,7 +590,7 @@ class AggregateTraceAnalyticsByNameFound:
 
 AggregateTraceAnalyticsByNameResult: TypeAlias = AggregateTraceAnalyticsByNameFound
 
-AGGREGATE_TRACE_ANALYTICS_BY_STATUS_QUERY_PLAN_HASH: Final[str] = "236487c8d9a7c558690d336a214c857c96cd2b46c7e8a4afb2a143690b8805c3"
+AGGREGATE_TRACE_ANALYTICS_BY_STATUS_QUERY_PLAN_HASH: Final[str] = "513f5fc2df73bf36e70db76e6b350c7ea6284277b7bf4dc7e35962b1a8c04e87"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class AggregateTraceAnalyticsByStatusParams:
@@ -618,7 +624,7 @@ class AggregateTraceAnalyticsByStatusFound:
 
 AggregateTraceAnalyticsByStatusResult: TypeAlias = AggregateTraceAnalyticsByStatusFound
 
-BATCH_GET_TRACE_ASSESSMENTS_QUERY_PLAN_HASH: Final[str] = "10f8429f9061dad1aaf651c62ad467b73d2b61293696d88c55da1e7706409c78"
+BATCH_GET_TRACE_ASSESSMENTS_QUERY_PLAN_HASH: Final[str] = "2803531db0304bf80d677a7bd432d0ff8ad60b17d9e8a4637e020810f56feb88"
 BATCH_GET_TRACE_ASSESSMENTS_TRACE_IDS_MAX_ITEMS: Final[int] = 200
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -666,7 +672,7 @@ class BatchGetTraceAssessmentsIntegrityFailure:
 
 BatchGetTraceAssessmentsResult: TypeAlias = BatchGetTraceAssessmentsFound | BatchGetTraceAssessmentsIntegrityFailure
 
-BATCH_GET_TRACE_SPANS_QUERY_PLAN_HASH: Final[str] = "65407fe7a9f941fede972cecf7f59ffa379a04deb6ea6d46c26e3bc7bead8931"
+BATCH_GET_TRACE_SPANS_QUERY_PLAN_HASH: Final[str] = "902b87d1a4edec2dfd59e4825276cd824ca893c4cf98868262881ceff8be29d0"
 BATCH_GET_TRACE_SPANS_TRACE_IDS_MAX_ITEMS: Final[int] = 200
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -710,7 +716,7 @@ class BatchGetTraceSpansIntegrityFailure:
 
 BatchGetTraceSpansResult: TypeAlias = BatchGetTraceSpansFound | BatchGetTraceSpansIntegrityFailure
 
-BATCH_GET_TRACES_QUERY_PLAN_HASH: Final[str] = "cba5470e5ee475a321c6ef675f7686dc1a429ff63909258313ccdbc554b8a2f4"
+BATCH_GET_TRACES_QUERY_PLAN_HASH: Final[str] = "92019652eddad96f99eb9d3793494f0b3d243356ce446aeb02f68661402f8826"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class BatchGetTracesParams:
@@ -787,7 +793,7 @@ class BatchGetTracesIntegrityFailure:
 
 BatchGetTracesResult: TypeAlias = BatchGetTracesFound | BatchGetTracesIntegrityFailure
 
-GET_EVALUATION_DATASET_QUERY_PLAN_HASH: Final[str] = "cad853082797db6ec4049f94bac2951122acb7b3923297d79e1abf5f26cbfe05"
+GET_EVALUATION_DATASET_QUERY_PLAN_HASH: Final[str] = "822ffc3084e263448919333518064bc03e118dff085c5ca93a4d94335d64e793"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class GetEvaluationDatasetParams:
@@ -838,7 +844,7 @@ class GetEvaluationDatasetMissing:
 
 GetEvaluationDatasetResult: TypeAlias = GetEvaluationDatasetFound | GetEvaluationDatasetMissing
 
-GET_EXPERIMENT_QUERY_PLAN_HASH: Final[str] = "7985dc06aae94c4d4604459427e01ecc66f1f5a86db949f6a8bb561224845fbd"
+GET_EXPERIMENT_QUERY_PLAN_HASH: Final[str] = "d80734640b91d9d4e7c1b53542ccd94ac382276dbbc8d746a14d590f5305b415"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class GetExperimentParams:
@@ -885,7 +891,7 @@ class GetExperimentMissing:
 
 GetExperimentResult: TypeAlias = GetExperimentFound | GetExperimentMissing
 
-GET_EXPERIMENT_BY_NAME_QUERY_PLAN_HASH: Final[str] = "19ab7461e20117789410b40c0e9b92f1f91b9cae8443399a41a9c974b28b1d63"
+GET_EXPERIMENT_BY_NAME_QUERY_PLAN_HASH: Final[str] = "cf02cb509d4c631cd80540b8b3410b32b709a2e6aee9ff8fc788848cea061c18"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class GetExperimentByNameParams:
@@ -932,7 +938,7 @@ class GetExperimentByNameMissing:
 
 GetExperimentByNameResult: TypeAlias = GetExperimentByNameFound | GetExperimentByNameMissing
 
-GET_GATEWAY_BUDGET_POLICY_QUERY_PLAN_HASH: Final[str] = "1b7b872977738a8b17b6c1f802df63477dd397a86fdc8be721cae07b94bdb8f1"
+GET_GATEWAY_BUDGET_POLICY_QUERY_PLAN_HASH: Final[str] = "5762335ae2df811e71242a5c1fd51d975ad30114e1d8b868926f9d4e209f0b91"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class GetGatewayBudgetPolicyParams:
@@ -983,7 +989,7 @@ class GetGatewayBudgetPolicyMissing:
 
 GetGatewayBudgetPolicyResult: TypeAlias = GetGatewayBudgetPolicyFound | GetGatewayBudgetPolicyMissing
 
-GET_GATEWAY_ENDPOINT_QUERY_PLAN_HASH: Final[str] = "0ee2c737a9fc9b0ef8c4c57661104738ae9caa1b465da0d249634ee346c51a3e"
+GET_GATEWAY_ENDPOINT_QUERY_PLAN_HASH: Final[str] = "9e0a90589b146261b36c3a2f20cfaf759e3259b2fc3040db554c61c4c23c64ee"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class GetGatewayEndpointParams:
@@ -1036,7 +1042,7 @@ class GetGatewayEndpointMissing:
 
 GetGatewayEndpointResult: TypeAlias = GetGatewayEndpointFound | GetGatewayEndpointMissing
 
-GET_GATEWAY_GUARDRAIL_QUERY_PLAN_HASH: Final[str] = "93fcca7dd514fa9ae9aa426bff0a73d4416745ad4380025740708ee905ccc04d"
+GET_GATEWAY_GUARDRAIL_QUERY_PLAN_HASH: Final[str] = "8cc58becb4ff96c45c50f5928a037e8596a9f71a20ab760cfa3f24d027392fcd"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class GetGatewayGuardrailParams:
@@ -1086,7 +1092,7 @@ class GetGatewayGuardrailMissing:
 
 GetGatewayGuardrailResult: TypeAlias = GetGatewayGuardrailFound | GetGatewayGuardrailMissing
 
-GET_GATEWAY_MODEL_DEFINITION_QUERY_PLAN_HASH: Final[str] = "1721a8df5fa86668c1018aae3b9edb6a4b40088d652a973e75794bce2476c4dc"
+GET_GATEWAY_MODEL_DEFINITION_QUERY_PLAN_HASH: Final[str] = "0c7cc279d2f12432ea1bd0cf59a7c9cb0bee94449009d80eb7335488321fbe50"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class GetGatewayModelDefinitionParams:
@@ -1134,7 +1140,7 @@ class GetGatewayModelDefinitionMissing:
 
 GetGatewayModelDefinitionResult: TypeAlias = GetGatewayModelDefinitionFound | GetGatewayModelDefinitionMissing
 
-GET_GATEWAY_SECRET_QUERY_PLAN_HASH: Final[str] = "81a7bb81dd7eefdd91f26be4dc0ff5ab5f4cfc44b4f19252a1f4cb2884d1ceb1"
+GET_GATEWAY_SECRET_QUERY_PLAN_HASH: Final[str] = "a953c4d4c4851d7f8f0696a38e3c3d026c852d6cae1f028c6b82d79e3e2132b1"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class GetGatewaySecretParams:
@@ -1185,7 +1191,7 @@ class GetGatewaySecretMissing:
 
 GetGatewaySecretResult: TypeAlias = GetGatewaySecretFound | GetGatewaySecretMissing
 
-GET_ISSUE_QUERY_PLAN_HASH: Final[str] = "43e6693ad6439caa6f56f498366e8ac0f31ce64978cd657235b425203a19ade2"
+GET_ISSUE_QUERY_PLAN_HASH: Final[str] = "21563ac10bb9492363ace5226c920eef422861a64eb558af0e9ba08771289ea1"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class GetIssueParams:
@@ -1236,7 +1242,7 @@ class GetIssueMissing:
 
 GetIssueResult: TypeAlias = GetIssueFound | GetIssueMissing
 
-GET_LABEL_SCHEMA_QUERY_PLAN_HASH: Final[str] = "3ecbdd903181678285348887fa54f4230df8c3ecf3ddbf1966204f4c234e7601"
+GET_LABEL_SCHEMA_QUERY_PLAN_HASH: Final[str] = "41883b30379269b2ad11c978400b6a2453ff7a2cb03774d6f762c977f1908417"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class GetLabelSchemaParams:
@@ -1287,7 +1293,7 @@ class GetLabelSchemaMissing:
 
 GetLabelSchemaResult: TypeAlias = GetLabelSchemaFound | GetLabelSchemaMissing
 
-GET_LOGGED_MODEL_QUERY_PLAN_HASH: Final[str] = "c9fa05b7e964f608a1638e4763b0e484507cfbbc57f3e935a5512da9f39272b9"
+GET_LOGGED_MODEL_QUERY_PLAN_HASH: Final[str] = "18c5044cd1be210aee26a4a0584c6cf13f119a105fdb33fed14889cf7d86c48b"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class GetLoggedModelParams:
@@ -1340,7 +1346,7 @@ class GetLoggedModelMissing:
 
 GetLoggedModelResult: TypeAlias = GetLoggedModelFound | GetLoggedModelMissing
 
-GET_MCPACCESS_ENDPOINT_QUERY_PLAN_HASH: Final[str] = "b32e67e07d03ebd5f584d37105f4393027be0984777a4216d3f85f3a1795b6f3"
+GET_MCPACCESS_ENDPOINT_QUERY_PLAN_HASH: Final[str] = "e3d844caa4c71e8dbff017a8e932eecf97e1d8dff819bfcd7b4ebec92773c2e1"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class GetMCPAccessEndpointParams:
@@ -1389,7 +1395,7 @@ class GetMCPAccessEndpointMissing:
 
 GetMCPAccessEndpointResult: TypeAlias = GetMCPAccessEndpointFound | GetMCPAccessEndpointMissing
 
-GET_MCPSERVER_QUERY_PLAN_HASH: Final[str] = "192b815f2a9896b2b589971f29bb47ddc77f7ed4fe44084b0505a67732ba5751"
+GET_MCPSERVER_QUERY_PLAN_HASH: Final[str] = "8d7767980354d90c3cca1918d93371c48f16206b064f2734be557db954c14a45"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class GetMCPServerParams:
@@ -1438,7 +1444,7 @@ class GetMCPServerMissing:
 
 GetMCPServerResult: TypeAlias = GetMCPServerFound | GetMCPServerMissing
 
-GET_MCPSERVER_VERSION_QUERY_PLAN_HASH: Final[str] = "64e8139bbd3c9706b2a9e70b5a818d91b38e11f1b63ab0aef92062f98337fa78"
+GET_MCPSERVER_VERSION_QUERY_PLAN_HASH: Final[str] = "d659811fcc1970a1348e492202b34a8ce89ca123cd835ab8f4b860c48e56244b"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class GetMCPServerVersionParams:
@@ -1494,7 +1500,7 @@ class GetMCPServerVersionMissing:
 
 GetMCPServerVersionResult: TypeAlias = GetMCPServerVersionFound | GetMCPServerVersionMissing
 
-GET_METRIC_HISTORY_QUERY_PLAN_HASH: Final[str] = "6163f83c49e389f19e1a665a9f34b528625df9c175127554c96f92d074fdeb50"
+GET_METRIC_HISTORY_QUERY_PLAN_HASH: Final[str] = "5f14060869a650695076fcf21902993ee53c030eae9ac4cff3f43e415e0a8c2c"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class GetMetricHistoryParams:
@@ -1542,7 +1548,7 @@ class GetMetricHistoryIntegrityFailure:
 
 GetMetricHistoryResult: TypeAlias = GetMetricHistoryFound | GetMetricHistoryIntegrityFailure
 
-GET_MODEL_VERSION_QUERY_PLAN_HASH: Final[str] = "a89f88812cf52acc2187f1571b90ff514919e76544dd3f74305aed35105e91b9"
+GET_MODEL_VERSION_QUERY_PLAN_HASH: Final[str] = "05ebfffba6e61af3434436338b52a80aa46c7f15fb90b4180ed15e7efeae1bb2"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class GetModelVersionParams:
@@ -1596,7 +1602,7 @@ class GetModelVersionMissing:
 
 GetModelVersionResult: TypeAlias = GetModelVersionFound | GetModelVersionMissing
 
-GET_REGISTERED_MODEL_QUERY_PLAN_HASH: Final[str] = "7055727296b672d90f8f0ec36d58ada31be3285e8d3fd4ac2dc20fec7ebc97a5"
+GET_REGISTERED_MODEL_QUERY_PLAN_HASH: Final[str] = "3c22dc9f25e94b7d429cc2a04b506137dc87cea28ba5c396a1bcb0942738e69f"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class GetRegisteredModelParams:
@@ -1642,7 +1648,7 @@ class GetRegisteredModelMissing:
 
 GetRegisteredModelResult: TypeAlias = GetRegisteredModelFound | GetRegisteredModelMissing
 
-GET_REGISTRY_WEBHOOK_QUERY_PLAN_HASH: Final[str] = "8c980c144389c0abcb0bf57ef0634526fef1b356b0766b5e4afa4eb9e54a5c05"
+GET_REGISTRY_WEBHOOK_QUERY_PLAN_HASH: Final[str] = "c5bc3ad8d1e344ac1fb0f13c010b8d1194b4af9a5e7c94ace855bddc7b0f1fb2"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class GetRegistryWebhookParams:
@@ -1691,7 +1697,7 @@ class GetRegistryWebhookMissing:
 
 GetRegistryWebhookResult: TypeAlias = GetRegistryWebhookFound | GetRegistryWebhookMissing
 
-GET_REVIEW_QUEUE_QUERY_PLAN_HASH: Final[str] = "9f44a59c1073a6992dc070d0137dbe9bfe819f040640bcc801c48a53e8136ff6"
+GET_REVIEW_QUEUE_QUERY_PLAN_HASH: Final[str] = "67267a73f8a8697d5a7056de171f9a5d6d3a94ed31fc78d7d58dc17240a52b91"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class GetReviewQueueParams:
@@ -1741,7 +1747,7 @@ class GetReviewQueueMissing:
 
 GetReviewQueueResult: TypeAlias = GetReviewQueueFound | GetReviewQueueMissing
 
-GET_RUN_QUERY_PLAN_HASH: Final[str] = "ddc987c82e26ff503c7915e9b5253f5cdd7496deb93a04bcac7669e07757cf43"
+GET_RUN_QUERY_PLAN_HASH: Final[str] = "8f8186db866433aceb9a213a5c889a4a6d55c44961f7dd2e3dab46cc5fef1b1a"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class GetRunParams:
@@ -1794,7 +1800,7 @@ class GetRunMissing:
 
 GetRunResult: TypeAlias = GetRunFound | GetRunMissing
 
-GET_RUN_LINEAGE_QUERY_PLAN_HASH: Final[str] = "6c57aecc6ebef25c1a56f8f168a82e3ec30382302397d6e7b5955437a0045e0b"
+GET_RUN_LINEAGE_QUERY_PLAN_HASH: Final[str] = "307297088df0ed01b22279e1fd27fc00a9d0b04f3aa84f5232db7e96e4a8b069"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class GetRunLineageParams:
@@ -1838,7 +1844,7 @@ class GetRunLineageMissing:
 
 GetRunLineageResult: TypeAlias = GetRunLineageFound | GetRunLineageMissing
 
-GET_SCORER_QUERY_PLAN_HASH: Final[str] = "38a317ef787bbab88e8674e832abee18d30d0f78739aa8ec4e91f434f61c3e94"
+GET_SCORER_QUERY_PLAN_HASH: Final[str] = "75c10c18739e00ee6c6765d73cc5ebbf2154e8ad0fdcd7ad783bfa0e20e518fa"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class GetScorerParams:
@@ -1883,7 +1889,7 @@ class GetScorerMissing:
 
 GetScorerResult: TypeAlias = GetScorerFound | GetScorerMissing
 
-GET_SERVER_JOB_QUERY_PLAN_HASH: Final[str] = "905ba1a12e4e47f7824b60a6f4a7334ce0f05a2ae1b89186a913bd56440adebc"
+GET_SERVER_JOB_QUERY_PLAN_HASH: Final[str] = "9ed43894ecdc46572799c88a6f96b01a4fbfe552525c0146156eccb4c9f551d9"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class GetServerJobParams:
@@ -1932,7 +1938,7 @@ class GetServerJobMissing:
 
 GetServerJobResult: TypeAlias = GetServerJobFound | GetServerJobMissing
 
-GET_TRACE_QUERY_PLAN_HASH: Final[str] = "e07d78cc06cdc712f8a03150e476a589fc717123212270501ef53eb3d20e9633"
+GET_TRACE_QUERY_PLAN_HASH: Final[str] = "6329cc8b31c9fbe4ae7d3b7a26a52bfb569706a760edb9f12c5de6870783212b"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class GetTraceParams:
@@ -2036,7 +2042,7 @@ class GetTraceMissing:
 
 GetTraceResult: TypeAlias = GetTraceFound | GetTraceMissing
 
-LIST_EVALUATION_DATASETS_QUERY_PLAN_HASH: Final[str] = "ee59902984e9a0b3b9e32493b12d395fb686233981cfbd51d092d45e7e847e7e"
+LIST_EVALUATION_DATASETS_QUERY_PLAN_HASH: Final[str] = "6b884f7e4d3dc24781e42cf2d3cbf863aecd42b922a2f64d76cd00508b340be9"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class ListEvaluationDatasetsParams:
@@ -2088,7 +2094,7 @@ class ListEvaluationDatasetsIntegrityFailure:
 
 ListEvaluationDatasetsResult: TypeAlias = ListEvaluationDatasetsFound | ListEvaluationDatasetsIntegrityFailure
 
-LIST_GATEWAY_BUDGET_POLICIES_QUERY_PLAN_HASH: Final[str] = "98e01fa33354c1e87a997ae818158bf51d91ce8130b521417041b8eb20b4d81b"
+LIST_GATEWAY_BUDGET_POLICIES_QUERY_PLAN_HASH: Final[str] = "c09fc765a145dfaa66e1df10760e19a7c5e2734517a65d4de872a538333d574f"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class ListGatewayBudgetPoliciesParams:
@@ -2140,7 +2146,7 @@ class ListGatewayBudgetPoliciesIntegrityFailure:
 
 ListGatewayBudgetPoliciesResult: TypeAlias = ListGatewayBudgetPoliciesFound | ListGatewayBudgetPoliciesIntegrityFailure
 
-LIST_GATEWAY_ENDPOINTS_QUERY_PLAN_HASH: Final[str] = "7123e684de25aae5472983e99376df44c4e18090d6f1389962fc623b206fc26b"
+LIST_GATEWAY_ENDPOINTS_QUERY_PLAN_HASH: Final[str] = "81651b48204073fa1c9bc78c26d9e4d60a0a91eae0e4a2ca5f13eb06a8273bf4"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class ListGatewayEndpointsParams:
@@ -2194,7 +2200,7 @@ class ListGatewayEndpointsIntegrityFailure:
 
 ListGatewayEndpointsResult: TypeAlias = ListGatewayEndpointsFound | ListGatewayEndpointsIntegrityFailure
 
-LIST_GATEWAY_GUARDRAILS_QUERY_PLAN_HASH: Final[str] = "9bd7ba21aaa7eb670ba91d6c75441793442cb9af37f1f447677862ca72791733"
+LIST_GATEWAY_GUARDRAILS_QUERY_PLAN_HASH: Final[str] = "92497e8ea6a0f22835ab22a5922bf07924c6c412cae26705e1c37793f93e7582"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class ListGatewayGuardrailsParams:
@@ -2245,7 +2251,7 @@ class ListGatewayGuardrailsIntegrityFailure:
 
 ListGatewayGuardrailsResult: TypeAlias = ListGatewayGuardrailsFound | ListGatewayGuardrailsIntegrityFailure
 
-LIST_GATEWAY_MODEL_DEFINITIONS_QUERY_PLAN_HASH: Final[str] = "e5ab7acdf3223ee0724ff8106b9f862f05df764f1589a7aeacaab937f26e424c"
+LIST_GATEWAY_MODEL_DEFINITIONS_QUERY_PLAN_HASH: Final[str] = "570348a5e0eb8426f4b1a30a7d77c9e15645c18d25615adc25cbbccd39540302"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class ListGatewayModelDefinitionsParams:
@@ -2294,7 +2300,7 @@ class ListGatewayModelDefinitionsIntegrityFailure:
 
 ListGatewayModelDefinitionsResult: TypeAlias = ListGatewayModelDefinitionsFound | ListGatewayModelDefinitionsIntegrityFailure
 
-LIST_GATEWAY_SECRETS_QUERY_PLAN_HASH: Final[str] = "6cbbe097c21a5cc2f4b591f2cd51d3db5ff5311d69414cfac4162dcb8a8bdd10"
+LIST_GATEWAY_SECRETS_QUERY_PLAN_HASH: Final[str] = "f64aed7fb3706f0af2c3ef8261700d282a6979bd2482aec8414fc71a98f7ad5d"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class ListGatewaySecretsParams:
@@ -2346,7 +2352,7 @@ class ListGatewaySecretsIntegrityFailure:
 
 ListGatewaySecretsResult: TypeAlias = ListGatewaySecretsFound | ListGatewaySecretsIntegrityFailure
 
-LIST_ISSUES_QUERY_PLAN_HASH: Final[str] = "f111f1b6caec2489eb14a48fb2f804e597d547b5aee1932e934afcfb761444b1"
+LIST_ISSUES_QUERY_PLAN_HASH: Final[str] = "e262f9a24daff1c9df062ac0a36aba0af851b300843dce4326b031718f85889d"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class ListIssuesParams:
@@ -2398,7 +2404,7 @@ class ListIssuesIntegrityFailure:
 
 ListIssuesResult: TypeAlias = ListIssuesFound | ListIssuesIntegrityFailure
 
-LIST_LABEL_SCHEMAS_QUERY_PLAN_HASH: Final[str] = "458cac8caa07a54509cec64582af9f162d5d82b4289c1d2d9b6d7cac1a7a1b14"
+LIST_LABEL_SCHEMAS_QUERY_PLAN_HASH: Final[str] = "4e1cf35bf1bb37ff51c40a2e435feb1d9ce42d27974b4ab1161fe9228c88ffc8"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class ListLabelSchemasParams:
@@ -2450,7 +2456,7 @@ class ListLabelSchemasIntegrityFailure:
 
 ListLabelSchemasResult: TypeAlias = ListLabelSchemasFound | ListLabelSchemasIntegrityFailure
 
-LIST_MCPACCESS_ENDPOINTS_BY_SERVER_QUERY_PLAN_HASH: Final[str] = "969b889851f3baa0b58949a69110f5392ef422d32a210e65696562e5af03476e"
+LIST_MCPACCESS_ENDPOINTS_BY_SERVER_QUERY_PLAN_HASH: Final[str] = "afc6452042a7dfe655a9581ce8d3e4bdc164ee4d17b1891d3262ae2de0a79c99"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class ListMCPAccessEndpointsByServerParams:
@@ -2501,7 +2507,7 @@ class ListMCPAccessEndpointsByServerIntegrityFailure:
 
 ListMCPAccessEndpointsByServerResult: TypeAlias = ListMCPAccessEndpointsByServerFound | ListMCPAccessEndpointsByServerIntegrityFailure
 
-LIST_MCPSERVER_VERSIONS_BY_SERVER_QUERY_PLAN_HASH: Final[str] = "3d76eb4e7c3de7ea08c33a368a52b8380caca79f3d53ea8090a90415b460e18f"
+LIST_MCPSERVER_VERSIONS_BY_SERVER_QUERY_PLAN_HASH: Final[str] = "64a7826eb072be389f68dc161f22844cbfe5da0a7e6488ea2687fd1979e9ff64"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class ListMCPServerVersionsByServerParams:
@@ -2558,7 +2564,7 @@ class ListMCPServerVersionsByServerIntegrityFailure:
 
 ListMCPServerVersionsByServerResult: TypeAlias = ListMCPServerVersionsByServerFound | ListMCPServerVersionsByServerIntegrityFailure
 
-LIST_MODEL_VERSIONS_BY_MODEL_QUERY_PLAN_HASH: Final[str] = "fedbb74e2d23a21185b5098d8f08dad3f8620d86a9ef533458c0612c1c634cbd"
+LIST_MODEL_VERSIONS_BY_MODEL_QUERY_PLAN_HASH: Final[str] = "3c00b45b826079b1a08858026528209a51ef1c1b3ccb9c856d2e8f642b8cf8ef"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class ListModelVersionsByModelParams:
@@ -2613,7 +2619,7 @@ class ListModelVersionsByModelIntegrityFailure:
 
 ListModelVersionsByModelResult: TypeAlias = ListModelVersionsByModelFound | ListModelVersionsByModelIntegrityFailure
 
-LIST_REGISTRY_WEBHOOKS_QUERY_PLAN_HASH: Final[str] = "66eb28516532483ebd7a85173da82e810b3d8512a44807c5ed5b06f3fa3b1b00"
+LIST_REGISTRY_WEBHOOKS_QUERY_PLAN_HASH: Final[str] = "07681323945c1ed51da220f62c8eb5d9c7a630e33d5e5bad14278ee4a707f5a8"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class ListRegistryWebhooksParams:
@@ -2663,7 +2669,7 @@ class ListRegistryWebhooksIntegrityFailure:
 
 ListRegistryWebhooksResult: TypeAlias = ListRegistryWebhooksFound | ListRegistryWebhooksIntegrityFailure
 
-LIST_REVIEW_QUEUES_QUERY_PLAN_HASH: Final[str] = "a403d3a957adaae75f1fc96c729bbb33690130e4293c432bc47eac207b906259"
+LIST_REVIEW_QUEUES_QUERY_PLAN_HASH: Final[str] = "18a91af387e127e84d4f179fe7e2d1d413ca2992b7c360df81cb7aa1a52fdf68"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class ListReviewQueuesParams:
@@ -2714,7 +2720,7 @@ class ListReviewQueuesIntegrityFailure:
 
 ListReviewQueuesResult: TypeAlias = ListReviewQueuesFound | ListReviewQueuesIntegrityFailure
 
-LIST_SCORERS_QUERY_PLAN_HASH: Final[str] = "e134aba8c52ad09ba3d856bdd1b40d4c457c26836057bf72abc0acfdb16f8882"
+LIST_SCORERS_QUERY_PLAN_HASH: Final[str] = "807a3bfd792ceb7a4c99234b865032b6cd5678e603904408aedd3e7b99e48438"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class ListScorersParams:
@@ -2760,7 +2766,7 @@ class ListScorersIntegrityFailure:
 
 ListScorersResult: TypeAlias = ListScorersFound | ListScorersIntegrityFailure
 
-LIST_SERVER_JOBS_QUERY_PLAN_HASH: Final[str] = "010939bcb387668d604a66eb2924251fda34a9b3ab79e1c456d1125e44133b56"
+LIST_SERVER_JOBS_QUERY_PLAN_HASH: Final[str] = "4ac29522b52ff71d92b73e94eac02d3c6fd73261bbc60eaf34c4a526fcedc481"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class ListServerJobsParams:
@@ -2810,7 +2816,7 @@ class ListServerJobsIntegrityFailure:
 
 ListServerJobsResult: TypeAlias = ListServerJobsFound | ListServerJobsIntegrityFailure
 
-QUERY_ASSESSMENT_ANALYTICS_QUERY_PLAN_HASH: Final[str] = "6c0b7bd643219f1c14ceebc3175a3711d57cc44ca28ad2c8a8d4c83715cd2fdc"
+QUERY_ASSESSMENT_ANALYTICS_QUERY_PLAN_HASH: Final[str] = "dd461bbad7e698cebd44360978bda7390404541c6c1a74ffc0e17c0efb3d94f7"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class QueryAssessmentAnalyticsParams:
@@ -2858,7 +2864,7 @@ class QueryAssessmentAnalyticsIntegrityFailure:
 
 QueryAssessmentAnalyticsResult: TypeAlias = QueryAssessmentAnalyticsFound | QueryAssessmentAnalyticsIntegrityFailure
 
-QUERY_SPAN_ANALYTICS_QUERY_PLAN_HASH: Final[str] = "cd65108b7b8efab4ce11f15de16d52f4bb552c5168170b803075144baddc104c"
+QUERY_SPAN_ANALYTICS_QUERY_PLAN_HASH: Final[str] = "f085765f215f221ca427668076ae17010e42c954bed7f11f63effd0d02f0519e"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class QuerySpanAnalyticsParams:
@@ -2916,7 +2922,7 @@ class QuerySpanAnalyticsIntegrityFailure:
 
 QuerySpanAnalyticsResult: TypeAlias = QuerySpanAnalyticsFound | QuerySpanAnalyticsIntegrityFailure
 
-QUERY_SPAN_MODEL_ROLLUP_QUERY_PLAN_HASH: Final[str] = "989c6b06c9092f0322281c5225342d860c9a8e9d47ca7d5e388e87c28581318c"
+QUERY_SPAN_MODEL_ROLLUP_QUERY_PLAN_HASH: Final[str] = "c4d7c70b3b662a274fad8e700595b0d2db905a7298f436298b98c8a674287fc4"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class QuerySpanModelRollupParams:
@@ -2973,7 +2979,7 @@ class QuerySpanModelRollupIntegrityFailure:
 
 QuerySpanModelRollupResult: TypeAlias = QuerySpanModelRollupFound | QuerySpanModelRollupIntegrityFailure
 
-QUERY_TRACE_ANALYTICS_QUERY_PLAN_HASH: Final[str] = "0b6bdf38c7f623a48fd643c248b6b8d441ea91176bd0d26fffae294da209a14c"
+QUERY_TRACE_ANALYTICS_QUERY_PLAN_HASH: Final[str] = "32b5335b1d6148b59309799c1cfa5d1dbe1960c2b4acaffb001d0c063499e771"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class QueryTraceAnalyticsParams:
@@ -3030,7 +3036,7 @@ class QueryTraceAnalyticsIntegrityFailure:
 
 QueryTraceAnalyticsResult: TypeAlias = QueryTraceAnalyticsFound | QueryTraceAnalyticsIntegrityFailure
 
-SEARCH_EXPERIMENTS_QUERY_PLAN_HASH: Final[str] = "5ffdacd5f641fb0168d292ddd8ee60873f25273df085d7edbd0f7f8c51e65f99"
+SEARCH_EXPERIMENTS_QUERY_PLAN_HASH: Final[str] = "fcc5e2b505f167f3f4dd4b8d5bbf60a5c63a52c3cffdcd09dc561571122a51df"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsParams:
@@ -3080,7 +3086,7 @@ class SearchExperimentsIntegrityFailure:
 
 SearchExperimentsResult: TypeAlias = SearchExperimentsFound | SearchExperimentsIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_NAME_QUERY_PLAN_HASH: Final[str] = "625e3f4d7024b2d90ca8bf32b49bb39a97419fe35e89bf0ffdc62330917cd134"
+SEARCH_EXPERIMENTS_BY_NAME_QUERY_PLAN_HASH: Final[str] = "b8a7116078da13088dca9f9bd0c00fe16f69959e37c2c92d6461439454cea43c"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByNameParams:
@@ -3131,7 +3137,7 @@ class SearchExperimentsByNameIntegrityFailure:
 
 SearchExperimentsByNameResult: TypeAlias = SearchExperimentsByNameFound | SearchExperimentsByNameIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_NAME_AND_TAG_QUERY_PLAN_HASH: Final[str] = "c5f3fd77f144442f6bbf4d96055b4971f6afd90836255048566efde668fd73f8"
+SEARCH_EXPERIMENTS_BY_NAME_AND_TAG_QUERY_PLAN_HASH: Final[str] = "e608245b006783f2dc9d02a02dd06929d6bac048cd23cb9a0c0bfdf7c8dd569e"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByNameAndTagParams:
@@ -3184,7 +3190,7 @@ class SearchExperimentsByNameAndTagIntegrityFailure:
 
 SearchExperimentsByNameAndTagResult: TypeAlias = SearchExperimentsByNameAndTagFound | SearchExperimentsByNameAndTagIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_NAME_AND_TAG_IS_NULL_QUERY_PLAN_HASH: Final[str] = "cbd926ad9b545aa165d050174ba34408089c0640b6e11456317e35a653352705"
+SEARCH_EXPERIMENTS_BY_NAME_AND_TAG_IS_NULL_QUERY_PLAN_HASH: Final[str] = "5a1baa26f601cf4c5870f25e5250392e3f1c99fc6adda29412cbdd7242a42c20"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByNameAndTagIsNullParams:
@@ -3236,7 +3242,7 @@ class SearchExperimentsByNameAndTagIsNullIntegrityFailure:
 
 SearchExperimentsByNameAndTagIsNullResult: TypeAlias = SearchExperimentsByNameAndTagIsNullFound | SearchExperimentsByNameAndTagIsNullIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_NAME_ILIKE_QUERY_PLAN_HASH: Final[str] = "2e871b200371ce591379e3d8042186ef2973879d6b8d8b3293c4fe98e8253737"
+SEARCH_EXPERIMENTS_BY_NAME_ILIKE_QUERY_PLAN_HASH: Final[str] = "9883c5f9cfdf1536912e795c34483d51b6a178cef661a72358836a23e4c7366c"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByNameILikeParams:
@@ -3287,7 +3293,7 @@ class SearchExperimentsByNameILikeIntegrityFailure:
 
 SearchExperimentsByNameILikeResult: TypeAlias = SearchExperimentsByNameILikeFound | SearchExperimentsByNameILikeIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_NAME_ILIKE_AND_GATEWAY_IS_NULL_QUERY_PLAN_HASH: Final[str] = "88fca988da865c718d8e3d336153039fc60095acacd50041157be0e5fbec7579"
+SEARCH_EXPERIMENTS_BY_NAME_ILIKE_AND_GATEWAY_IS_NULL_QUERY_PLAN_HASH: Final[str] = "af9c76005b387c8a9f94cd4e7b49f9ffc6e3230245031b11238c445f560943b7"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByNameILikeAndGatewayIsNullParams:
@@ -3338,7 +3344,7 @@ class SearchExperimentsByNameILikeAndGatewayIsNullIntegrityFailure:
 
 SearchExperimentsByNameILikeAndGatewayIsNullResult: TypeAlias = SearchExperimentsByNameILikeAndGatewayIsNullFound | SearchExperimentsByNameILikeAndGatewayIsNullIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_NAME_ILIKE_AND_TAG_QUERY_PLAN_HASH: Final[str] = "987b0936a6295e47d5c43bc9b0696fe7cfe818ed7144d3c0a4328f2fa72b2534"
+SEARCH_EXPERIMENTS_BY_NAME_ILIKE_AND_TAG_QUERY_PLAN_HASH: Final[str] = "9c5ab013ffbec189c7f56938caab560f0c8a85bdbf26e1ad36c7c0f08c693afd"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByNameILikeAndTagParams:
@@ -3391,7 +3397,7 @@ class SearchExperimentsByNameILikeAndTagIntegrityFailure:
 
 SearchExperimentsByNameILikeAndTagResult: TypeAlias = SearchExperimentsByNameILikeAndTagFound | SearchExperimentsByNameILikeAndTagIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_NAME_ILIKE_AND_TAG_AND_GATEWAY_IS_NULL_QUERY_PLAN_HASH: Final[str] = "27ea1d0d28f2981f07ed07b03852bb0efabbd9f1ac57f6c983608ff6876c57f3"
+SEARCH_EXPERIMENTS_BY_NAME_ILIKE_AND_TAG_AND_GATEWAY_IS_NULL_QUERY_PLAN_HASH: Final[str] = "22ee0aefc62dad56477ec24244c2dfa37fde7a6347fb6e38fc7d5bd046e3138d"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByNameILikeAndTagAndGatewayIsNullParams:
@@ -3444,7 +3450,7 @@ class SearchExperimentsByNameILikeAndTagAndGatewayIsNullIntegrityFailure:
 
 SearchExperimentsByNameILikeAndTagAndGatewayIsNullResult: TypeAlias = SearchExperimentsByNameILikeAndTagAndGatewayIsNullFound | SearchExperimentsByNameILikeAndTagAndGatewayIsNullIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_NAME_ILIKE_AND_TAG_IS_NOT_NULL_QUERY_PLAN_HASH: Final[str] = "c32560ffa0a852bdfd6f6d0e67b4f8faad45b53f1a6d218a304e0139678122a6"
+SEARCH_EXPERIMENTS_BY_NAME_ILIKE_AND_TAG_IS_NOT_NULL_QUERY_PLAN_HASH: Final[str] = "69758688a9c0e85e7a67a83ce3e844f4e05c13abc9520a7529bec319fc4f6cb4"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByNameILikeAndTagIsNotNullParams:
@@ -3496,7 +3502,7 @@ class SearchExperimentsByNameILikeAndTagIsNotNullIntegrityFailure:
 
 SearchExperimentsByNameILikeAndTagIsNotNullResult: TypeAlias = SearchExperimentsByNameILikeAndTagIsNotNullFound | SearchExperimentsByNameILikeAndTagIsNotNullIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_NAME_LIKE_QUERY_PLAN_HASH: Final[str] = "a5ab2d014422db428c6a9b2e201036b20f0b7fc5fca572a848877d007ffad930"
+SEARCH_EXPERIMENTS_BY_NAME_LIKE_QUERY_PLAN_HASH: Final[str] = "73e61d0ada6778b0477577f77710b7ee2f68d5aa6d3f414eccf0e483b6993dc3"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByNameLikeParams:
@@ -3547,7 +3553,7 @@ class SearchExperimentsByNameLikeIntegrityFailure:
 
 SearchExperimentsByNameLikeResult: TypeAlias = SearchExperimentsByNameLikeFound | SearchExperimentsByNameLikeIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_NAME_LIKE_AND_GATEWAY_IS_NULL_QUERY_PLAN_HASH: Final[str] = "ee4b5c531b8e0d6a11e140a5d929c785c0b00d583b1078b27ace5295bce7736d"
+SEARCH_EXPERIMENTS_BY_NAME_LIKE_AND_GATEWAY_IS_NULL_QUERY_PLAN_HASH: Final[str] = "d9f30ce041bc571d1a1d703405317ec3c72c51460b72dc7ff01240113d1b78d8"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByNameLikeAndGatewayIsNullParams:
@@ -3598,7 +3604,7 @@ class SearchExperimentsByNameLikeAndGatewayIsNullIntegrityFailure:
 
 SearchExperimentsByNameLikeAndGatewayIsNullResult: TypeAlias = SearchExperimentsByNameLikeAndGatewayIsNullFound | SearchExperimentsByNameLikeAndGatewayIsNullIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_NAME_LIKE_AND_TAG_QUERY_PLAN_HASH: Final[str] = "4f2ea0fdbb0150d3b35e72d4584cc968690d079a8ef75c7ee887cfe88153d999"
+SEARCH_EXPERIMENTS_BY_NAME_LIKE_AND_TAG_QUERY_PLAN_HASH: Final[str] = "68de5a333855be8a064935382926c7e891c3578f93023fcf1df1bcc6ad454b95"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByNameLikeAndTagParams:
@@ -3651,7 +3657,7 @@ class SearchExperimentsByNameLikeAndTagIntegrityFailure:
 
 SearchExperimentsByNameLikeAndTagResult: TypeAlias = SearchExperimentsByNameLikeAndTagFound | SearchExperimentsByNameLikeAndTagIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_NAME_NOT_EQUAL_QUERY_PLAN_HASH: Final[str] = "71008774be2f53ba6ef5d555064c6d24ec80f231634cda2ec16840e545021702"
+SEARCH_EXPERIMENTS_BY_NAME_NOT_EQUAL_QUERY_PLAN_HASH: Final[str] = "25525d1cd75c15411c6d3c40ab9b5319efdb25e8d3fe5439a4bf1993553d5906"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByNameNotEqualParams:
@@ -3702,7 +3708,7 @@ class SearchExperimentsByNameNotEqualIntegrityFailure:
 
 SearchExperimentsByNameNotEqualResult: TypeAlias = SearchExperimentsByNameNotEqualFound | SearchExperimentsByNameNotEqualIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_NAME_NOT_EQUAL_AND_TAG_IS_NULL_QUERY_PLAN_HASH: Final[str] = "2091bf64bbda801af3ed130c07b558b9c343f1fef8f6e966068c7b35657d1caa"
+SEARCH_EXPERIMENTS_BY_NAME_NOT_EQUAL_AND_TAG_IS_NULL_QUERY_PLAN_HASH: Final[str] = "ad9e9a4bf116c6a95926c0826f8cabbb2eb009922da6a52c917a626f673e1800"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByNameNotEqualAndTagIsNullParams:
@@ -3754,7 +3760,7 @@ class SearchExperimentsByNameNotEqualAndTagIsNullIntegrityFailure:
 
 SearchExperimentsByNameNotEqualAndTagIsNullResult: TypeAlias = SearchExperimentsByNameNotEqualAndTagIsNullFound | SearchExperimentsByNameNotEqualAndTagIsNullIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_TAG_QUERY_PLAN_HASH: Final[str] = "983c1f60f7472c37002b56f45dc0db81e0e6f9c60be2db4652bddcdb90705631"
+SEARCH_EXPERIMENTS_BY_TAG_QUERY_PLAN_HASH: Final[str] = "516f2f406c3bf260de2c822bba6d0ef60b84b9fcbd19cb4b33f13b372266b37c"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByTagParams:
@@ -3806,7 +3812,7 @@ class SearchExperimentsByTagIntegrityFailure:
 
 SearchExperimentsByTagResult: TypeAlias = SearchExperimentsByTagFound | SearchExperimentsByTagIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_TAG_AND_GATEWAY_IS_NULL_QUERY_PLAN_HASH: Final[str] = "8d265f04527e19c31862841e812b1bda7f530b91ab206ed15026ecb6292ef5d2"
+SEARCH_EXPERIMENTS_BY_TAG_AND_GATEWAY_IS_NULL_QUERY_PLAN_HASH: Final[str] = "6e5e566a522961df4b4ef4110be48c880a841e28a0adb68d84419d6beb6690b6"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByTagAndGatewayIsNullParams:
@@ -3858,7 +3864,7 @@ class SearchExperimentsByTagAndGatewayIsNullIntegrityFailure:
 
 SearchExperimentsByTagAndGatewayIsNullResult: TypeAlias = SearchExperimentsByTagAndGatewayIsNullFound | SearchExperimentsByTagAndGatewayIsNullIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_TAG_AND_TAG_IS_NOT_NULL_QUERY_PLAN_HASH: Final[str] = "e82a34c58249a96d1fd214f7b3d4c022cd2706d42e82093fa1720e20ccf3da8d"
+SEARCH_EXPERIMENTS_BY_TAG_AND_TAG_IS_NOT_NULL_QUERY_PLAN_HASH: Final[str] = "22e15294152a2ce7b1c279046dbba8a3d7a4026df8bdfd4b6befb29725e9c28f"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByTagAndTagIsNotNullParams:
@@ -3911,7 +3917,7 @@ class SearchExperimentsByTagAndTagIsNotNullIntegrityFailure:
 
 SearchExperimentsByTagAndTagIsNotNullResult: TypeAlias = SearchExperimentsByTagAndTagIsNotNullFound | SearchExperimentsByTagAndTagIsNotNullIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_TAG_ILIKE_QUERY_PLAN_HASH: Final[str] = "29c197ca51b401e784379b1bfc7285ea9e5dec9d61eb0ee3e86daf9c6c6baad4"
+SEARCH_EXPERIMENTS_BY_TAG_ILIKE_QUERY_PLAN_HASH: Final[str] = "183b5e3a91dc530548c862a0ef691adcee9923fcb229ca1c97fed35924a4a984"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByTagILikeParams:
@@ -3963,7 +3969,7 @@ class SearchExperimentsByTagILikeIntegrityFailure:
 
 SearchExperimentsByTagILikeResult: TypeAlias = SearchExperimentsByTagILikeFound | SearchExperimentsByTagILikeIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_TAG_IS_NOT_NULL_QUERY_PLAN_HASH: Final[str] = "9cfd0ee6117d6da023ddb0e85e318e5e4a22acafe196622a535f76bb4a24996b"
+SEARCH_EXPERIMENTS_BY_TAG_IS_NOT_NULL_QUERY_PLAN_HASH: Final[str] = "ec85a5ae6e906bd33087e15cd1549ce669d653373462dd33f338190356c4ea1d"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByTagIsNotNullParams:
@@ -4014,7 +4020,7 @@ class SearchExperimentsByTagIsNotNullIntegrityFailure:
 
 SearchExperimentsByTagIsNotNullResult: TypeAlias = SearchExperimentsByTagIsNotNullFound | SearchExperimentsByTagIsNotNullIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_TAG_IS_NOT_NULL_AND_GATEWAY_IS_NULL_QUERY_PLAN_HASH: Final[str] = "590635fd3aef1e878100c0ad464d0ec92bba0b962f8b66699dd54ed51842bd09"
+SEARCH_EXPERIMENTS_BY_TAG_IS_NOT_NULL_AND_GATEWAY_IS_NULL_QUERY_PLAN_HASH: Final[str] = "c1d279e241315dba2a19e8356db5664edf2f41b82fcf69401bd868f2beb3e024"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByTagIsNotNullAndGatewayIsNullParams:
@@ -4065,7 +4071,7 @@ class SearchExperimentsByTagIsNotNullAndGatewayIsNullIntegrityFailure:
 
 SearchExperimentsByTagIsNotNullAndGatewayIsNullResult: TypeAlias = SearchExperimentsByTagIsNotNullAndGatewayIsNullFound | SearchExperimentsByTagIsNotNullAndGatewayIsNullIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_TAG_IS_NULL_QUERY_PLAN_HASH: Final[str] = "bc64f23581685c1cdbcef2f67eaa2611812dabc2a036930ec4fbf2bde4530149"
+SEARCH_EXPERIMENTS_BY_TAG_IS_NULL_QUERY_PLAN_HASH: Final[str] = "07f1db1e7b1bff0d9f6cf5458e76296373fb7710cbaa126ce3b52293abb1582a"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByTagIsNullParams:
@@ -4116,7 +4122,7 @@ class SearchExperimentsByTagIsNullIntegrityFailure:
 
 SearchExperimentsByTagIsNullResult: TypeAlias = SearchExperimentsByTagIsNullFound | SearchExperimentsByTagIsNullIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_TAG_LIKE_QUERY_PLAN_HASH: Final[str] = "533328b6601f992f2484393214ab414582fa7a6f1ffbc46da846dd171a8fa31e"
+SEARCH_EXPERIMENTS_BY_TAG_LIKE_QUERY_PLAN_HASH: Final[str] = "64e642af0f8f86954a3a4a3a7592a7d3ca31df98fb84ea057a7d5a52a534169f"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByTagLikeParams:
@@ -4168,7 +4174,7 @@ class SearchExperimentsByTagLikeIntegrityFailure:
 
 SearchExperimentsByTagLikeResult: TypeAlias = SearchExperimentsByTagLikeFound | SearchExperimentsByTagLikeIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_TAG_NOT_EQUAL_QUERY_PLAN_HASH: Final[str] = "40df4d3e3fa33a4c29dc95c2145feea2e46e65d2deab040a789d2008e20d151d"
+SEARCH_EXPERIMENTS_BY_TAG_NOT_EQUAL_QUERY_PLAN_HASH: Final[str] = "2589eb8abfeda9c076b33a5b346ac1a925eb268babd22567089d11790e1767b8"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByTagNotEqualParams:
@@ -4220,7 +4226,7 @@ class SearchExperimentsByTagNotEqualIntegrityFailure:
 
 SearchExperimentsByTagNotEqualResult: TypeAlias = SearchExperimentsByTagNotEqualFound | SearchExperimentsByTagNotEqualIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_TAG_NOT_EQUAL_AND_GATEWAY_IS_NULL_QUERY_PLAN_HASH: Final[str] = "ab44a8c4bdcbbc458f476a3cbf33a203ad23adc852aa5bf03a63dfa97130c7b6"
+SEARCH_EXPERIMENTS_BY_TAG_NOT_EQUAL_AND_GATEWAY_IS_NULL_QUERY_PLAN_HASH: Final[str] = "3b35c89ae1acf598e3235c0323ffa5a5b33b1333f2f5f5c9908782e6a88674ee"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByTagNotEqualAndGatewayIsNullParams:
@@ -4272,7 +4278,7 @@ class SearchExperimentsByTagNotEqualAndGatewayIsNullIntegrityFailure:
 
 SearchExperimentsByTagNotEqualAndGatewayIsNullResult: TypeAlias = SearchExperimentsByTagNotEqualAndGatewayIsNullFound | SearchExperimentsByTagNotEqualAndGatewayIsNullIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_TWO_TAGS_QUERY_PLAN_HASH: Final[str] = "c52fb4e19ac477ffd418ea8d590bee366cbb1f806e3246d378d554d5aa81062e"
+SEARCH_EXPERIMENTS_BY_TWO_TAGS_QUERY_PLAN_HASH: Final[str] = "9da9e3b74e72a22e17a1447d1afe8d5df54250e61725f18eed52e1af697e0ce8"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByTwoTagsParams:
@@ -4326,7 +4332,7 @@ class SearchExperimentsByTwoTagsIntegrityFailure:
 
 SearchExperimentsByTwoTagsResult: TypeAlias = SearchExperimentsByTwoTagsFound | SearchExperimentsByTwoTagsIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_TWO_TAGS_ILIKE_QUERY_PLAN_HASH: Final[str] = "1c66f8395f155ad587484a837b2880fc930552e07df9b9af8248f46bd4f7c7c5"
+SEARCH_EXPERIMENTS_BY_TWO_TAGS_ILIKE_QUERY_PLAN_HASH: Final[str] = "d9ec5fcfe6d609ebcfc900f7e5909b02b2350acca76d0126c7375281050b9e9d"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByTwoTagsILikeParams:
@@ -4380,7 +4386,7 @@ class SearchExperimentsByTwoTagsILikeIntegrityFailure:
 
 SearchExperimentsByTwoTagsILikeResult: TypeAlias = SearchExperimentsByTwoTagsILikeFound | SearchExperimentsByTwoTagsILikeIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_TWO_TAGS_IS_NULL_QUERY_PLAN_HASH: Final[str] = "59ad4219b253e01125f6c222baf89cc7ea9075850b69f84cc9b1f772b178e99e"
+SEARCH_EXPERIMENTS_BY_TWO_TAGS_IS_NULL_QUERY_PLAN_HASH: Final[str] = "97475ef2fb0c8e54cd9dbae0a2b680dd9932444ca5fff17a6019c69c7047dcd0"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByTwoTagsIsNullParams:
@@ -4432,7 +4438,7 @@ class SearchExperimentsByTwoTagsIsNullIntegrityFailure:
 
 SearchExperimentsByTwoTagsIsNullResult: TypeAlias = SearchExperimentsByTwoTagsIsNullFound | SearchExperimentsByTwoTagsIsNullIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_TWO_TAGS_NOT_EQUAL_QUERY_PLAN_HASH: Final[str] = "b42d12ff23b33047c0638de16c15fa0e228459aaddf3bf85289a788d3d7f8578"
+SEARCH_EXPERIMENTS_BY_TWO_TAGS_NOT_EQUAL_QUERY_PLAN_HASH: Final[str] = "e7aacd42be3af434d7cfaf2db8e9b08610131e1ea76dc2159a0d1879fb3fdc6e"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByTwoTagsNotEqualParams:
@@ -4486,7 +4492,7 @@ class SearchExperimentsByTwoTagsNotEqualIntegrityFailure:
 
 SearchExperimentsByTwoTagsNotEqualResult: TypeAlias = SearchExperimentsByTwoTagsNotEqualFound | SearchExperimentsByTwoTagsNotEqualIntegrityFailure
 
-SEARCH_LOGGED_MODELS_QUERY_PLAN_HASH: Final[str] = "fabf8cfca55202a7b3f2c1b7fccaf54ace4801df4f648d109a41b9569c8b3ecd"
+SEARCH_LOGGED_MODELS_QUERY_PLAN_HASH: Final[str] = "717b1579d8145c2314e8c18a96324846a620d42b9f9c842d3d8f0f4ea3bc23af"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchLoggedModelsParams:
@@ -4540,7 +4546,7 @@ class SearchLoggedModelsIntegrityFailure:
 
 SearchLoggedModelsResult: TypeAlias = SearchLoggedModelsFound | SearchLoggedModelsIntegrityFailure
 
-SEARCH_MCPACCESS_ENDPOINTS_QUERY_PLAN_HASH: Final[str] = "e8c3b12af8ab8a465723702ca203514ee7dd3d0743db7702118d4f4d87598f37"
+SEARCH_MCPACCESS_ENDPOINTS_QUERY_PLAN_HASH: Final[str] = "7ba4f445b97952cc322959e8489a898d3b98466ccf29a8f4a45ef1fe78cbdf7a"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchMCPAccessEndpointsParams:
@@ -4590,7 +4596,7 @@ class SearchMCPAccessEndpointsIntegrityFailure:
 
 SearchMCPAccessEndpointsResult: TypeAlias = SearchMCPAccessEndpointsFound | SearchMCPAccessEndpointsIntegrityFailure
 
-SEARCH_MCPSERVERS_QUERY_PLAN_HASH: Final[str] = "2527e23869c9f267e2c4992eb830ea02f36d3b8290df855eef04a0043be5f6ed"
+SEARCH_MCPSERVERS_QUERY_PLAN_HASH: Final[str] = "dd08d04adcd0a6ef1868cc3ea146eebe5635fddd47f8590122b5899d02a0bbb5"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchMCPServersParams:
@@ -4640,7 +4646,7 @@ class SearchMCPServersIntegrityFailure:
 
 SearchMCPServersResult: TypeAlias = SearchMCPServersFound | SearchMCPServersIntegrityFailure
 
-SEARCH_MODEL_VERSIONS_QUERY_PLAN_HASH: Final[str] = "9eaa41494d1cb545ece6ef727e184742f05bb59482a552e0b88e7c594f0d4ea7"
+SEARCH_MODEL_VERSIONS_QUERY_PLAN_HASH: Final[str] = "6a39f46e19422aa35d098986737eae756c05488ed3efd7c59a85bcb22efaedf4"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchModelVersionsParams:
@@ -4694,7 +4700,7 @@ class SearchModelVersionsIntegrityFailure:
 
 SearchModelVersionsResult: TypeAlias = SearchModelVersionsFound | SearchModelVersionsIntegrityFailure
 
-SEARCH_REGISTERED_MODELS_QUERY_PLAN_HASH: Final[str] = "940f472b841e9834b48ad19e704d4ae9a108f06ef2ef3ffddfd919a67c957cce"
+SEARCH_REGISTERED_MODELS_QUERY_PLAN_HASH: Final[str] = "dbe0871ce6d8ffb145b6ae894331f7a71926574e5def3b7a2ede8d8327dfe24b"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchRegisteredModelsParams:
@@ -4741,7 +4747,7 @@ class SearchRegisteredModelsIntegrityFailure:
 
 SearchRegisteredModelsResult: TypeAlias = SearchRegisteredModelsFound | SearchRegisteredModelsIntegrityFailure
 
-SEARCH_RUNS_QUERY_PLAN_HASH: Final[str] = "e50875514592c45b2ea9fa51480623c769f2fe2ee62015a156003efb4cd2eba7"
+SEARCH_RUNS_QUERY_PLAN_HASH: Final[str] = "36b71c4a6e30968a82c7dfdb53eadd68369e37067fc8dea858a9c412f650d5da"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchRunsParams:
@@ -4795,7 +4801,7 @@ class SearchRunsIntegrityFailure:
 
 SearchRunsResult: TypeAlias = SearchRunsFound | SearchRunsIntegrityFailure
 
-SEARCH_RUNS_BY_DATUM_DIGEST_QUERY_PLAN_HASH: Final[str] = "0a04451b36fa76e7a40d7681742692b01f3dc13d48466f0d82106889f4948c4a"
+SEARCH_RUNS_BY_DATUM_DIGEST_QUERY_PLAN_HASH: Final[str] = "c55f53dfa55af27ce0d874173a0ef4e46780fd06035ac5415a3543fb2666bb4c"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchRunsByDatumDigestParams:
@@ -4853,7 +4859,7 @@ class SearchRunsByDatumDigestIntegrityFailure:
 
 SearchRunsByDatumDigestResult: TypeAlias = SearchRunsByDatumDigestFound | SearchRunsByDatumDigestIntegrityFailure
 
-SEARCH_RUNS_BY_IDS_QUERY_PLAN_HASH: Final[str] = "c43035c6633c3b2151c24e805eb131ef59a888ac850a131baced71e8892d88be"
+SEARCH_RUNS_BY_IDS_QUERY_PLAN_HASH: Final[str] = "3eac1658dc49b6fa860503e5af86c67cdeb6de2d89212d8b05b4745baf28b351"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchRunsByIdsParams:
@@ -4909,7 +4915,7 @@ class SearchRunsByIdsIntegrityFailure:
 
 SearchRunsByIdsResult: TypeAlias = SearchRunsByIdsFound | SearchRunsByIdsIntegrityFailure
 
-SEARCH_RUNS_BY_LIFECYCLE_QUERY_PLAN_HASH: Final[str] = "4df923b81451bfb9b8525e36a135c51ea1ac4895d539fb2c8541f46d2460b748"
+SEARCH_RUNS_BY_LIFECYCLE_QUERY_PLAN_HASH: Final[str] = "1a97c18117695968c9d64f8ca0925389220f863828a59f4de82aa36c53cb2633"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchRunsByLifecycleParams:
@@ -4964,7 +4970,7 @@ class SearchRunsByLifecycleIntegrityFailure:
 
 SearchRunsByLifecycleResult: TypeAlias = SearchRunsByLifecycleFound | SearchRunsByLifecycleIntegrityFailure
 
-SEARCH_RUNS_BY_NAME_QUERY_PLAN_HASH: Final[str] = "c9305800b677ca0e8d11a4057383e0cf20585928517f759bf3c86322a5698597"
+SEARCH_RUNS_BY_NAME_QUERY_PLAN_HASH: Final[str] = "e08f5bc99d98886a469d87c412063854a7d60f53734e49a5bdece020e94bf34c"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchRunsByNameParams:
@@ -5020,7 +5026,7 @@ class SearchRunsByNameIntegrityFailure:
 
 SearchRunsByNameResult: TypeAlias = SearchRunsByNameFound | SearchRunsByNameIntegrityFailure
 
-SEARCH_RUNS_BY_STATUS_QUERY_PLAN_HASH: Final[str] = "edeec0a88aa34ced74e4cef1e72eac8f6aed1d6e1561dbf3c8d008db426d2f63"
+SEARCH_RUNS_BY_STATUS_QUERY_PLAN_HASH: Final[str] = "62f1b2a8484912aa7f75d7c07bd151b2dba4691c01155f42d3338adfbb472a19"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchRunsByStatusParams:
@@ -5076,7 +5082,82 @@ class SearchRunsByStatusIntegrityFailure:
 
 SearchRunsByStatusResult: TypeAlias = SearchRunsByStatusFound | SearchRunsByStatusIntegrityFailure
 
-SEARCH_TRACES_QUERY_PLAN_HASH: Final[str] = "bf285c66cc86bf6692f350d346f46cf1dbdbc70d56f8056a2b4187ad028e2fa6"
+SEARCH_RUNS_COMPOSABLE_QUERY_PLAN_HASH: Final[str] = "1be1ab57a07c1bc911c805a796abe8ea921a6b3429bf52ab816461cd668c40f3"
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchRunsComposableParams:
+    experiment_id: Annotated[int, "u64"]
+    lifecycle_stages: tuple[LifecycleStage, ...]
+    latest_metric_kind: RunDataKind
+    zero_digest: bytes
+    m1_key: str | None = None
+    m1_min_sort: str | None = None
+    m1_max_sort: str | None = None
+    m2_key: str | None = None
+    m2_min_sort: str | None = None
+    m2_max_sort: str | None = None
+    d1_kind: RunDataKind | None = None
+    d1_key: str | None = None
+    d1_digest: bytes | None = None
+    d2_kind: RunDataKind | None = None
+    d2_key: str | None = None
+    d2_digest: bytes | None = None
+    status: RunStatus | None = None
+    run_name: str | None = None
+    min_start_time: Annotated[int, "i64"] | None = None
+    max_start_time: Annotated[int, "i64"] | None = None
+    order_metric_key: str | None = None
+    order: RunOrder
+    limit: Annotated[int, "u64"] | None = None
+    after: str | None = None
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchRunsComposableFoundRuns:
+    experiment_id: Annotated[int, "u64"]
+    run_id: str
+    user_id: str
+    status: RunStatus
+    start_time: Annotated[int, "i64"]
+    end_time: Annotated[int, "i64"] | None
+    lifecycle_stage: LifecycleStage
+    artifact_uri: str
+    run_name: str
+    packed_tags: bytes
+    packed_params: bytes
+    packed_latest_metrics: bytes
+    revision: Annotated[int, "u64"]
+    initialized: bool
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchRunsComposableFound:
+    runs: tuple[SearchRunsComposableFoundRuns, ...]
+    outcome: Literal["Found"] = field(default="Found", init=False)
+
+    def is_found(self) -> bool:
+        return True
+
+    def is_integrity_failure(self) -> bool:
+        return False
+
+    def unwrap_found(self) -> SearchRunsComposableFound:
+        return self
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchRunsComposableIntegrityFailure:
+    outcome: Literal["IntegrityFailure"] = field(default="IntegrityFailure", init=False)
+
+    def is_found(self) -> bool:
+        return False
+
+    def is_integrity_failure(self) -> bool:
+        return True
+
+    def unwrap_found(self) -> SearchRunsComposableFound:
+        raise ValueError("expected SearchRunsComposable outcome found")
+
+SearchRunsComposableResult: TypeAlias = SearchRunsComposableFound | SearchRunsComposableIntegrityFailure
+
+SEARCH_TRACES_QUERY_PLAN_HASH: Final[str] = "386a776828152b071873584880d71fcf8da5771f1f07421b4b90107b83f2718c"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchTracesParams:
@@ -5152,7 +5233,7 @@ class CreateExperimentInput:
     experiment_id: Annotated[int, "u64"]
     artifact_location: str | None
 
-CREATE_EXPERIMENT_PLAN_HASH: Final[str] = "a91f1b3de81039b1c6122d6cdac7043cb7272bb391f465680fa94976f17a0245"
+CREATE_EXPERIMENT_PLAN_HASH: Final[str] = "3f30990a21023c940d6d0febcc5b4952eee95e69a4b9fa8288fb4724f9664556"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class CreateExperimentExperimentExists:
     outcome: Literal["ExperimentExists"] = field(default="ExperimentExists", init=False)
@@ -5187,7 +5268,7 @@ class CreateExperimentWithTagsInput:
     experiment_id: Annotated[int, "u64"]
     artifact_location: str | None
 
-CREATE_EXPERIMENT_WITH_TAGS_PLAN_HASH: Final[str] = "bdc07f3f06f98dc3044304de93d61d0036cb410d9014186fd61ae54b6ea6bc2b"
+CREATE_EXPERIMENT_WITH_TAGS_PLAN_HASH: Final[str] = "0a7de1c21969d503e44c888b050244932a7de38bb041d62ac2b782e1127ff483"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class CreateExperimentWithTagsExperimentExists:
     outcome: Literal["ExperimentExists"] = field(default="ExperimentExists", init=False)
@@ -5360,7 +5441,7 @@ class CreateRunInput:
     packed_params: bytes
     packed_latest_metrics: bytes
 
-CREATE_RUN_PLAN_HASH: Final[str] = "d605f3d7c94189d6c5173340629b1aeebf643e8b095635a7d21e6d1095cb9b31"
+CREATE_RUN_PLAN_HASH: Final[str] = "9613afa1d13bc998abc403f76aaa9f7c57ebe65e2562659fa149f187e00db290"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class CreateRunRunExists:
     outcome: Literal["RunExists"] = field(default="RunExists", init=False)
@@ -5398,7 +5479,7 @@ class CreateRunWithTagsInput:
     packed_params: bytes
     packed_latest_metrics: bytes
 
-CREATE_RUN_WITH_TAGS_PLAN_HASH: Final[str] = "d2cb89d1672b04b34f4e8a7db037f0153543f2fc3d71f253e0a501d8c4f819d4"
+CREATE_RUN_WITH_TAGS_PLAN_HASH: Final[str] = "ef948b29d4871fd14059754b241e849b269ebfd2c836278ad1514f0411cca056"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class CreateRunWithTagsRunExists:
     outcome: Literal["RunExists"] = field(default="RunExists", init=False)
@@ -5446,7 +5527,7 @@ class DeleteEvaluationDatasetEntityInput:
     dataset_id: str
     request_id: str = field(default_factory=lambda: str(__import__("uuid").uuid4()))
 
-DELETE_EVALUATION_DATASET_ENTITY_PLAN_HASH: Final[str] = "b5d0b3c12478ccd9a24891a244dd187594653f25cb391cc2a0785daea9699fe4"
+DELETE_EVALUATION_DATASET_ENTITY_PLAN_HASH: Final[str] = "087d61cc4f2188cbec333d58b90b40926d88056cc5feed68120d373c1c3ec476"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class DeleteEvaluationDatasetEntityEvaluationDatasetDeleted:
     dataset: EvaluationDatasetEntity
@@ -5475,7 +5556,7 @@ class DeleteExperimentInput:
     request_id: str = field(default_factory=lambda: str(__import__("uuid").uuid4()))
     experiment_id: Annotated[int, "u64"]
 
-DELETE_EXPERIMENT_PLAN_HASH: Final[str] = "615dfb1fa469462706797c6021e3f2fd236a478fa1d87f2eee48fe363799aec9"
+DELETE_EXPERIMENT_PLAN_HASH: Final[str] = "ee142b4be63a3765a4c6562771700f48b2547ffb79ba10f253ce8d7f6a9bbffa"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class DeleteExperimentExperimentDeleted:
     experiment: Experiment
@@ -5508,7 +5589,7 @@ class DeleteExperimentTagInput:
     experiment_id: Annotated[int, "u64"]
     expected_revision: Annotated[int, "u64"]
 
-DELETE_EXPERIMENT_TAG_PLAN_HASH: Final[str] = "192c50558428fbcbcbd366e7af0d13d789a8100ba8e823c50f74e640e343010d"
+DELETE_EXPERIMENT_TAG_PLAN_HASH: Final[str] = "3e9b880c60bb0153599ac36e67969f5f539c795f3e7dddfb1c9ec622a30f3f30"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class DeleteExperimentTagExperimentStale:
     outcome: Literal["ExperimentStale"] = field(default="ExperimentStale", init=False)
@@ -5816,7 +5897,7 @@ class DeleteLoggedModelEntityInput:
     request_id: str = field(default_factory=lambda: str(__import__("uuid").uuid4()))
     experiment_id: Annotated[int, "u64"]
 
-DELETE_LOGGED_MODEL_ENTITY_PLAN_HASH: Final[str] = "a96807cd621ce4bac8117850677e8b9413f047ba5c6b4a7678c061406737d274"
+DELETE_LOGGED_MODEL_ENTITY_PLAN_HASH: Final[str] = "21c53e1d9233b59ed38c955c15c0b978d307b144eacbf4d9239b3e5a1d483b53"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class DeleteLoggedModelEntityLoggedModelDeleted:
     model: LoggedModelEntity
@@ -5992,7 +6073,7 @@ class DeleteRunInput:
     request_id: str = field(default_factory=lambda: str(__import__("uuid").uuid4()))
     experiment_id: Annotated[int, "u64"]
 
-DELETE_RUN_PLAN_HASH: Final[str] = "a77e1e729659b126400ea345b974e359819a2b77a2ebfe7d3239cb31e79aef4e"
+DELETE_RUN_PLAN_HASH: Final[str] = "c7ccd22ffe7c6a1b852b1462717214a934156d51cea527d08b6cae2579c1c424"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class DeleteRunRunDeleted:
     run: Run
@@ -6142,7 +6223,7 @@ class DeleteTraceSpanInput:
     request_id: str = field(default_factory=lambda: str(__import__("uuid").uuid4()))
     experiment_id: Annotated[int, "u64"]
 
-DELETE_TRACE_SPAN_PLAN_HASH: Final[str] = "781b1555f48c6949cdc418553156f7b4bea55cb8905afab2786f2a9b0584009a"
+DELETE_TRACE_SPAN_PLAN_HASH: Final[str] = "61c1cec4e1fbb1378c35a509d51c6bca61f5196e5b6ab2f585bb269b4628ae98"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class DeleteTraceSpanTraceSpanDeleted:
     span: TraceSpan
@@ -6197,7 +6278,7 @@ class IngestTraceSpansInput:
     cache_read_input_tokens: Annotated[int, "i64"]
     cache_creation_input_tokens: Annotated[int, "i64"]
 
-INGEST_TRACE_SPANS_PLAN_HASH: Final[str] = "6f7f4fa8d4e122675b3efee35564797595aefebcc5d5f411f0c380ad2a550efd"
+INGEST_TRACE_SPANS_PLAN_HASH: Final[str] = "4320a6052f21d64ce2af2160ee0f2e08a66245270895aa3b71a3dbd1a69cf871"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class IngestTraceSpansTraceSpansIngested:
     trace: Trace
@@ -6219,7 +6300,7 @@ class LogBatchInput:
     expected_revision: Annotated[int, "u64"]
     packed_latest_metrics: bytes
 
-LOG_BATCH_PLAN_HASH: Final[str] = "d7e350e4a194ff3f951408da1d700691678d0cc07ffd9b7db13101b0962413df"
+LOG_BATCH_PLAN_HASH: Final[str] = "ba0855503464023b66d61bc2c15eefffc874583bec13ef69a7a2f711d078c349"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class LogBatchRunStale:
     outcome: Literal["RunStale"] = field(default="RunStale", init=False)
@@ -6326,7 +6407,7 @@ class RenameExperimentInput:
     name_digest: bytes
     experiment_id: Annotated[int, "u64"]
 
-RENAME_EXPERIMENT_PLAN_HASH: Final[str] = "934e49a55857c773d57e835a72f2d27355a4335f028669af4b3aa267e860566d"
+RENAME_EXPERIMENT_PLAN_HASH: Final[str] = "b67af57058d4e373e3d17d1c9567f789273db50639e9b6cb2756997c1f4925c0"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class RenameExperimentExperimentMissing:
     outcome: Literal["ExperimentMissing"] = field(default="ExperimentMissing", init=False)
@@ -6355,7 +6436,7 @@ class RestoreExperimentInput:
     request_id: str = field(default_factory=lambda: str(__import__("uuid").uuid4()))
     experiment_id: Annotated[int, "u64"]
 
-RESTORE_EXPERIMENT_PLAN_HASH: Final[str] = "dde1c08ecb1bd4172fb89b531f6a8d772402811373f1eb0718b5dc2916a5bc41"
+RESTORE_EXPERIMENT_PLAN_HASH: Final[str] = "c14954fd133a80b6c0fcf76647561ea4c7f45b3e4fc0668f45d3028db548deaf"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class RestoreExperimentExperimentMissing:
     outcome: Literal["ExperimentMissing"] = field(default="ExperimentMissing", init=False)
@@ -6385,7 +6466,7 @@ class RestoreRunInput:
     request_id: str = field(default_factory=lambda: str(__import__("uuid").uuid4()))
     experiment_id: Annotated[int, "u64"]
 
-RESTORE_RUN_PLAN_HASH: Final[str] = "1db06eaf457a101866a9c7189a092bb47df8d0f7d2ece82541964085d622a2cf"
+RESTORE_RUN_PLAN_HASH: Final[str] = "848b7821f6c72377ea146effe64b7b0744493b27527b748f6431d5663b512fc1"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class RestoreRunRunMissing:
     outcome: Literal["RunMissing"] = field(default="RunMissing", init=False)
@@ -6421,7 +6502,7 @@ class SetExperimentTagInput:
     experiment_id: Annotated[int, "u64"]
     expected_revision: Annotated[int, "u64"]
 
-SET_EXPERIMENT_TAG_PLAN_HASH: Final[str] = "34a3cbb843d6ecc38a7ec53f991bb05eb2308ee742e8740fb3c4b4125fbd0d39"
+SET_EXPERIMENT_TAG_PLAN_HASH: Final[str] = "84aaf2ea9414287d29cc9c1223696b2971b1bfc0e11fae0675c5f30164acc131"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SetExperimentTagExperimentStale:
     outcome: Literal["ExperimentStale"] = field(default="ExperimentStale", init=False)
@@ -6502,7 +6583,7 @@ class UpdateRunInfoInput:
     expected_revision: Annotated[int, "u64"]
     run_name_tag_value: str
 
-UPDATE_RUN_INFO_PLAN_HASH: Final[str] = "7c954562f806ab8de83d383dbb032821dfe6746975fbfd3ab9f6b6e6e78fa7b0"
+UPDATE_RUN_INFO_PLAN_HASH: Final[str] = "97869d6425c943b297697a81ad8e9ff135bbde151fbd0ae915be29b71c7c6d1f"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class UpdateRunInfoRunStale:
     outcome: Literal["RunStale"] = field(default="RunStale", init=False)
@@ -6586,7 +6667,7 @@ class UpsertEvaluationDatasetEntityInput:
     last_update_time_ms: Annotated[int, "i64"]
     packed_experiment_ids: bytes
 
-UPSERT_EVALUATION_DATASET_ENTITY_PLAN_HASH: Final[str] = "f8f0d21bf9af470c36ac178c9e408b84d1b54938d91da9b047b6ddc13a0b4163"
+UPSERT_EVALUATION_DATASET_ENTITY_PLAN_HASH: Final[str] = "7076cbf3d51cc41493a4726ec4085c92dd87519b1a2cee6fc720df16067d7d78"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class UpsertEvaluationDatasetEntityEvaluationDatasetUpserted:
     dataset: EvaluationDatasetEntity
@@ -6802,7 +6883,7 @@ class UpsertLoggedModelInput:
     creation_timestamp_ms: Annotated[int, "i64"]
     last_updated_timestamp_ms: Annotated[int, "i64"]
 
-UPSERT_LOGGED_MODEL_PLAN_HASH: Final[str] = "a4f2fb7a8f326aa4b60394ab921e89f48f3e3b6a8af2bbdefc73facce651c5a4"
+UPSERT_LOGGED_MODEL_PLAN_HASH: Final[str] = "0d7df0e14b5a25ccb5709358e76b39d4522e7e039185106a7f24bbc76b7a0f2c"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class UpsertLoggedModelLoggedModelUpserted:
     model: LoggedModelEntity
@@ -7005,7 +7086,7 @@ class UpsertRunLineageInput:
     packed_model_inputs: bytes
     packed_model_outputs: bytes
 
-UPSERT_RUN_LINEAGE_PLAN_HASH: Final[str] = "8fd76c60dc1d6ccf7e1a164595b62f0e92e3153fbe285ecdda14cb8ee3b85423"
+UPSERT_RUN_LINEAGE_PLAN_HASH: Final[str] = "ea23b6b6bba9b7ca1845bb5592eacc46cbf58a8cb0148b0341400b02b9bb3f9f"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class UpsertRunLineageRunMissing:
     outcome: Literal["RunMissing"] = field(default="RunMissing", init=False)
@@ -7180,7 +7261,7 @@ class ValidateRunActiveInput:
     request_id: str
     experiment_id: Annotated[int, "u64"]
 
-VALIDATE_RUN_ACTIVE_PLAN_HASH: Final[str] = "b3eecc39874572f29c33cabdfabd6a72ac79109a67c98f321ffee4baf5b09952"
+VALIDATE_RUN_ACTIVE_PLAN_HASH: Final[str] = "74b2ab94ff20f8835bfb8d90a302d49cc53ebc70fee5362bf29cb7acbb1c7cc6"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class ValidateRunActiveRunActive:
     outcome: Literal["RunActive"] = field(default="RunActive", init=False)
@@ -7474,8 +7555,8 @@ class RiffDBMLflowClient:
         return TypedQueryResult(identity=latest_page.identity, value=BatchGetTraceSpansFound(spans=tuple(merged)), application_head=highest_head, next_cursor=None)
 
     def batch_get_traces(self, parameters: BatchGetTracesParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[BatchGetTracesResult]:
-        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 50):
-            raise ValueError("limit must be an integer from 1 through 50")
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 100):
+            raise ValueError("limit must be an integer from 1 through 100")
         encoded_parameters = encode_record(parameters)
         generated_cursor = parameters.after
         if generated_cursor is not None:
@@ -7974,8 +8055,8 @@ class RiffDBMLflowClient:
         return self.get_trace(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
 
     def list_evaluation_datasets(self, parameters: ListEvaluationDatasetsParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[ListEvaluationDatasetsResult]:
-        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 5):
-            raise ValueError("limit must be an integer from 1 through 5")
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 100):
+            raise ValueError("limit must be an integer from 1 through 100")
         encoded_parameters = encode_record(parameters)
         generated_cursor = parameters.after
         if generated_cursor is not None:
@@ -8766,8 +8847,8 @@ class RiffDBMLflowClient:
         return pages
 
     def search_experiments(self, parameters: SearchExperimentsParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsResult]:
-        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
-            raise ValueError("limit must be an integer from 1 through 4")
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 100):
+            raise ValueError("limit must be an integer from 1 through 100")
         encoded_parameters = encode_record(parameters)
         generated_cursor = parameters.after
         if generated_cursor is not None:
@@ -8809,8 +8890,8 @@ class RiffDBMLflowClient:
         return pages
 
     def search_experiments_by_name(self, parameters: SearchExperimentsByNameParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByNameResult]:
-        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
-            raise ValueError("limit must be an integer from 1 through 4")
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 100):
+            raise ValueError("limit must be an integer from 1 through 100")
         encoded_parameters = encode_record(parameters)
         generated_cursor = parameters.after
         if generated_cursor is not None:
@@ -8852,8 +8933,8 @@ class RiffDBMLflowClient:
         return pages
 
     def search_experiments_by_name_and_tag(self, parameters: SearchExperimentsByNameAndTagParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByNameAndTagResult]:
-        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
-            raise ValueError("limit must be an integer from 1 through 4")
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 100):
+            raise ValueError("limit must be an integer from 1 through 100")
         encoded_parameters = encode_record(parameters)
         generated_cursor = parameters.after
         if generated_cursor is not None:
@@ -8895,8 +8976,8 @@ class RiffDBMLflowClient:
         return pages
 
     def search_experiments_by_name_and_tag_is_null(self, parameters: SearchExperimentsByNameAndTagIsNullParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByNameAndTagIsNullResult]:
-        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
-            raise ValueError("limit must be an integer from 1 through 4")
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 100):
+            raise ValueError("limit must be an integer from 1 through 100")
         encoded_parameters = encode_record(parameters)
         generated_cursor = parameters.after
         if generated_cursor is not None:
@@ -8938,8 +9019,8 @@ class RiffDBMLflowClient:
         return pages
 
     def search_experiments_by_name_ilike(self, parameters: SearchExperimentsByNameILikeParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByNameILikeResult]:
-        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
-            raise ValueError("limit must be an integer from 1 through 4")
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 100):
+            raise ValueError("limit must be an integer from 1 through 100")
         encoded_parameters = encode_record(parameters)
         generated_cursor = parameters.after
         if generated_cursor is not None:
@@ -8981,8 +9062,8 @@ class RiffDBMLflowClient:
         return pages
 
     def search_experiments_by_name_ilike_and_gateway_is_null(self, parameters: SearchExperimentsByNameILikeAndGatewayIsNullParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByNameILikeAndGatewayIsNullResult]:
-        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
-            raise ValueError("limit must be an integer from 1 through 4")
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 100):
+            raise ValueError("limit must be an integer from 1 through 100")
         encoded_parameters = encode_record(parameters)
         generated_cursor = parameters.after
         if generated_cursor is not None:
@@ -9024,8 +9105,8 @@ class RiffDBMLflowClient:
         return pages
 
     def search_experiments_by_name_ilike_and_tag(self, parameters: SearchExperimentsByNameILikeAndTagParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByNameILikeAndTagResult]:
-        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
-            raise ValueError("limit must be an integer from 1 through 4")
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 100):
+            raise ValueError("limit must be an integer from 1 through 100")
         encoded_parameters = encode_record(parameters)
         generated_cursor = parameters.after
         if generated_cursor is not None:
@@ -9067,8 +9148,8 @@ class RiffDBMLflowClient:
         return pages
 
     def search_experiments_by_name_ilike_and_tag_and_gateway_is_null(self, parameters: SearchExperimentsByNameILikeAndTagAndGatewayIsNullParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByNameILikeAndTagAndGatewayIsNullResult]:
-        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
-            raise ValueError("limit must be an integer from 1 through 4")
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 100):
+            raise ValueError("limit must be an integer from 1 through 100")
         encoded_parameters = encode_record(parameters)
         generated_cursor = parameters.after
         if generated_cursor is not None:
@@ -9110,8 +9191,8 @@ class RiffDBMLflowClient:
         return pages
 
     def search_experiments_by_name_ilike_and_tag_is_not_null(self, parameters: SearchExperimentsByNameILikeAndTagIsNotNullParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByNameILikeAndTagIsNotNullResult]:
-        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
-            raise ValueError("limit must be an integer from 1 through 4")
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 100):
+            raise ValueError("limit must be an integer from 1 through 100")
         encoded_parameters = encode_record(parameters)
         generated_cursor = parameters.after
         if generated_cursor is not None:
@@ -9153,8 +9234,8 @@ class RiffDBMLflowClient:
         return pages
 
     def search_experiments_by_name_like(self, parameters: SearchExperimentsByNameLikeParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByNameLikeResult]:
-        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
-            raise ValueError("limit must be an integer from 1 through 4")
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 100):
+            raise ValueError("limit must be an integer from 1 through 100")
         encoded_parameters = encode_record(parameters)
         generated_cursor = parameters.after
         if generated_cursor is not None:
@@ -9196,8 +9277,8 @@ class RiffDBMLflowClient:
         return pages
 
     def search_experiments_by_name_like_and_gateway_is_null(self, parameters: SearchExperimentsByNameLikeAndGatewayIsNullParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByNameLikeAndGatewayIsNullResult]:
-        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
-            raise ValueError("limit must be an integer from 1 through 4")
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 100):
+            raise ValueError("limit must be an integer from 1 through 100")
         encoded_parameters = encode_record(parameters)
         generated_cursor = parameters.after
         if generated_cursor is not None:
@@ -9239,8 +9320,8 @@ class RiffDBMLflowClient:
         return pages
 
     def search_experiments_by_name_like_and_tag(self, parameters: SearchExperimentsByNameLikeAndTagParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByNameLikeAndTagResult]:
-        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
-            raise ValueError("limit must be an integer from 1 through 4")
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 100):
+            raise ValueError("limit must be an integer from 1 through 100")
         encoded_parameters = encode_record(parameters)
         generated_cursor = parameters.after
         if generated_cursor is not None:
@@ -9282,8 +9363,8 @@ class RiffDBMLflowClient:
         return pages
 
     def search_experiments_by_name_not_equal(self, parameters: SearchExperimentsByNameNotEqualParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByNameNotEqualResult]:
-        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
-            raise ValueError("limit must be an integer from 1 through 4")
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 100):
+            raise ValueError("limit must be an integer from 1 through 100")
         encoded_parameters = encode_record(parameters)
         generated_cursor = parameters.after
         if generated_cursor is not None:
@@ -9325,8 +9406,8 @@ class RiffDBMLflowClient:
         return pages
 
     def search_experiments_by_name_not_equal_and_tag_is_null(self, parameters: SearchExperimentsByNameNotEqualAndTagIsNullParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByNameNotEqualAndTagIsNullResult]:
-        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
-            raise ValueError("limit must be an integer from 1 through 4")
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 100):
+            raise ValueError("limit must be an integer from 1 through 100")
         encoded_parameters = encode_record(parameters)
         generated_cursor = parameters.after
         if generated_cursor is not None:
@@ -9368,8 +9449,8 @@ class RiffDBMLflowClient:
         return pages
 
     def search_experiments_by_tag(self, parameters: SearchExperimentsByTagParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByTagResult]:
-        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
-            raise ValueError("limit must be an integer from 1 through 4")
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 100):
+            raise ValueError("limit must be an integer from 1 through 100")
         encoded_parameters = encode_record(parameters)
         generated_cursor = parameters.after
         if generated_cursor is not None:
@@ -9411,8 +9492,8 @@ class RiffDBMLflowClient:
         return pages
 
     def search_experiments_by_tag_and_gateway_is_null(self, parameters: SearchExperimentsByTagAndGatewayIsNullParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByTagAndGatewayIsNullResult]:
-        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
-            raise ValueError("limit must be an integer from 1 through 4")
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 100):
+            raise ValueError("limit must be an integer from 1 through 100")
         encoded_parameters = encode_record(parameters)
         generated_cursor = parameters.after
         if generated_cursor is not None:
@@ -9454,8 +9535,8 @@ class RiffDBMLflowClient:
         return pages
 
     def search_experiments_by_tag_and_tag_is_not_null(self, parameters: SearchExperimentsByTagAndTagIsNotNullParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByTagAndTagIsNotNullResult]:
-        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
-            raise ValueError("limit must be an integer from 1 through 4")
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 100):
+            raise ValueError("limit must be an integer from 1 through 100")
         encoded_parameters = encode_record(parameters)
         generated_cursor = parameters.after
         if generated_cursor is not None:
@@ -9497,8 +9578,8 @@ class RiffDBMLflowClient:
         return pages
 
     def search_experiments_by_tag_ilike(self, parameters: SearchExperimentsByTagILikeParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByTagILikeResult]:
-        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
-            raise ValueError("limit must be an integer from 1 through 4")
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 100):
+            raise ValueError("limit must be an integer from 1 through 100")
         encoded_parameters = encode_record(parameters)
         generated_cursor = parameters.after
         if generated_cursor is not None:
@@ -9540,8 +9621,8 @@ class RiffDBMLflowClient:
         return pages
 
     def search_experiments_by_tag_is_not_null(self, parameters: SearchExperimentsByTagIsNotNullParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByTagIsNotNullResult]:
-        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
-            raise ValueError("limit must be an integer from 1 through 4")
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 100):
+            raise ValueError("limit must be an integer from 1 through 100")
         encoded_parameters = encode_record(parameters)
         generated_cursor = parameters.after
         if generated_cursor is not None:
@@ -9583,8 +9664,8 @@ class RiffDBMLflowClient:
         return pages
 
     def search_experiments_by_tag_is_not_null_and_gateway_is_null(self, parameters: SearchExperimentsByTagIsNotNullAndGatewayIsNullParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByTagIsNotNullAndGatewayIsNullResult]:
-        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
-            raise ValueError("limit must be an integer from 1 through 4")
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 100):
+            raise ValueError("limit must be an integer from 1 through 100")
         encoded_parameters = encode_record(parameters)
         generated_cursor = parameters.after
         if generated_cursor is not None:
@@ -9626,8 +9707,8 @@ class RiffDBMLflowClient:
         return pages
 
     def search_experiments_by_tag_is_null(self, parameters: SearchExperimentsByTagIsNullParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByTagIsNullResult]:
-        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
-            raise ValueError("limit must be an integer from 1 through 4")
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 100):
+            raise ValueError("limit must be an integer from 1 through 100")
         encoded_parameters = encode_record(parameters)
         generated_cursor = parameters.after
         if generated_cursor is not None:
@@ -9669,8 +9750,8 @@ class RiffDBMLflowClient:
         return pages
 
     def search_experiments_by_tag_like(self, parameters: SearchExperimentsByTagLikeParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByTagLikeResult]:
-        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
-            raise ValueError("limit must be an integer from 1 through 4")
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 100):
+            raise ValueError("limit must be an integer from 1 through 100")
         encoded_parameters = encode_record(parameters)
         generated_cursor = parameters.after
         if generated_cursor is not None:
@@ -9712,8 +9793,8 @@ class RiffDBMLflowClient:
         return pages
 
     def search_experiments_by_tag_not_equal(self, parameters: SearchExperimentsByTagNotEqualParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByTagNotEqualResult]:
-        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
-            raise ValueError("limit must be an integer from 1 through 4")
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 100):
+            raise ValueError("limit must be an integer from 1 through 100")
         encoded_parameters = encode_record(parameters)
         generated_cursor = parameters.after
         if generated_cursor is not None:
@@ -9755,8 +9836,8 @@ class RiffDBMLflowClient:
         return pages
 
     def search_experiments_by_tag_not_equal_and_gateway_is_null(self, parameters: SearchExperimentsByTagNotEqualAndGatewayIsNullParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByTagNotEqualAndGatewayIsNullResult]:
-        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
-            raise ValueError("limit must be an integer from 1 through 4")
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 100):
+            raise ValueError("limit must be an integer from 1 through 100")
         encoded_parameters = encode_record(parameters)
         generated_cursor = parameters.after
         if generated_cursor is not None:
@@ -9798,8 +9879,8 @@ class RiffDBMLflowClient:
         return pages
 
     def search_experiments_by_two_tags(self, parameters: SearchExperimentsByTwoTagsParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByTwoTagsResult]:
-        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
-            raise ValueError("limit must be an integer from 1 through 4")
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 100):
+            raise ValueError("limit must be an integer from 1 through 100")
         encoded_parameters = encode_record(parameters)
         generated_cursor = parameters.after
         if generated_cursor is not None:
@@ -9841,8 +9922,8 @@ class RiffDBMLflowClient:
         return pages
 
     def search_experiments_by_two_tags_ilike(self, parameters: SearchExperimentsByTwoTagsILikeParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByTwoTagsILikeResult]:
-        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
-            raise ValueError("limit must be an integer from 1 through 4")
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 100):
+            raise ValueError("limit must be an integer from 1 through 100")
         encoded_parameters = encode_record(parameters)
         generated_cursor = parameters.after
         if generated_cursor is not None:
@@ -9884,8 +9965,8 @@ class RiffDBMLflowClient:
         return pages
 
     def search_experiments_by_two_tags_is_null(self, parameters: SearchExperimentsByTwoTagsIsNullParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByTwoTagsIsNullResult]:
-        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
-            raise ValueError("limit must be an integer from 1 through 4")
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 100):
+            raise ValueError("limit must be an integer from 1 through 100")
         encoded_parameters = encode_record(parameters)
         generated_cursor = parameters.after
         if generated_cursor is not None:
@@ -9927,8 +10008,8 @@ class RiffDBMLflowClient:
         return pages
 
     def search_experiments_by_two_tags_not_equal(self, parameters: SearchExperimentsByTwoTagsNotEqualParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByTwoTagsNotEqualResult]:
-        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
-            raise ValueError("limit must be an integer from 1 through 4")
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 100):
+            raise ValueError("limit must be an integer from 1 through 100")
         encoded_parameters = encode_record(parameters)
         generated_cursor = parameters.after
         if generated_cursor is not None:
@@ -10185,8 +10266,8 @@ class RiffDBMLflowClient:
         return pages
 
     def search_runs(self, parameters: SearchRunsParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchRunsResult]:
-        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 2):
-            raise ValueError("limit must be an integer from 1 through 2")
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 100):
+            raise ValueError("limit must be an integer from 1 through 100")
         encoded_parameters = encode_record(parameters)
         generated_cursor = parameters.after
         if generated_cursor is not None:
@@ -10228,8 +10309,8 @@ class RiffDBMLflowClient:
         return pages
 
     def search_runs_by_datum_digest(self, parameters: SearchRunsByDatumDigestParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchRunsByDatumDigestResult]:
-        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 2):
-            raise ValueError("limit must be an integer from 1 through 2")
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 100):
+            raise ValueError("limit must be an integer from 1 through 100")
         encoded_parameters = encode_record(parameters)
         generated_cursor = parameters.after
         if generated_cursor is not None:
@@ -10271,8 +10352,8 @@ class RiffDBMLflowClient:
         return pages
 
     def search_runs_by_ids(self, parameters: SearchRunsByIdsParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchRunsByIdsResult]:
-        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 2):
-            raise ValueError("limit must be an integer from 1 through 2")
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 100):
+            raise ValueError("limit must be an integer from 1 through 100")
         encoded_parameters = encode_record(parameters)
         generated_cursor = parameters.after
         if generated_cursor is not None:
@@ -10314,8 +10395,8 @@ class RiffDBMLflowClient:
         return pages
 
     def search_runs_by_lifecycle(self, parameters: SearchRunsByLifecycleParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchRunsByLifecycleResult]:
-        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 2):
-            raise ValueError("limit must be an integer from 1 through 2")
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 100):
+            raise ValueError("limit must be an integer from 1 through 100")
         encoded_parameters = encode_record(parameters)
         generated_cursor = parameters.after
         if generated_cursor is not None:
@@ -10357,8 +10438,8 @@ class RiffDBMLflowClient:
         return pages
 
     def search_runs_by_name(self, parameters: SearchRunsByNameParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchRunsByNameResult]:
-        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 2):
-            raise ValueError("limit must be an integer from 1 through 2")
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 100):
+            raise ValueError("limit must be an integer from 1 through 100")
         encoded_parameters = encode_record(parameters)
         generated_cursor = parameters.after
         if generated_cursor is not None:
@@ -10400,8 +10481,8 @@ class RiffDBMLflowClient:
         return pages
 
     def search_runs_by_status(self, parameters: SearchRunsByStatusParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchRunsByStatusResult]:
-        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 2):
-            raise ValueError("limit must be an integer from 1 through 2")
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 100):
+            raise ValueError("limit must be an integer from 1 through 100")
         encoded_parameters = encode_record(parameters)
         generated_cursor = parameters.after
         if generated_cursor is not None:
@@ -10442,9 +10523,52 @@ class RiffDBMLflowClient:
             cursor = page.next_cursor
         return pages
 
+    def search_runs_composable(self, parameters: SearchRunsComposableParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchRunsComposableResult]:
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 100):
+            raise ValueError("limit must be an integer from 1 through 100")
+        encoded_parameters = encode_record(parameters)
+        generated_cursor = parameters.after
+        if generated_cursor is not None:
+            if options.cursor is not None:
+                raise ValueError("generated cursor conflicts with query options")
+            options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
+        encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="SearchRunsComposable", plan_hash=SEARCH_RUNS_COMPOSABLE_QUERY_PLAN_HASH,
+            parameters=encoded_parameters, options=options,
+        )
+        outcomes = {
+            "Found": SearchRunsComposableFound,
+            "IntegrityFailure": SearchRunsComposableIntegrityFailure,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    def search_runs_composable_after_commit(self, parameters: SearchRunsComposableParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchRunsComposableResult]:
+        return self.search_runs_composable(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    def search_runs_composable_pages(self, parameters: SearchRunsComposableParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[SearchRunsComposableResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[SearchRunsComposableResult]] = []
+        for _ in range(max_pages):
+            page_parameters = SearchRunsComposableParams(experiment_id=parameters.experiment_id, lifecycle_stages=parameters.lifecycle_stages, latest_metric_kind=parameters.latest_metric_kind, zero_digest=parameters.zero_digest, m1_key=parameters.m1_key, m1_min_sort=parameters.m1_min_sort, m1_max_sort=parameters.m1_max_sort, m2_key=parameters.m2_key, m2_min_sort=parameters.m2_min_sort, m2_max_sort=parameters.m2_max_sort, d1_kind=parameters.d1_kind, d1_key=parameters.d1_key, d1_digest=parameters.d1_digest, d2_kind=parameters.d2_kind, d2_key=parameters.d2_key, d2_digest=parameters.d2_digest, status=parameters.status, run_name=parameters.run_name, min_start_time=parameters.min_start_time, max_start_time=parameters.max_start_time, order_metric_key=parameters.order_metric_key, order=parameters.order, limit=parameters.limit, after=None)
+            page = self.search_runs_composable(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
+
     def search_traces(self, parameters: SearchTracesParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchTracesResult]:
-        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 50):
-            raise ValueError("limit must be an integer from 1 through 50")
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 100):
+            raise ValueError("limit must be an integer from 1 through 100")
         encoded_parameters = encode_record(parameters)
         generated_cursor = parameters.after
         if generated_cursor is not None:
@@ -11199,10 +11323,10 @@ class RiffDBMLflowClient:
                 raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "spans", index, "model_name")
             if len(item.model_provider.encode("utf-8")) > 64:
                 raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "spans", index, "model_provider")
-            if len(item.packed_span_json.encode("utf-8")) > 32768:
+            if len(item.packed_span_json.encode("utf-8")) > 1048576:
                 raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "spans", index, "packed_span_json")
         aggregate_element_bytes = sum(canonical_value_encoded_length(encode_value(item, TraceSpan)) for item in input.spans)
-        if aggregate_element_bytes > 1000000:
+        if aggregate_element_bytes > 1048576:
             raise InputBudgetError(AGGREGATE_CANONICAL_ELEMENT_BYTES, "spans")
         raw = self._transport._execute_command(
             contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
@@ -11242,10 +11366,10 @@ class RiffDBMLflowClient:
                     raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "spans", index, "model_name")
                 if len(item.model_provider.encode("utf-8")) > 64:
                     raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "spans", index, "model_provider")
-                if len(item.packed_span_json.encode("utf-8")) > 32768:
+                if len(item.packed_span_json.encode("utf-8")) > 1048576:
                     raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "spans", index, "packed_span_json")
             aggregate_element_bytes = sum(canonical_value_encoded_length(encode_value(item, TraceSpan)) for item in input.spans)
-            if aggregate_element_bytes > 1000000:
+            if aggregate_element_bytes > 1048576:
                 raise InputBudgetError(AGGREGATE_CANONICAL_ELEMENT_BYTES, "spans")
         return self._transport._command_batch(inputs, options, self.ingest_trace_spans, progress)
 
@@ -12129,8 +12253,8 @@ class AsyncRiffDBMLflowClient:
         return TypedQueryResult(identity=latest_page.identity, value=BatchGetTraceSpansFound(spans=tuple(merged)), application_head=highest_head, next_cursor=None)
 
     async def batch_get_traces(self, parameters: BatchGetTracesParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[BatchGetTracesResult]:
-        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 50):
-            raise ValueError("limit must be an integer from 1 through 50")
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 100):
+            raise ValueError("limit must be an integer from 1 through 100")
         encoded_parameters = encode_record(parameters)
         generated_cursor = parameters.after
         if generated_cursor is not None:
@@ -12629,8 +12753,8 @@ class AsyncRiffDBMLflowClient:
         return await self.get_trace(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
 
     async def list_evaluation_datasets(self, parameters: ListEvaluationDatasetsParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[ListEvaluationDatasetsResult]:
-        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 5):
-            raise ValueError("limit must be an integer from 1 through 5")
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 100):
+            raise ValueError("limit must be an integer from 1 through 100")
         encoded_parameters = encode_record(parameters)
         generated_cursor = parameters.after
         if generated_cursor is not None:
@@ -13421,8 +13545,8 @@ class AsyncRiffDBMLflowClient:
         return pages
 
     async def search_experiments(self, parameters: SearchExperimentsParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsResult]:
-        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
-            raise ValueError("limit must be an integer from 1 through 4")
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 100):
+            raise ValueError("limit must be an integer from 1 through 100")
         encoded_parameters = encode_record(parameters)
         generated_cursor = parameters.after
         if generated_cursor is not None:
@@ -13464,8 +13588,8 @@ class AsyncRiffDBMLflowClient:
         return pages
 
     async def search_experiments_by_name(self, parameters: SearchExperimentsByNameParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByNameResult]:
-        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
-            raise ValueError("limit must be an integer from 1 through 4")
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 100):
+            raise ValueError("limit must be an integer from 1 through 100")
         encoded_parameters = encode_record(parameters)
         generated_cursor = parameters.after
         if generated_cursor is not None:
@@ -13507,8 +13631,8 @@ class AsyncRiffDBMLflowClient:
         return pages
 
     async def search_experiments_by_name_and_tag(self, parameters: SearchExperimentsByNameAndTagParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByNameAndTagResult]:
-        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
-            raise ValueError("limit must be an integer from 1 through 4")
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 100):
+            raise ValueError("limit must be an integer from 1 through 100")
         encoded_parameters = encode_record(parameters)
         generated_cursor = parameters.after
         if generated_cursor is not None:
@@ -13550,8 +13674,8 @@ class AsyncRiffDBMLflowClient:
         return pages
 
     async def search_experiments_by_name_and_tag_is_null(self, parameters: SearchExperimentsByNameAndTagIsNullParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByNameAndTagIsNullResult]:
-        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
-            raise ValueError("limit must be an integer from 1 through 4")
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 100):
+            raise ValueError("limit must be an integer from 1 through 100")
         encoded_parameters = encode_record(parameters)
         generated_cursor = parameters.after
         if generated_cursor is not None:
@@ -13593,8 +13717,8 @@ class AsyncRiffDBMLflowClient:
         return pages
 
     async def search_experiments_by_name_ilike(self, parameters: SearchExperimentsByNameILikeParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByNameILikeResult]:
-        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
-            raise ValueError("limit must be an integer from 1 through 4")
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 100):
+            raise ValueError("limit must be an integer from 1 through 100")
         encoded_parameters = encode_record(parameters)
         generated_cursor = parameters.after
         if generated_cursor is not None:
@@ -13636,8 +13760,8 @@ class AsyncRiffDBMLflowClient:
         return pages
 
     async def search_experiments_by_name_ilike_and_gateway_is_null(self, parameters: SearchExperimentsByNameILikeAndGatewayIsNullParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByNameILikeAndGatewayIsNullResult]:
-        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
-            raise ValueError("limit must be an integer from 1 through 4")
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 100):
+            raise ValueError("limit must be an integer from 1 through 100")
         encoded_parameters = encode_record(parameters)
         generated_cursor = parameters.after
         if generated_cursor is not None:
@@ -13679,8 +13803,8 @@ class AsyncRiffDBMLflowClient:
         return pages
 
     async def search_experiments_by_name_ilike_and_tag(self, parameters: SearchExperimentsByNameILikeAndTagParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByNameILikeAndTagResult]:
-        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
-            raise ValueError("limit must be an integer from 1 through 4")
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 100):
+            raise ValueError("limit must be an integer from 1 through 100")
         encoded_parameters = encode_record(parameters)
         generated_cursor = parameters.after
         if generated_cursor is not None:
@@ -13722,8 +13846,8 @@ class AsyncRiffDBMLflowClient:
         return pages
 
     async def search_experiments_by_name_ilike_and_tag_and_gateway_is_null(self, parameters: SearchExperimentsByNameILikeAndTagAndGatewayIsNullParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByNameILikeAndTagAndGatewayIsNullResult]:
-        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
-            raise ValueError("limit must be an integer from 1 through 4")
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 100):
+            raise ValueError("limit must be an integer from 1 through 100")
         encoded_parameters = encode_record(parameters)
         generated_cursor = parameters.after
         if generated_cursor is not None:
@@ -13765,8 +13889,8 @@ class AsyncRiffDBMLflowClient:
         return pages
 
     async def search_experiments_by_name_ilike_and_tag_is_not_null(self, parameters: SearchExperimentsByNameILikeAndTagIsNotNullParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByNameILikeAndTagIsNotNullResult]:
-        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
-            raise ValueError("limit must be an integer from 1 through 4")
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 100):
+            raise ValueError("limit must be an integer from 1 through 100")
         encoded_parameters = encode_record(parameters)
         generated_cursor = parameters.after
         if generated_cursor is not None:
@@ -13808,8 +13932,8 @@ class AsyncRiffDBMLflowClient:
         return pages
 
     async def search_experiments_by_name_like(self, parameters: SearchExperimentsByNameLikeParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByNameLikeResult]:
-        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
-            raise ValueError("limit must be an integer from 1 through 4")
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 100):
+            raise ValueError("limit must be an integer from 1 through 100")
         encoded_parameters = encode_record(parameters)
         generated_cursor = parameters.after
         if generated_cursor is not None:
@@ -13851,8 +13975,8 @@ class AsyncRiffDBMLflowClient:
         return pages
 
     async def search_experiments_by_name_like_and_gateway_is_null(self, parameters: SearchExperimentsByNameLikeAndGatewayIsNullParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByNameLikeAndGatewayIsNullResult]:
-        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
-            raise ValueError("limit must be an integer from 1 through 4")
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 100):
+            raise ValueError("limit must be an integer from 1 through 100")
         encoded_parameters = encode_record(parameters)
         generated_cursor = parameters.after
         if generated_cursor is not None:
@@ -13894,8 +14018,8 @@ class AsyncRiffDBMLflowClient:
         return pages
 
     async def search_experiments_by_name_like_and_tag(self, parameters: SearchExperimentsByNameLikeAndTagParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByNameLikeAndTagResult]:
-        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
-            raise ValueError("limit must be an integer from 1 through 4")
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 100):
+            raise ValueError("limit must be an integer from 1 through 100")
         encoded_parameters = encode_record(parameters)
         generated_cursor = parameters.after
         if generated_cursor is not None:
@@ -13937,8 +14061,8 @@ class AsyncRiffDBMLflowClient:
         return pages
 
     async def search_experiments_by_name_not_equal(self, parameters: SearchExperimentsByNameNotEqualParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByNameNotEqualResult]:
-        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
-            raise ValueError("limit must be an integer from 1 through 4")
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 100):
+            raise ValueError("limit must be an integer from 1 through 100")
         encoded_parameters = encode_record(parameters)
         generated_cursor = parameters.after
         if generated_cursor is not None:
@@ -13980,8 +14104,8 @@ class AsyncRiffDBMLflowClient:
         return pages
 
     async def search_experiments_by_name_not_equal_and_tag_is_null(self, parameters: SearchExperimentsByNameNotEqualAndTagIsNullParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByNameNotEqualAndTagIsNullResult]:
-        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
-            raise ValueError("limit must be an integer from 1 through 4")
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 100):
+            raise ValueError("limit must be an integer from 1 through 100")
         encoded_parameters = encode_record(parameters)
         generated_cursor = parameters.after
         if generated_cursor is not None:
@@ -14023,8 +14147,8 @@ class AsyncRiffDBMLflowClient:
         return pages
 
     async def search_experiments_by_tag(self, parameters: SearchExperimentsByTagParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByTagResult]:
-        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
-            raise ValueError("limit must be an integer from 1 through 4")
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 100):
+            raise ValueError("limit must be an integer from 1 through 100")
         encoded_parameters = encode_record(parameters)
         generated_cursor = parameters.after
         if generated_cursor is not None:
@@ -14066,8 +14190,8 @@ class AsyncRiffDBMLflowClient:
         return pages
 
     async def search_experiments_by_tag_and_gateway_is_null(self, parameters: SearchExperimentsByTagAndGatewayIsNullParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByTagAndGatewayIsNullResult]:
-        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
-            raise ValueError("limit must be an integer from 1 through 4")
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 100):
+            raise ValueError("limit must be an integer from 1 through 100")
         encoded_parameters = encode_record(parameters)
         generated_cursor = parameters.after
         if generated_cursor is not None:
@@ -14109,8 +14233,8 @@ class AsyncRiffDBMLflowClient:
         return pages
 
     async def search_experiments_by_tag_and_tag_is_not_null(self, parameters: SearchExperimentsByTagAndTagIsNotNullParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByTagAndTagIsNotNullResult]:
-        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
-            raise ValueError("limit must be an integer from 1 through 4")
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 100):
+            raise ValueError("limit must be an integer from 1 through 100")
         encoded_parameters = encode_record(parameters)
         generated_cursor = parameters.after
         if generated_cursor is not None:
@@ -14152,8 +14276,8 @@ class AsyncRiffDBMLflowClient:
         return pages
 
     async def search_experiments_by_tag_ilike(self, parameters: SearchExperimentsByTagILikeParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByTagILikeResult]:
-        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
-            raise ValueError("limit must be an integer from 1 through 4")
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 100):
+            raise ValueError("limit must be an integer from 1 through 100")
         encoded_parameters = encode_record(parameters)
         generated_cursor = parameters.after
         if generated_cursor is not None:
@@ -14195,8 +14319,8 @@ class AsyncRiffDBMLflowClient:
         return pages
 
     async def search_experiments_by_tag_is_not_null(self, parameters: SearchExperimentsByTagIsNotNullParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByTagIsNotNullResult]:
-        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
-            raise ValueError("limit must be an integer from 1 through 4")
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 100):
+            raise ValueError("limit must be an integer from 1 through 100")
         encoded_parameters = encode_record(parameters)
         generated_cursor = parameters.after
         if generated_cursor is not None:
@@ -14238,8 +14362,8 @@ class AsyncRiffDBMLflowClient:
         return pages
 
     async def search_experiments_by_tag_is_not_null_and_gateway_is_null(self, parameters: SearchExperimentsByTagIsNotNullAndGatewayIsNullParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByTagIsNotNullAndGatewayIsNullResult]:
-        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
-            raise ValueError("limit must be an integer from 1 through 4")
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 100):
+            raise ValueError("limit must be an integer from 1 through 100")
         encoded_parameters = encode_record(parameters)
         generated_cursor = parameters.after
         if generated_cursor is not None:
@@ -14281,8 +14405,8 @@ class AsyncRiffDBMLflowClient:
         return pages
 
     async def search_experiments_by_tag_is_null(self, parameters: SearchExperimentsByTagIsNullParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByTagIsNullResult]:
-        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
-            raise ValueError("limit must be an integer from 1 through 4")
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 100):
+            raise ValueError("limit must be an integer from 1 through 100")
         encoded_parameters = encode_record(parameters)
         generated_cursor = parameters.after
         if generated_cursor is not None:
@@ -14324,8 +14448,8 @@ class AsyncRiffDBMLflowClient:
         return pages
 
     async def search_experiments_by_tag_like(self, parameters: SearchExperimentsByTagLikeParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByTagLikeResult]:
-        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
-            raise ValueError("limit must be an integer from 1 through 4")
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 100):
+            raise ValueError("limit must be an integer from 1 through 100")
         encoded_parameters = encode_record(parameters)
         generated_cursor = parameters.after
         if generated_cursor is not None:
@@ -14367,8 +14491,8 @@ class AsyncRiffDBMLflowClient:
         return pages
 
     async def search_experiments_by_tag_not_equal(self, parameters: SearchExperimentsByTagNotEqualParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByTagNotEqualResult]:
-        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
-            raise ValueError("limit must be an integer from 1 through 4")
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 100):
+            raise ValueError("limit must be an integer from 1 through 100")
         encoded_parameters = encode_record(parameters)
         generated_cursor = parameters.after
         if generated_cursor is not None:
@@ -14410,8 +14534,8 @@ class AsyncRiffDBMLflowClient:
         return pages
 
     async def search_experiments_by_tag_not_equal_and_gateway_is_null(self, parameters: SearchExperimentsByTagNotEqualAndGatewayIsNullParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByTagNotEqualAndGatewayIsNullResult]:
-        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
-            raise ValueError("limit must be an integer from 1 through 4")
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 100):
+            raise ValueError("limit must be an integer from 1 through 100")
         encoded_parameters = encode_record(parameters)
         generated_cursor = parameters.after
         if generated_cursor is not None:
@@ -14453,8 +14577,8 @@ class AsyncRiffDBMLflowClient:
         return pages
 
     async def search_experiments_by_two_tags(self, parameters: SearchExperimentsByTwoTagsParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByTwoTagsResult]:
-        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
-            raise ValueError("limit must be an integer from 1 through 4")
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 100):
+            raise ValueError("limit must be an integer from 1 through 100")
         encoded_parameters = encode_record(parameters)
         generated_cursor = parameters.after
         if generated_cursor is not None:
@@ -14496,8 +14620,8 @@ class AsyncRiffDBMLflowClient:
         return pages
 
     async def search_experiments_by_two_tags_ilike(self, parameters: SearchExperimentsByTwoTagsILikeParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByTwoTagsILikeResult]:
-        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
-            raise ValueError("limit must be an integer from 1 through 4")
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 100):
+            raise ValueError("limit must be an integer from 1 through 100")
         encoded_parameters = encode_record(parameters)
         generated_cursor = parameters.after
         if generated_cursor is not None:
@@ -14539,8 +14663,8 @@ class AsyncRiffDBMLflowClient:
         return pages
 
     async def search_experiments_by_two_tags_is_null(self, parameters: SearchExperimentsByTwoTagsIsNullParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByTwoTagsIsNullResult]:
-        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
-            raise ValueError("limit must be an integer from 1 through 4")
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 100):
+            raise ValueError("limit must be an integer from 1 through 100")
         encoded_parameters = encode_record(parameters)
         generated_cursor = parameters.after
         if generated_cursor is not None:
@@ -14582,8 +14706,8 @@ class AsyncRiffDBMLflowClient:
         return pages
 
     async def search_experiments_by_two_tags_not_equal(self, parameters: SearchExperimentsByTwoTagsNotEqualParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchExperimentsByTwoTagsNotEqualResult]:
-        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 4):
-            raise ValueError("limit must be an integer from 1 through 4")
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 100):
+            raise ValueError("limit must be an integer from 1 through 100")
         encoded_parameters = encode_record(parameters)
         generated_cursor = parameters.after
         if generated_cursor is not None:
@@ -14840,8 +14964,8 @@ class AsyncRiffDBMLflowClient:
         return pages
 
     async def search_runs(self, parameters: SearchRunsParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchRunsResult]:
-        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 2):
-            raise ValueError("limit must be an integer from 1 through 2")
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 100):
+            raise ValueError("limit must be an integer from 1 through 100")
         encoded_parameters = encode_record(parameters)
         generated_cursor = parameters.after
         if generated_cursor is not None:
@@ -14883,8 +15007,8 @@ class AsyncRiffDBMLflowClient:
         return pages
 
     async def search_runs_by_datum_digest(self, parameters: SearchRunsByDatumDigestParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchRunsByDatumDigestResult]:
-        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 2):
-            raise ValueError("limit must be an integer from 1 through 2")
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 100):
+            raise ValueError("limit must be an integer from 1 through 100")
         encoded_parameters = encode_record(parameters)
         generated_cursor = parameters.after
         if generated_cursor is not None:
@@ -14926,8 +15050,8 @@ class AsyncRiffDBMLflowClient:
         return pages
 
     async def search_runs_by_ids(self, parameters: SearchRunsByIdsParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchRunsByIdsResult]:
-        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 2):
-            raise ValueError("limit must be an integer from 1 through 2")
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 100):
+            raise ValueError("limit must be an integer from 1 through 100")
         encoded_parameters = encode_record(parameters)
         generated_cursor = parameters.after
         if generated_cursor is not None:
@@ -14969,8 +15093,8 @@ class AsyncRiffDBMLflowClient:
         return pages
 
     async def search_runs_by_lifecycle(self, parameters: SearchRunsByLifecycleParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchRunsByLifecycleResult]:
-        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 2):
-            raise ValueError("limit must be an integer from 1 through 2")
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 100):
+            raise ValueError("limit must be an integer from 1 through 100")
         encoded_parameters = encode_record(parameters)
         generated_cursor = parameters.after
         if generated_cursor is not None:
@@ -15012,8 +15136,8 @@ class AsyncRiffDBMLflowClient:
         return pages
 
     async def search_runs_by_name(self, parameters: SearchRunsByNameParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchRunsByNameResult]:
-        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 2):
-            raise ValueError("limit must be an integer from 1 through 2")
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 100):
+            raise ValueError("limit must be an integer from 1 through 100")
         encoded_parameters = encode_record(parameters)
         generated_cursor = parameters.after
         if generated_cursor is not None:
@@ -15055,8 +15179,8 @@ class AsyncRiffDBMLflowClient:
         return pages
 
     async def search_runs_by_status(self, parameters: SearchRunsByStatusParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchRunsByStatusResult]:
-        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 2):
-            raise ValueError("limit must be an integer from 1 through 2")
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 100):
+            raise ValueError("limit must be an integer from 1 through 100")
         encoded_parameters = encode_record(parameters)
         generated_cursor = parameters.after
         if generated_cursor is not None:
@@ -15097,9 +15221,52 @@ class AsyncRiffDBMLflowClient:
             cursor = page.next_cursor
         return pages
 
+    async def search_runs_composable(self, parameters: SearchRunsComposableParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchRunsComposableResult]:
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 100):
+            raise ValueError("limit must be an integer from 1 through 100")
+        encoded_parameters = encode_record(parameters)
+        generated_cursor = parameters.after
+        if generated_cursor is not None:
+            if options.cursor is not None:
+                raise ValueError("generated cursor conflicts with query options")
+            options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
+        encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = await self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="SearchRunsComposable", plan_hash=SEARCH_RUNS_COMPOSABLE_QUERY_PLAN_HASH,
+            parameters=encoded_parameters, options=options,
+        )
+        outcomes = {
+            "Found": SearchRunsComposableFound,
+            "IntegrityFailure": SearchRunsComposableIntegrityFailure,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    async def search_runs_composable_after_commit(self, parameters: SearchRunsComposableParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchRunsComposableResult]:
+        return await self.search_runs_composable(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    async def search_runs_composable_pages(self, parameters: SearchRunsComposableParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[SearchRunsComposableResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[SearchRunsComposableResult]] = []
+        for _ in range(max_pages):
+            page_parameters = SearchRunsComposableParams(experiment_id=parameters.experiment_id, lifecycle_stages=parameters.lifecycle_stages, latest_metric_kind=parameters.latest_metric_kind, zero_digest=parameters.zero_digest, m1_key=parameters.m1_key, m1_min_sort=parameters.m1_min_sort, m1_max_sort=parameters.m1_max_sort, m2_key=parameters.m2_key, m2_min_sort=parameters.m2_min_sort, m2_max_sort=parameters.m2_max_sort, d1_kind=parameters.d1_kind, d1_key=parameters.d1_key, d1_digest=parameters.d1_digest, d2_kind=parameters.d2_kind, d2_key=parameters.d2_key, d2_digest=parameters.d2_digest, status=parameters.status, run_name=parameters.run_name, min_start_time=parameters.min_start_time, max_start_time=parameters.max_start_time, order_metric_key=parameters.order_metric_key, order=parameters.order, limit=parameters.limit, after=None)
+            page = await self.search_runs_composable(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
+
     async def search_traces(self, parameters: SearchTracesParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchTracesResult]:
-        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 50):
-            raise ValueError("limit must be an integer from 1 through 50")
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 100):
+            raise ValueError("limit must be an integer from 1 through 100")
         encoded_parameters = encode_record(parameters)
         generated_cursor = parameters.after
         if generated_cursor is not None:
@@ -15854,10 +16021,10 @@ class AsyncRiffDBMLflowClient:
                 raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "spans", index, "model_name")
             if len(item.model_provider.encode("utf-8")) > 64:
                 raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "spans", index, "model_provider")
-            if len(item.packed_span_json.encode("utf-8")) > 32768:
+            if len(item.packed_span_json.encode("utf-8")) > 1048576:
                 raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "spans", index, "packed_span_json")
         aggregate_element_bytes = sum(canonical_value_encoded_length(encode_value(item, TraceSpan)) for item in input.spans)
-        if aggregate_element_bytes > 1000000:
+        if aggregate_element_bytes > 1048576:
             raise InputBudgetError(AGGREGATE_CANONICAL_ELEMENT_BYTES, "spans")
         raw = await self._transport._execute_command(
             contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
@@ -15897,10 +16064,10 @@ class AsyncRiffDBMLflowClient:
                     raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "spans", index, "model_name")
                 if len(item.model_provider.encode("utf-8")) > 64:
                     raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "spans", index, "model_provider")
-                if len(item.packed_span_json.encode("utf-8")) > 32768:
+                if len(item.packed_span_json.encode("utf-8")) > 1048576:
                     raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "spans", index, "packed_span_json")
             aggregate_element_bytes = sum(canonical_value_encoded_length(encode_value(item, TraceSpan)) for item in input.spans)
-            if aggregate_element_bytes > 1000000:
+            if aggregate_element_bytes > 1048576:
                 raise InputBudgetError(AGGREGATE_CANONICAL_ELEMENT_BYTES, "spans")
         return await self._transport._command_batch(inputs, options, self.ingest_trace_spans, progress)
 
