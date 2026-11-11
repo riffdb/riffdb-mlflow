@@ -23,7 +23,7 @@ def _compact_tag(value: object, tag: str, keys: frozenset[str]) -> dict[str, obj
 CONTRACT_LINEAGE: Final[str] = "RiffDBMLflow"
 CONTRACT_VERSION: Final[int] = 1
 CONTRACT_BUNDLE_HASH: Final[str] = "0a87359f8c09b832d156bdef71f4d4fcbdc1c01ae2dea6e37ae46589bdc35b1d"
-QUERY_MODULE_HASH: Final[str] = "876c014a535ae114295225444a69e6979fcedc47247e25801b31d7be5b6d3225"
+QUERY_MODULE_HASH: Final[str] = "c8ca16e4666059941cf3748173760ad8f1b89093a4ffa2c0262c8dca1d9e55b4"
 
 COLLECTION_COUNT: Final[str] = "collection_count"
 INDIVIDUAL_VALUE_BYTES: Final[str] = "individual_value_bytes"
@@ -1938,12 +1938,13 @@ class GetServerJobMissing:
 
 GetServerJobResult: TypeAlias = GetServerJobFound | GetServerJobMissing
 
-GET_TRACE_QUERY_PLAN_HASH: Final[str] = "6329cc8b31c9fbe4ae7d3b7a26a52bfb569706a760edb9f12c5de6870783212b"
+GET_TRACE_QUERY_PLAN_HASH: Final[str] = "4bcea2848e2d957a6a53bf6e33de7ef3d73726b302d7a38935e9129fcbf3eea8"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class GetTraceParams:
     experiment_id: Annotated[int, "u64"]
     trace_id: str
+    after: str | None = None
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class GetTraceFoundTrace:
@@ -8037,13 +8038,20 @@ class RiffDBMLflowClient:
         return self.get_server_job(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
 
     def get_trace(self, parameters: GetTraceParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetTraceResult]:
+        encoded_parameters = encode_record(parameters)
+        generated_cursor = parameters.after
+        if generated_cursor is not None:
+            if options.cursor is not None:
+                raise ValueError("generated cursor conflicts with query options")
+            options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
+        encoded_parameters.pop("after", None)
         if options.read_after_commit is None and self._read_after_commit is not None:
             options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
         raw = self._transport._execute_named_query(
             contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
             contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
             query_name="GetTrace", plan_hash=GET_TRACE_QUERY_PLAN_HASH,
-            parameters=encode_record(parameters), options=options,
+            parameters=encoded_parameters, options=options,
         )
         outcomes = {
             "Found": GetTraceFound,
@@ -8053,6 +8061,22 @@ class RiffDBMLflowClient:
 
     def get_trace_after_commit(self, parameters: GetTraceParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetTraceResult]:
         return self.get_trace(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    def get_trace_pages(self, parameters: GetTraceParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[GetTraceResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[GetTraceResult]] = []
+        for _ in range(max_pages):
+            page_parameters = GetTraceParams(experiment_id=parameters.experiment_id, trace_id=parameters.trace_id, after=None)
+            page = self.get_trace(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
 
     def list_evaluation_datasets(self, parameters: ListEvaluationDatasetsParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[ListEvaluationDatasetsResult]:
         if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 100):
@@ -12735,13 +12759,20 @@ class AsyncRiffDBMLflowClient:
         return await self.get_server_job(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
 
     async def get_trace(self, parameters: GetTraceParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetTraceResult]:
+        encoded_parameters = encode_record(parameters)
+        generated_cursor = parameters.after
+        if generated_cursor is not None:
+            if options.cursor is not None:
+                raise ValueError("generated cursor conflicts with query options")
+            options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
+        encoded_parameters.pop("after", None)
         if options.read_after_commit is None and self._read_after_commit is not None:
             options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
         raw = await self._transport._execute_named_query(
             contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
             contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
             query_name="GetTrace", plan_hash=GET_TRACE_QUERY_PLAN_HASH,
-            parameters=encode_record(parameters), options=options,
+            parameters=encoded_parameters, options=options,
         )
         outcomes = {
             "Found": GetTraceFound,
@@ -12751,6 +12782,22 @@ class AsyncRiffDBMLflowClient:
 
     async def get_trace_after_commit(self, parameters: GetTraceParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetTraceResult]:
         return await self.get_trace(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    async def get_trace_pages(self, parameters: GetTraceParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[GetTraceResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[GetTraceResult]] = []
+        for _ in range(max_pages):
+            page_parameters = GetTraceParams(experiment_id=parameters.experiment_id, trace_id=parameters.trace_id, after=None)
+            page = await self.get_trace(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
 
     async def list_evaluation_datasets(self, parameters: ListEvaluationDatasetsParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[ListEvaluationDatasetsResult]:
         if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 100):

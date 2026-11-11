@@ -1,6 +1,7 @@
 query GetTrace(
     $experiment_id: Trace.experiment_id,
     $trace_id: Trace.trace_id,
+    $after: Cursor?,
 ) {
     one trace from Trace
         where experiment_id == $experiment_id
@@ -11,7 +12,7 @@ query GetTrace(
         where experiment_id == $experiment_id
           && trace_id == $trace_id
         order by start_time_ns asc, span_id asc
-        take 64
+        take 64 after $after
 
     many assessments from TraceAssessment
         where experiment_id == $experiment_id
