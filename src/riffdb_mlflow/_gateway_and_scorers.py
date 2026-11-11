@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import base64
+import hashlib
 import json
 import os
+import re
 import time
 import uuid
 from typing import TYPE_CHECKING, Any
@@ -14,6 +17,9 @@ if TYPE_CHECKING:
     )
 
 from mlflow.entities import (
+    DatasetRecord,
+    DatasetRecordSource,
+    EvaluationDataset,
     ExperimentTag,
     FallbackConfig,
     FallbackStrategy,
@@ -24,6 +30,9 @@ from mlflow.entities import (
     GatewayEndpointTag,
     GatewayModelDefinition,
     GatewaySecretInfo,
+    Issue,
+    IssueSeverity,
+    IssueStatus,
     RoutingStrategy,
     ScorerVersion,
     ViewType,
@@ -73,11 +82,20 @@ from mlflow.utils.mlflow_tags import (
     MLFLOW_EXPERIMENT_IS_GATEWAY,
     MLFLOW_EXPERIMENT_SOURCE_ID,
     MLFLOW_EXPERIMENT_SOURCE_TYPE,
+    MLFLOW_USER,
 )
-from mlflow.utils.search_utils import SearchTraceUtils, SearchUtils
+from mlflow.utils.search_utils import (
+    SearchEvaluationDatasetsUtils,
+    SearchIssuesUtils,
+    SearchTraceUtils,
+    SearchUtils,
+)
 from mlflow.utils.workspace_context import get_request_workspace
 
 from riffdb_mlflow.generated.client import (
+    DeleteEvaluationDatasetEntityEvaluationDatasetDeleted,
+    DeleteEvaluationDatasetEntityEvaluationDatasetMissing,
+    DeleteEvaluationDatasetEntityInput,
     DeleteGatewayBudgetPolicyEntityGatewayBudgetPolicyDeleted,
     DeleteGatewayBudgetPolicyEntityGatewayBudgetPolicyMissing,
     DeleteGatewayBudgetPolicyEntityInput,
@@ -93,14 +111,24 @@ from riffdb_mlflow.generated.client import (
     DeleteGatewaySecretEntityGatewaySecretDeleted,
     DeleteGatewaySecretEntityGatewaySecretMissing,
     DeleteGatewaySecretEntityInput,
+    DeleteLabelSchemaEntityInput,
+    DeleteLabelSchemaEntityLabelSchemaDeleted,
+    DeleteLabelSchemaEntityLabelSchemaMissing,
+    DeleteReviewQueueEntityInput,
+    DeleteReviewQueueEntityReviewQueueDeleted,
+    DeleteReviewQueueEntityReviewQueueMissing,
     DeleteScorerEntityInput,
     DeleteScorerEntityScorerDeleted,
     DeleteScorerEntityScorerMissing,
+    EvaluationDatasetEntity,
     GatewayBudgetPolicyEntity,
     GatewayEndpointEntity,
     GatewayGuardrailEntity,
     GatewayModelDefinitionEntity,
     GatewaySecretEntity,
+    GetEvaluationDatasetFound,
+    GetEvaluationDatasetMissing,
+    GetEvaluationDatasetParams,
     GetGatewayBudgetPolicyFound,
     GetGatewayBudgetPolicyMissing,
     GetGatewayBudgetPolicyParams,
@@ -116,9 +144,22 @@ from riffdb_mlflow.generated.client import (
     GetGatewaySecretFound,
     GetGatewaySecretMissing,
     GetGatewaySecretParams,
+    GetIssueFound,
+    GetIssueMissing,
+    GetIssueParams,
+    GetLabelSchemaFound,
+    GetLabelSchemaMissing,
+    GetLabelSchemaParams,
+    GetReviewQueueFound,
+    GetReviewQueueMissing,
+    GetReviewQueueParams,
     GetScorerFound,
     GetScorerMissing,
     GetScorerParams,
+    IssueEntity,
+    LabelSchemaEntity,
+    ListEvaluationDatasetsFound,
+    ListEvaluationDatasetsParams,
     ListGatewayBudgetPoliciesFound,
     ListGatewayBudgetPoliciesParams,
     ListGatewayEndpointsFound,
@@ -129,11 +170,20 @@ from riffdb_mlflow.generated.client import (
     ListGatewayModelDefinitionsParams,
     ListGatewaySecretsFound,
     ListGatewaySecretsParams,
+    ListIssuesFound,
+    ListIssuesParams,
+    ListLabelSchemasFound,
+    ListLabelSchemasParams,
+    ListReviewQueuesFound,
+    ListReviewQueuesParams,
     ListScorersFound,
     ListScorersParams,
+    ReviewQueueEntity,
     ScorerEntity,
     SearchTracesFound,
     SearchTracesParams,
+    UpsertEvaluationDatasetEntityEvaluationDatasetUpserted,
+    UpsertEvaluationDatasetEntityInput,
     UpsertGatewayBudgetPolicyEntityGatewayBudgetPolicyUpserted,
     UpsertGatewayBudgetPolicyEntityInput,
     UpsertGatewayEndpointEntityGatewayEndpointUpserted,
@@ -144,6 +194,12 @@ from riffdb_mlflow.generated.client import (
     UpsertGatewayModelDefinitionEntityInput,
     UpsertGatewaySecretEntityGatewaySecretUpserted,
     UpsertGatewaySecretEntityInput,
+    UpsertIssueEntityInput,
+    UpsertIssueEntityIssueUpserted,
+    UpsertLabelSchemaEntityInput,
+    UpsertLabelSchemaEntityLabelSchemaUpserted,
+    UpsertReviewQueueEntityInput,
+    UpsertReviewQueueEntityReviewQueueUpserted,
     UpsertScorerEntityInput,
     UpsertScorerEntityScorerUpserted,
 )
@@ -2917,3 +2973,1766 @@ class RiffDBGatewayAndScorerMixin(AbstractStore):
         if max_results is not None:
             completed = completed[: int(max_results)]
         return completed
+
+    # ------------------------------------------------------------------
+    # Evaluation Datasets (MLflow 3.x)
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _compute_dataset_digest(name: str, last_update_time: int) -> str:
+        digest_input = f"{name}:{last_update_time}".encode()
+        return hashlib.sha256(digest_input).hexdigest()[:8]
+
+    @staticmethod
+    def _infer_field_type(value: Any) -> str:
+        if value is None:
+            return "null"
+        if isinstance(value, bool):
+            return "boolean"
+        if isinstance(value, int):
+            return "integer"
+        if isinstance(value, float):
+            return "float"
+        if isinstance(value, str):
+            return "string"
+        if isinstance(value, list):
+            return "array"
+        if isinstance(value, dict):
+            return "object"
+        return "unknown"
+
+    def _update_dataset_schema(
+        self, existing_schema_json: str | None, record_dicts: list[dict[str, Any]]
+    ) -> dict[str, Any] | None:
+        if not record_dicts and not existing_schema_json:
+            return None
+        schema: dict[str, Any] = (
+            json.loads(existing_schema_json)
+            if existing_schema_json
+            else {"inputs": {}, "outputs": {}, "expectations": {}, "version": "1.0"}
+        )
+        for record in record_dicts:
+            if inputs := record.get("inputs"):
+                for key, value in inputs.items():
+                    if key not in schema["inputs"]:
+                        schema["inputs"][key] = self._infer_field_type(value)
+            if (outputs := record.get("outputs")) is not None:
+                if isinstance(outputs, dict):
+                    if not isinstance(schema.get("outputs"), dict):
+                        schema["outputs"] = {}
+                    for key, value in outputs.items():
+                        if key not in schema["outputs"]:
+                            schema["outputs"][key] = self._infer_field_type(value)
+                elif not schema.get("outputs"):
+                    schema["outputs"] = self._infer_field_type(outputs)
+            if expectations := record.get("expectations"):
+                for key, value in expectations.items():
+                    if key not in schema["expectations"]:
+                        schema["expectations"][key] = self._infer_field_type(value)
+        return schema
+
+    def _fetch_evaluation_dataset_entity(self, dataset_id: str) -> EvaluationDatasetEntity:
+        client = self._gw_client()
+        res = client.get_evaluation_dataset(
+            GetEvaluationDatasetParams(scope=_SCOPE, dataset_id=dataset_id)
+        )
+        if isinstance(res.value, GetEvaluationDatasetMissing) or not isinstance(
+            res.value, GetEvaluationDatasetFound
+        ):
+            raise MlflowException(
+                f"Evaluation dataset with id '{dataset_id}' not found",
+                error_code=RESOURCE_DOES_NOT_EXIST,
+            )
+        row = res.value.dataset
+        return EvaluationDatasetEntity(
+            scope=_SCOPE,
+            dataset_id=row.dataset_id,
+            name=row.name,
+            digest=row.digest,
+            created_time_ms=int(row.created_time_ms),
+            last_update_time_ms=int(row.last_update_time_ms),
+            schema_json=row.schema_json,
+            profile_json=row.profile_json,
+            created_by=row.created_by,
+            last_updated_by=row.last_updated_by,
+            packed_tags=row.packed_tags,
+            packed_experiment_ids=row.packed_experiment_ids,
+            packed_records=row.packed_records,
+        )
+
+    def _list_evaluation_dataset_entities(self) -> list[EvaluationDatasetEntity]:
+        client = self._gw_client()
+        entities: list[EvaluationDatasetEntity] = []
+        cursor: str | None = None
+        while True:
+            res = client.list_evaluation_datasets(
+                ListEvaluationDatasetsParams(scope=_SCOPE, limit=5, after=cursor)
+            )
+            if not isinstance(res.value, ListEvaluationDatasetsFound):
+                break
+            for row in res.value.datasets:
+                entities.append(
+                    EvaluationDatasetEntity(
+                        scope=_SCOPE,
+                        dataset_id=row.dataset_id,
+                        name=row.name,
+                        digest=row.digest,
+                        created_time_ms=int(row.created_time_ms),
+                        last_update_time_ms=int(row.last_update_time_ms),
+                        schema_json=row.schema_json,
+                        profile_json=row.profile_json,
+                        created_by=row.created_by,
+                        last_updated_by=row.last_updated_by,
+                        packed_tags=row.packed_tags,
+                        packed_experiment_ids=row.packed_experiment_ids,
+                        packed_records=row.packed_records,
+                    )
+                )
+            cursor = res.next_cursor
+            if not cursor or not res.value.datasets:
+                break
+        return entities
+
+    def _save_evaluation_dataset_entity(
+        self, entity: EvaluationDatasetEntity
+    ) -> EvaluationDatasetEntity:
+        client = self._gw_client()
+        res = client.upsert_evaluation_dataset_entity(
+            UpsertEvaluationDatasetEntityInput(
+                request_id=str(uuid.uuid4()),
+                dataset_id=entity.dataset_id,
+                name=entity.name,
+                digest=entity.digest,
+                created_time_ms=int(entity.created_time_ms),
+                last_update_time_ms=int(entity.last_update_time_ms),
+                schema_json=entity.schema_json,
+                profile_json=entity.profile_json,
+                created_by=entity.created_by,
+                last_updated_by=entity.last_updated_by,
+                packed_tags=entity.packed_tags,
+                packed_experiment_ids=entity.packed_experiment_ids,
+                packed_records=entity.packed_records,
+            )
+        )
+        if not isinstance(res.outcome, UpsertEvaluationDatasetEntityEvaluationDatasetUpserted):
+            raise MlflowException("Invalid UpsertEvaluationDatasetEntity response from RiffDB")
+        return res.outcome.dataset
+
+    @staticmethod
+    def _unpack_dataset_records(dataset_id: str, packed_records: bytes) -> list[DatasetRecord]:
+        stored_records = _unpack_list(packed_records)
+        stored_records.sort(
+            key=lambda r: (int(r.get("created_time", 0)), str(r.get("dataset_record_id", "")))
+        )
+        out: list[DatasetRecord] = []
+        for item in stored_records:
+            src_dict = item.get("source")
+            src = DatasetRecordSource.from_dict(src_dict) if isinstance(src_dict, dict) else None
+            out.append(
+                DatasetRecord(
+                    dataset_record_id=str(item["dataset_record_id"]),
+                    dataset_id=dataset_id,
+                    inputs=dict(item.get("inputs") or {}),
+                    outputs=item.get("outputs"),
+                    expectations=item.get("expectations"),
+                    tags=item.get("tags"),
+                    source=src,
+                    source_id=item.get("source_id"),
+                    created_time=int(item.get("created_time", 0)),
+                    last_update_time=int(item.get("last_update_time", 0)),
+                    created_by=item.get("created_by"),
+                    last_updated_by=item.get("last_updated_by"),
+                )
+            )
+        return out
+
+    def _evaluation_dataset_to_mlflow(self, entity: EvaluationDatasetEntity) -> EvaluationDataset:
+        tags_dict = {str(k): str(v) for k, v in _unpack_dict(entity.packed_tags).items()}
+        exp_ids_raw = json.loads(entity.packed_experiment_ids.decode("utf-8"))
+        exp_ids = [str(e) for e in exp_ids_raw] if isinstance(exp_ids_raw, list) else []
+        ds = EvaluationDataset(
+            dataset_id=entity.dataset_id,
+            name=entity.name,
+            tags=tags_dict,
+            schema=entity.schema_json,
+            profile=entity.profile_json,
+            digest=entity.digest,
+            created_time=int(entity.created_time_ms),
+            last_update_time=int(entity.last_update_time_ms),
+            created_by=entity.created_by,
+            last_updated_by=entity.last_updated_by,
+        )
+        ds.experiment_ids = exp_ids
+        ds._records = self._unpack_dataset_records(entity.dataset_id, entity.packed_records)
+        ds._tracking_store = self
+        return ds
+
+    def create_dataset(
+        self,
+        name: str,
+        tags: dict[str, str] | None = None,
+        experiment_ids: list[str] | None = None,
+    ) -> EvaluationDataset:
+        now = _now_ms()
+        dataset_id = f"d-{uuid.uuid4().hex}"
+        digest = self._compute_dataset_digest(name, now)
+        tags_map = {str(k): str(v) for k, v in (tags or {}).items() if v is not None}
+        user_id = tags_map.get(MLFLOW_USER)
+        exp_ids = [str(e) for e in (experiment_ids or [])]
+        saved = self._save_evaluation_dataset_entity(
+            EvaluationDatasetEntity(
+                scope=_SCOPE,
+                dataset_id=dataset_id,
+                name=name,
+                digest=digest,
+                created_time_ms=now,
+                last_update_time_ms=now,
+                schema_json=None,
+                profile_json=None,
+                created_by=user_id,
+                last_updated_by=user_id,
+                packed_tags=_pack_json(tags_map),
+                packed_experiment_ids=_pack_json(exp_ids),
+                packed_records=b"[]",
+            )
+        )
+        return self._evaluation_dataset_to_mlflow(saved)
+
+    def get_dataset(self, dataset_id: str) -> EvaluationDataset:
+        return self._evaluation_dataset_to_mlflow(self._fetch_evaluation_dataset_entity(dataset_id))
+
+    def delete_dataset(self, dataset_id: str) -> None:
+        client = self._gw_client()
+        res = client.delete_evaluation_dataset_entity(
+            DeleteEvaluationDatasetEntityInput(request_id=str(uuid.uuid4()), dataset_id=dataset_id)
+        )
+        if not isinstance(
+            res.outcome,
+            DeleteEvaluationDatasetEntityEvaluationDatasetDeleted
+            | DeleteEvaluationDatasetEntityEvaluationDatasetMissing,
+        ):
+            raise MlflowException("Invalid DeleteEvaluationDatasetEntity response from RiffDB")
+
+    def search_datasets(
+        self,
+        experiment_ids: list[str] | None = None,
+        filter_string: str | None = None,
+        max_results: int = 1000,
+        order_by: list[str] | None = None,
+        page_token: str | None = None,
+    ) -> PagedList[EvaluationDataset]:
+        self._validate_gateway_max_results(max_results)
+        offset = SearchUtils.parse_start_offset_from_page_token(page_token)  # type: ignore[no-untyped-call]
+        parsed_filters = (
+            SearchEvaluationDatasetsUtils.parse_search_filter(filter_string)  # type: ignore[no-untyped-call]
+            if filter_string
+            else []
+        )
+        order_specs: list[tuple[str, bool]] = []
+        if order_by:
+            for clause in order_by:
+                _, key, is_asc = (
+                    SearchEvaluationDatasetsUtils.parse_order_by_for_search_evaluation_datasets(  # type: ignore[no-untyped-call]
+                        clause
+                    )
+                )
+                order_specs.append((str(key), bool(is_asc)))
+
+        target_exps = {str(e) for e in experiment_ids} if experiment_ids else None
+        matched: list[EvaluationDataset] = []
+        for entity in self._list_evaluation_dataset_entities():
+            ds = self._evaluation_dataset_to_mlflow(entity)
+            if target_exps is not None and not (set(ds.experiment_ids) & target_exps):
+                continue
+            if not self._matches_evaluation_dataset_filters(ds, parsed_filters):
+                continue
+            matched.append(ds)
+
+        if order_specs:
+            for key, is_asc in reversed(order_specs):
+                if key == "name":
+                    matched.sort(key=lambda d: d.name or "", reverse=not is_asc)
+                elif key == "created_time":
+                    matched.sort(key=lambda d: int(d.created_time or 0), reverse=not is_asc)
+                elif key == "last_update_time":
+                    matched.sort(key=lambda d: int(d.last_update_time or 0), reverse=not is_asc)
+        else:
+            matched.sort(key=lambda d: (-int(d.created_time or 0), d.dataset_id))
+
+        sliced = matched[offset : offset + max_results + 1]
+        next_token = None
+        if len(sliced) > max_results:
+            next_token = SearchUtils.create_page_token(offset + max_results)  # type: ignore[no-untyped-call]
+        return PagedList(sliced[:max_results], next_token)
+
+    @staticmethod
+    def _matches_evaluation_dataset_filters(
+        ds: EvaluationDataset, parsed_filters: list[dict[str, Any]]
+    ) -> bool:
+        for flt in parsed_filters:
+            ftype = flt.get("type")
+            key = str(flt.get("key"))
+            comp = str(flt.get("comparator")).upper()
+            expected = flt.get("value")
+            if ftype == "attribute":
+                actual: Any = getattr(ds, key, None)
+            else:
+                actual = (ds.tags or {}).get(key)
+            if actual is None:
+                if comp != "!=":
+                    return False
+                continue
+            if key in ("created_time", "last_update_time"):
+                if expected is None:
+                    return False
+                lhs_num = float(actual)
+                rhs_num = float(expected)
+                if comp == "=" and lhs_num != rhs_num:
+                    return False
+                if comp == "!=" and lhs_num == rhs_num:
+                    return False
+                if comp == ">" and not (lhs_num > rhs_num):
+                    return False
+                if comp == ">=" and not (lhs_num >= rhs_num):
+                    return False
+                if comp == "<" and not (lhs_num < rhs_num):
+                    return False
+                if comp == "<=" and not (lhs_num <= rhs_num):
+                    return False
+            else:
+                lhs_str = str(actual)
+                rhs_str = str(expected)
+                if comp == "=" and lhs_str != rhs_str:
+                    return False
+                if comp == "!=" and lhs_str == rhs_str:
+                    return False
+                if comp in ("LIKE", "ILIKE"):
+                    pat = "^" + re.escape(rhs_str).replace(r"%", ".*").replace(r"_", ".") + "$"
+                    flags = re.IGNORECASE if comp == "ILIKE" else 0
+                    if re.match(pat, lhs_str, flags=flags) is None:
+                        return False
+        return True
+
+    def set_dataset_tags(self, dataset_id: str, tags: dict[str, Any]) -> None:
+        existing = self._fetch_evaluation_dataset_entity(dataset_id)
+        tags_map = {str(k): str(v) for k, v in _unpack_dict(existing.packed_tags).items()}
+        for k, v in (tags or {}).items():
+            if v is not None:
+                tags_map[str(k)] = str(v)
+        now = _now_ms()
+        updated_by = tags_map.get(MLFLOW_USER, existing.last_updated_by)
+        self._save_evaluation_dataset_entity(
+            EvaluationDatasetEntity(
+                scope=_SCOPE,
+                dataset_id=existing.dataset_id,
+                name=existing.name,
+                digest=existing.digest,
+                created_time_ms=int(existing.created_time_ms),
+                last_update_time_ms=now,
+                schema_json=existing.schema_json,
+                profile_json=existing.profile_json,
+                created_by=existing.created_by,
+                last_updated_by=updated_by,
+                packed_tags=_pack_json(tags_map),
+                packed_experiment_ids=existing.packed_experiment_ids,
+                packed_records=existing.packed_records,
+            )
+        )
+
+    def delete_dataset_tag(self, dataset_id: str, key: str) -> None:
+        existing = self._fetch_evaluation_dataset_entity(dataset_id)
+        tags_map = {str(k): str(v) for k, v in _unpack_dict(existing.packed_tags).items()}
+        tags_map.pop(key, None)
+        self._save_evaluation_dataset_entity(
+            EvaluationDatasetEntity(
+                scope=_SCOPE,
+                dataset_id=existing.dataset_id,
+                name=existing.name,
+                digest=existing.digest,
+                created_time_ms=int(existing.created_time_ms),
+                last_update_time_ms=_now_ms(),
+                schema_json=existing.schema_json,
+                profile_json=existing.profile_json,
+                created_by=existing.created_by,
+                last_updated_by=existing.last_updated_by,
+                packed_tags=_pack_json(tags_map),
+                packed_experiment_ids=existing.packed_experiment_ids,
+                packed_records=existing.packed_records,
+            )
+        )
+
+    def upsert_dataset_records(
+        self, dataset_id: str, records: list[dict[str, Any]]
+    ) -> dict[str, int]:
+        existing = self._fetch_evaluation_dataset_entity(dataset_id)
+        stored_records = _unpack_list(existing.packed_records)
+        by_hash: dict[str, dict[str, Any]] = {
+            str(r["input_hash"]): r for r in stored_records if "input_hash" in r
+        }
+        inserted_count = 0
+        updated_count = 0
+        now = _now_ms()
+        updated_by: str | None = existing.last_updated_by
+
+        for record_dict in records or []:
+            inputs_obj = record_dict.get("inputs", {})
+            inputs_json = json.dumps(inputs_obj, sort_keys=True)
+            input_hash = hashlib.sha256(inputs_json.encode("utf-8")).hexdigest()
+            tags = record_dict.get("tags")
+            actor = tags.get(MLFLOW_USER) if isinstance(tags, dict) else None
+            if actor:
+                updated_by = str(actor)
+
+            source_raw = record_dict.get("source")
+            if isinstance(source_raw, DatasetRecordSource):
+                source_dict: dict[str, Any] | None = source_raw.to_dict()
+            elif isinstance(source_raw, dict):
+                source_dict = DatasetRecordSource.from_dict(source_raw).to_dict()
+            else:
+                source_dict = None
+
+            if input_hash in by_hash:
+                cur = by_hash[input_hash]
+                if "outputs" in record_dict and record_dict["outputs"] is not None:
+                    cur["outputs"] = record_dict["outputs"]
+                if "expectations" in record_dict and record_dict["expectations"] is not None:
+                    merged_exp = dict(cur.get("expectations") or {})
+                    merged_exp.update(record_dict["expectations"])
+                    cur["expectations"] = merged_exp
+                if isinstance(tags, dict):
+                    merged_tags = dict(cur.get("tags") or {})
+                    merged_tags.update(tags)
+                    cur["tags"] = merged_tags
+                if source_dict is not None:
+                    cur["source"] = source_dict
+                cur["last_update_time"] = now
+                if actor:
+                    cur["last_updated_by"] = str(actor)
+                updated_count += 1
+            else:
+                rec_id = record_dict.get("dataset_record_id") or f"dr-{uuid.uuid4().hex}"
+                entry = {
+                    "dataset_record_id": str(rec_id),
+                    "dataset_id": dataset_id,
+                    "input_hash": input_hash,
+                    "inputs": inputs_obj,
+                    "outputs": record_dict.get("outputs"),
+                    "expectations": record_dict.get("expectations"),
+                    "tags": dict(tags) if isinstance(tags, dict) else None,
+                    "source": source_dict,
+                    "source_id": record_dict.get("source_id"),
+                    "created_time": now,
+                    "last_update_time": now,
+                    "created_by": str(actor) if actor else None,
+                    "last_updated_by": str(actor) if actor else None,
+                }
+                by_hash[input_hash] = entry
+                inserted_count += 1
+
+        final_records = list(by_hash.values())
+        final_records.sort(
+            key=lambda r: (int(r.get("created_time", 0)), str(r.get("dataset_record_id", "")))
+        )
+        updated_schema = self._update_dataset_schema(existing.schema_json, records or [])
+        profile_json = json.dumps({"num_records": len(final_records)}) if final_records else None
+        new_digest = self._compute_dataset_digest(existing.name, now)
+
+        self._save_evaluation_dataset_entity(
+            EvaluationDatasetEntity(
+                scope=_SCOPE,
+                dataset_id=existing.dataset_id,
+                name=existing.name,
+                digest=new_digest,
+                created_time_ms=int(existing.created_time_ms),
+                last_update_time_ms=now,
+                schema_json=(
+                    json.dumps(updated_schema)
+                    if updated_schema is not None
+                    else existing.schema_json
+                ),
+                profile_json=profile_json,
+                created_by=existing.created_by,
+                last_updated_by=updated_by,
+                packed_tags=existing.packed_tags,
+                packed_experiment_ids=existing.packed_experiment_ids,
+                packed_records=_pack_json(final_records),
+            )
+        )
+        return {"inserted": inserted_count, "updated": updated_count}
+
+    def _load_dataset_records(
+        self,
+        dataset_id: str,
+        max_results: int | None = None,
+        page_token: str | None = None,
+    ) -> tuple[list[DatasetRecord], str | None]:
+        from mlflow.store.tracking import LOAD_DATASET_RECORDS_MAX_RESULTS
+
+        effective_max = (
+            None if max_results is None else (int(max_results) or LOAD_DATASET_RECORDS_MAX_RESULTS)
+        )
+        existing = self._fetch_evaluation_dataset_entity(dataset_id)
+        stored_records = _unpack_list(existing.packed_records)
+        stored_records.sort(
+            key=lambda r: (int(r.get("created_time", 0)), str(r.get("dataset_record_id", "")))
+        )
+        if page_token:
+            try:
+                decoded = base64.b64decode(page_token.encode("utf-8")).decode("utf-8")
+                last_created_str, last_rec_id = decoded.split(":", 1)
+                last_created = int(last_created_str)
+                stored_records = [
+                    r
+                    for r in stored_records
+                    if (int(r.get("created_time", 0)), str(r.get("dataset_record_id", "")))
+                    > (last_created, last_rec_id)
+                ]
+            except (ValueError, AttributeError):
+                offset = int(page_token)
+                stored_records = stored_records[offset:]
+
+        next_page_token: str | None = None
+        if effective_max is not None:
+            if len(stored_records) > effective_max:
+                stored_records = stored_records[:effective_max]
+                last = stored_records[-1]
+                cursor = f"{last.get('created_time', 0)}:{last.get('dataset_record_id', '')}"
+                next_page_token = base64.b64encode(cursor.encode("utf-8")).decode("utf-8")
+
+        out: list[DatasetRecord] = []
+        for item in stored_records:
+            src_dict = item.get("source")
+            src = DatasetRecordSource.from_dict(src_dict) if isinstance(src_dict, dict) else None
+            out.append(
+                DatasetRecord(
+                    dataset_record_id=str(item["dataset_record_id"]),
+                    dataset_id=dataset_id,
+                    inputs=dict(item.get("inputs") or {}),
+                    outputs=item.get("outputs"),
+                    expectations=item.get("expectations"),
+                    tags=item.get("tags"),
+                    source=src,
+                    source_id=item.get("source_id"),
+                    created_time=int(item.get("created_time", 0)),
+                    last_update_time=int(item.get("last_update_time", 0)),
+                    created_by=item.get("created_by"),
+                    last_updated_by=item.get("last_updated_by"),
+                )
+            )
+        return out, next_page_token
+
+    def delete_dataset_records(self, dataset_id: str, dataset_record_ids: list[str]) -> int:
+        existing = self._fetch_evaluation_dataset_entity(dataset_id)
+        stored_records = _unpack_list(existing.packed_records)
+        target_ids = set(dataset_record_ids or [])
+        remaining = [r for r in stored_records if str(r.get("dataset_record_id")) not in target_ids]
+        deleted_count = len(stored_records) - len(remaining)
+        if deleted_count > 0:
+            now = _now_ms()
+            profile_json = json.dumps({"num_records": len(remaining)}) if remaining else None
+            self._save_evaluation_dataset_entity(
+                EvaluationDatasetEntity(
+                    scope=_SCOPE,
+                    dataset_id=existing.dataset_id,
+                    name=existing.name,
+                    digest=self._compute_dataset_digest(existing.name, now),
+                    created_time_ms=int(existing.created_time_ms),
+                    last_update_time_ms=now,
+                    schema_json=existing.schema_json,
+                    profile_json=profile_json,
+                    created_by=existing.created_by,
+                    last_updated_by=existing.last_updated_by,
+                    packed_tags=existing.packed_tags,
+                    packed_experiment_ids=existing.packed_experiment_ids,
+                    packed_records=_pack_json(remaining),
+                )
+            )
+        return deleted_count
+
+    def get_dataset_experiment_ids(self, dataset_id: str) -> list[str]:
+        existing = self._fetch_evaluation_dataset_entity(dataset_id)
+        raw = json.loads(existing.packed_experiment_ids.decode("utf-8"))
+        return [str(e) for e in raw] if isinstance(raw, list) else []
+
+    def add_dataset_to_experiments(
+        self, dataset_id: str, experiment_ids: list[str]
+    ) -> EvaluationDataset:
+        existing = self._fetch_evaluation_dataset_entity(dataset_id)
+        for exp_id in experiment_ids or []:
+            self.get_experiment(str(exp_id))  # type: ignore[no-untyped-call]
+        cur_ids = self.get_dataset_experiment_ids(dataset_id)
+        for exp_id in experiment_ids or []:
+            s_id = str(exp_id)
+            if s_id not in cur_ids:
+                cur_ids.append(s_id)
+        saved = self._save_evaluation_dataset_entity(
+            EvaluationDatasetEntity(
+                scope=_SCOPE,
+                dataset_id=existing.dataset_id,
+                name=existing.name,
+                digest=existing.digest,
+                created_time_ms=int(existing.created_time_ms),
+                last_update_time_ms=_now_ms(),
+                schema_json=existing.schema_json,
+                profile_json=existing.profile_json,
+                created_by=existing.created_by,
+                last_updated_by=existing.last_updated_by,
+                packed_tags=existing.packed_tags,
+                packed_experiment_ids=_pack_json(cur_ids),
+                packed_records=existing.packed_records,
+            )
+        )
+        return self._evaluation_dataset_to_mlflow(saved)
+
+    def remove_dataset_from_experiments(
+        self, dataset_id: str, experiment_ids: list[str]
+    ) -> EvaluationDataset:
+        existing = self._fetch_evaluation_dataset_entity(dataset_id)
+        remove_set = {str(e) for e in (experiment_ids or [])}
+        cur_ids = [e for e in self.get_dataset_experiment_ids(dataset_id) if e not in remove_set]
+        saved = self._save_evaluation_dataset_entity(
+            EvaluationDatasetEntity(
+                scope=_SCOPE,
+                dataset_id=existing.dataset_id,
+                name=existing.name,
+                digest=existing.digest,
+                created_time_ms=int(existing.created_time_ms),
+                last_update_time_ms=_now_ms(),
+                schema_json=existing.schema_json,
+                profile_json=existing.profile_json,
+                created_by=existing.created_by,
+                last_updated_by=existing.last_updated_by,
+                packed_tags=existing.packed_tags,
+                packed_experiment_ids=_pack_json(cur_ids),
+                packed_records=existing.packed_records,
+            )
+        )
+        return self._evaluation_dataset_to_mlflow(saved)
+
+    # ------------------------------------------------------------------
+    # Label Schemas (MLflow 3.15+)
+    # ------------------------------------------------------------------
+
+    def _validate_exp_exists(self, experiment_id: str) -> int:
+        exp_id = int(self._numeric_experiment_id(str(experiment_id)))  # type: ignore[attr-defined]
+        exp = self.get_experiment(str(exp_id))  # type: ignore[no-untyped-call]
+        if exp is None:
+            raise MlflowException(
+                f"Experiment '{experiment_id}' does not exist.",
+                error_code=RESOURCE_DOES_NOT_EXIST,
+            )
+        return exp_id
+
+    def _fetch_label_schema_entity(self, schema_id: str) -> LabelSchemaEntity:
+        client = self._gw_client()
+        res = client.get_label_schema(GetLabelSchemaParams(scope=_SCOPE, schema_id=schema_id))
+        if isinstance(res.value, GetLabelSchemaMissing) or not isinstance(
+            res.value, GetLabelSchemaFound
+        ):
+            raise MlflowException(
+                f"Label schema with id '{schema_id}' not found.",
+                error_code=RESOURCE_DOES_NOT_EXIST,
+            )
+        row = res.value.label_schema
+        return LabelSchemaEntity(
+            scope=_SCOPE,
+            schema_id=row.schema_id,
+            experiment_id=int(row.experiment_id),
+            name=row.name,
+            schema_type=row.schema_type,
+            instruction=row.instruction,
+            enable_comment=bool(row.enable_comment),
+            input_type=row.input_type,
+            input_config_json=row.input_config_json,
+            created_by=row.created_by,
+            created_time_ms=int(row.created_time_ms),
+            last_update_time_ms=int(row.last_update_time_ms),
+            is_default=bool(row.is_default),
+        )
+
+    def _list_label_schema_entities(self, experiment_id: int) -> list[LabelSchemaEntity]:
+        client = self._gw_client()
+        entities: list[LabelSchemaEntity] = []
+        cursor: str | None = None
+        while True:
+            res = client.list_label_schemas(
+                ListLabelSchemasParams(scope=_SCOPE, limit=25, after=cursor)
+            )
+            if not isinstance(res.value, ListLabelSchemasFound):
+                break
+            for row in res.value.label_schemas:
+                if int(row.experiment_id) != experiment_id:
+                    continue
+                entities.append(
+                    LabelSchemaEntity(
+                        scope=_SCOPE,
+                        schema_id=row.schema_id,
+                        experiment_id=int(row.experiment_id),
+                        name=row.name,
+                        schema_type=row.schema_type,
+                        instruction=row.instruction,
+                        enable_comment=bool(row.enable_comment),
+                        input_type=row.input_type,
+                        input_config_json=row.input_config_json,
+                        created_by=row.created_by,
+                        created_time_ms=int(row.created_time_ms),
+                        last_update_time_ms=int(row.last_update_time_ms),
+                        is_default=bool(row.is_default),
+                    )
+                )
+            cursor = res.next_cursor
+            if not cursor or not res.value.label_schemas:
+                break
+        return entities
+
+    def _save_label_schema_entity(self, entity: LabelSchemaEntity) -> LabelSchemaEntity:
+        client = self._gw_client()
+        res = client.upsert_label_schema_entity(
+            UpsertLabelSchemaEntityInput(
+                request_id=str(uuid.uuid4()),
+                schema_id=entity.schema_id,
+                experiment_id=int(entity.experiment_id),
+                name=entity.name,
+                schema_type=entity.schema_type,
+                instruction=entity.instruction,
+                enable_comment=bool(entity.enable_comment),
+                input_type=entity.input_type,
+                input_config_json=entity.input_config_json,
+                created_by=entity.created_by,
+                created_time_ms=int(entity.created_time_ms),
+                last_update_time_ms=int(entity.last_update_time_ms),
+                is_default=bool(entity.is_default),
+            )
+        )
+        if not isinstance(res.outcome, UpsertLabelSchemaEntityLabelSchemaUpserted):
+            raise MlflowException("Invalid UpsertLabelSchemaEntity response from RiffDB")
+        return res.outcome.label_schema
+
+    @staticmethod
+    def _label_schema_to_mlflow(entity: LabelSchemaEntity) -> Any:
+        from mlflow.genai.label_schemas.label_schemas import LabelSchema, LabelSchemaType
+        from mlflow.store.tracking.dbmodels.models import _input_from_dict
+
+        return LabelSchema(
+            name=entity.name,
+            type=LabelSchemaType(entity.schema_type),
+            input=_input_from_dict(entity.input_type, json.loads(entity.input_config_json)),
+            instruction=entity.instruction,
+            enable_comment=bool(entity.enable_comment),
+            schema_id=entity.schema_id,
+            experiment_id=str(entity.experiment_id),
+            created_by=entity.created_by,
+            created_at=int(entity.created_time_ms),
+            updated_at=int(entity.last_update_time_ms),
+            is_default=bool(entity.is_default),
+        )
+
+    def _ensure_default_label_schema(self, exp_id: int) -> None:
+        from mlflow.genai.label_schemas.label_schemas import InputText, LabelSchemaType
+        from mlflow.genai.label_schemas.validation import (
+            DEFAULT_LABEL_SCHEMA_INSTRUCTION,
+            DEFAULT_LABEL_SCHEMA_NAME,
+        )
+        from mlflow.store.tracking.dbmodels.models import _input_to_dict
+
+        existing = self._list_label_schema_entities(exp_id)
+        if any(e.is_default or e.name == DEFAULT_LABEL_SCHEMA_NAME for e in existing):
+            return
+        input_type, input_config_json = _input_to_dict(InputText())
+        now = _now_ms()
+        self._save_label_schema_entity(
+            LabelSchemaEntity(
+                scope=_SCOPE,
+                schema_id=f"ls-{uuid.uuid4().hex}",
+                experiment_id=exp_id,
+                name=DEFAULT_LABEL_SCHEMA_NAME,
+                schema_type=str(LabelSchemaType.FEEDBACK),
+                instruction=DEFAULT_LABEL_SCHEMA_INSTRUCTION,
+                enable_comment=False,
+                input_type=input_type,
+                input_config_json=input_config_json,
+                created_by=None,
+                created_time_ms=now,
+                last_update_time_ms=now,
+                is_default=True,
+            )
+        )
+
+    def create_label_schema(
+        self,
+        experiment_id: str,
+        *,
+        name: str,
+        type: Any,
+        input: Any,
+        instruction: str | None = None,
+        enable_comment: bool = False,
+    ) -> Any:
+        from mlflow.genai.label_schemas.label_schemas import LabelSchemaType
+        from mlflow.genai.label_schemas.validation import validate_schema_for_create
+        from mlflow.store.tracking.dbmodels.models import _input_to_dict
+
+        validate_schema_for_create(
+            name=name,
+            type=type,
+            input=input,
+            instruction=instruction,
+            enable_comment=enable_comment,
+        )
+        exp_id = self._validate_exp_exists(experiment_id)
+        for existing in self._list_label_schema_entities(exp_id):
+            if existing.name == name:
+                raise MlflowException(
+                    f"Label schema with name '{name}' already exists for experiment "
+                    f"'{experiment_id}'.",
+                    error_code=RESOURCE_ALREADY_EXISTS,
+                )
+        input_type, input_config_json = _input_to_dict(input)
+        now = _now_ms()
+        saved = self._save_label_schema_entity(
+            LabelSchemaEntity(
+                scope=_SCOPE,
+                schema_id=f"ls-{uuid.uuid4().hex}",
+                experiment_id=exp_id,
+                name=name,
+                schema_type=str(LabelSchemaType(str(type))),
+                instruction=instruction,
+                enable_comment=bool(enable_comment),
+                input_type=input_type,
+                input_config_json=input_config_json,
+                created_by=None,
+                created_time_ms=now,
+                last_update_time_ms=now,
+                is_default=False,
+            )
+        )
+        return self._label_schema_to_mlflow(saved)
+
+    def get_label_schema(self, schema_id: str) -> Any:
+        return self._label_schema_to_mlflow(self._fetch_label_schema_entity(schema_id))
+
+    def get_label_schema_by_name(self, experiment_id: str, name: str) -> Any:
+        exp_id = self._validate_exp_exists(experiment_id)
+        for entity in self._list_label_schema_entities(exp_id):
+            if entity.name == name:
+                return self._label_schema_to_mlflow(entity)
+        raise MlflowException(
+            f"Label schema with name '{name}' not found for experiment '{experiment_id}'.",
+            error_code=RESOURCE_DOES_NOT_EXIST,
+        )
+
+    def list_label_schemas(
+        self,
+        experiment_id: str,
+        max_results: int = 100,
+        page_token: str | None = None,
+    ) -> PagedList[Any]:
+        self._validate_gateway_max_results(max_results)
+        offset = (
+            SearchUtils.parse_start_offset_from_page_token(page_token)  # type: ignore[no-untyped-call]
+            if page_token
+            else 0
+        )
+        exp_id = self._validate_exp_exists(experiment_id)
+        self._ensure_default_label_schema(exp_id)
+        entities = self._list_label_schema_entities(exp_id)
+        entities.sort(key=lambda e: (-int(e.created_time_ms), e.schema_id))
+        sliced = entities[offset : offset + max_results + 1]
+        next_token = None
+        if len(sliced) > max_results:
+            next_token = SearchUtils.create_page_token(offset + max_results)  # type: ignore[no-untyped-call]
+        return PagedList(
+            [self._label_schema_to_mlflow(e) for e in sliced[:max_results]], next_token
+        )
+
+    def update_label_schema(
+        self,
+        schema_id: str,
+        *,
+        name: str | None = None,
+        instruction: str | None = None,
+        enable_comment: bool | None = None,
+        input: Any = None,
+    ) -> Any:
+        from mlflow.genai.label_schemas.validation import validate_schema_for_update
+        from mlflow.store.tracking.dbmodels.models import _input_to_dict
+
+        existing = self._fetch_label_schema_entity(schema_id)
+        existing_entity = self._label_schema_to_mlflow(existing)
+        validate_schema_for_update(
+            existing=existing_entity,
+            name=name,
+            instruction=instruction,
+            enable_comment=enable_comment,
+            input=input,
+        )
+        resolved_name = existing.name
+        if name is not None and name != existing.name:
+            for other in self._list_label_schema_entities(int(existing.experiment_id)):
+                if other.schema_id != schema_id and other.name == name:
+                    raise MlflowException(
+                        f"Label schema with name '{name}' already exists for experiment "
+                        f"'{existing.experiment_id}'.",
+                        error_code=RESOURCE_ALREADY_EXISTS,
+                    )
+            resolved_name = name
+        resolved_instruction = instruction if instruction is not None else existing.instruction
+        resolved_comment = (
+            bool(enable_comment) if enable_comment is not None else bool(existing.enable_comment)
+        )
+        if input is not None:
+            resolved_input_type, resolved_input_cfg = _input_to_dict(input)
+        else:
+            resolved_input_type = existing.input_type
+            resolved_input_cfg = existing.input_config_json
+
+        saved = self._save_label_schema_entity(
+            LabelSchemaEntity(
+                scope=_SCOPE,
+                schema_id=existing.schema_id,
+                experiment_id=int(existing.experiment_id),
+                name=resolved_name,
+                schema_type=existing.schema_type,
+                instruction=resolved_instruction,
+                enable_comment=resolved_comment,
+                input_type=resolved_input_type,
+                input_config_json=resolved_input_cfg,
+                created_by=existing.created_by,
+                created_time_ms=int(existing.created_time_ms),
+                last_update_time_ms=_now_ms(),
+                is_default=bool(existing.is_default),
+            )
+        )
+        return self._label_schema_to_mlflow(saved)
+
+    def delete_label_schema(self, schema_id: str) -> None:
+        try:
+            existing = self._fetch_label_schema_entity(schema_id)
+        except MlflowException:
+            return
+        if existing.is_default:
+            raise MlflowException(
+                "The experiment's default question cannot be deleted.",
+                error_code=INVALID_PARAMETER_VALUE,
+            )
+        client = self._gw_client()
+        res = client.delete_label_schema_entity(
+            DeleteLabelSchemaEntityInput(request_id=str(uuid.uuid4()), schema_id=schema_id)
+        )
+        if not isinstance(
+            res.outcome,
+            DeleteLabelSchemaEntityLabelSchemaDeleted | DeleteLabelSchemaEntityLabelSchemaMissing,
+        ):
+            raise MlflowException("Invalid DeleteLabelSchemaEntity response from RiffDB")
+
+    # ------------------------------------------------------------------
+    # Human Review Queues (MLflow 3.15+)
+    # ------------------------------------------------------------------
+
+    def _fetch_review_queue_entity(self, queue_id: str) -> ReviewQueueEntity:
+        client = self._gw_client()
+        res = client.get_review_queue(GetReviewQueueParams(scope=_SCOPE, queue_id=queue_id))
+        if isinstance(res.value, GetReviewQueueMissing) or not isinstance(
+            res.value, GetReviewQueueFound
+        ):
+            raise MlflowException(
+                f"Review queue with id '{queue_id}' not found.",
+                error_code=RESOURCE_DOES_NOT_EXIST,
+            )
+        row = res.value.review_queue
+        return ReviewQueueEntity(
+            scope=_SCOPE,
+            queue_id=row.queue_id,
+            experiment_id=int(row.experiment_id),
+            name=row.name,
+            name_key=row.name_key,
+            queue_type=row.queue_type,
+            created_by=row.created_by,
+            creation_time_ms=int(row.creation_time_ms),
+            last_update_time_ms=int(row.last_update_time_ms),
+            packed_users=row.packed_users,
+            packed_schema_ids=row.packed_schema_ids,
+            packed_items=row.packed_items,
+        )
+
+    def _list_review_queue_entities(self, experiment_id: int) -> list[ReviewQueueEntity]:
+        client = self._gw_client()
+        entities: list[ReviewQueueEntity] = []
+        cursor: str | None = None
+        while True:
+            res = client.list_review_queues(
+                ListReviewQueuesParams(scope=_SCOPE, limit=10, after=cursor)
+            )
+            if not isinstance(res.value, ListReviewQueuesFound):
+                break
+            for row in res.value.review_queues:
+                if int(row.experiment_id) != experiment_id:
+                    continue
+                entities.append(
+                    ReviewQueueEntity(
+                        scope=_SCOPE,
+                        queue_id=row.queue_id,
+                        experiment_id=int(row.experiment_id),
+                        name=row.name,
+                        name_key=row.name_key,
+                        queue_type=row.queue_type,
+                        created_by=row.created_by,
+                        creation_time_ms=int(row.creation_time_ms),
+                        last_update_time_ms=int(row.last_update_time_ms),
+                        packed_users=row.packed_users,
+                        packed_schema_ids=row.packed_schema_ids,
+                        packed_items=row.packed_items,
+                    )
+                )
+            cursor = res.next_cursor
+            if not cursor or not res.value.review_queues:
+                break
+        return entities
+
+    def _save_review_queue_entity(self, entity: ReviewQueueEntity) -> ReviewQueueEntity:
+        client = self._gw_client()
+        res = client.upsert_review_queue_entity(
+            UpsertReviewQueueEntityInput(
+                request_id=str(uuid.uuid4()),
+                queue_id=entity.queue_id,
+                experiment_id=int(entity.experiment_id),
+                name=entity.name,
+                name_key=entity.name_key,
+                queue_type=entity.queue_type,
+                created_by=entity.created_by,
+                creation_time_ms=int(entity.creation_time_ms),
+                last_update_time_ms=int(entity.last_update_time_ms),
+                packed_users=entity.packed_users,
+                packed_schema_ids=entity.packed_schema_ids,
+                packed_items=entity.packed_items,
+            )
+        )
+        if not isinstance(res.outcome, UpsertReviewQueueEntityReviewQueueUpserted):
+            raise MlflowException("Invalid UpsertReviewQueueEntity response from RiffDB")
+        return res.outcome.review_queue
+
+    @staticmethod
+    def _review_queue_to_mlflow(entity: ReviewQueueEntity) -> Any:
+        from mlflow.genai.review_queues import ReviewQueue, ReviewQueueType
+
+        users_raw = json.loads(entity.packed_users.decode("utf-8"))
+        schemas_raw = json.loads(entity.packed_schema_ids.decode("utf-8"))
+        users = [str(u) for u in users_raw] if isinstance(users_raw, list) else []
+        schema_ids = [str(s) for s in schemas_raw] if isinstance(schemas_raw, list) else []
+        return ReviewQueue(
+            queue_id=entity.queue_id,
+            experiment_id=str(entity.experiment_id),
+            name=entity.name,
+            queue_type=ReviewQueueType(entity.queue_type),
+            created_by=entity.created_by,
+            creation_time_ms=int(entity.creation_time_ms),
+            last_update_time_ms=int(entity.last_update_time_ms),
+            users=users,
+            schema_ids=schema_ids,
+        )
+
+    @staticmethod
+    def _review_queue_item_to_mlflow(queue_id: str, item_dict: dict[str, Any]) -> Any:
+        from mlflow.genai.review_queues import (
+            ReviewItemType,
+            ReviewQueueItem,
+            ReviewStatus,
+        )
+
+        return ReviewQueueItem(
+            queue_id=queue_id,
+            item_type=ReviewItemType(str(item_dict.get("item_type", "trace"))),
+            item_id=str(item_dict["item_id"]),
+            status=ReviewStatus(str(item_dict.get("status", "pending"))),
+            creation_time_ms=int(item_dict.get("creation_time_ms", 0)),
+            last_update_time_ms=int(item_dict.get("last_update_time_ms", 0)),
+            completed_by=item_dict.get("completed_by"),
+            completed_time_ms=item_dict.get("completed_time_ms"),
+        )
+
+    def _validate_review_queue_schema_ids(self, exp_id: int, schema_ids: list[str]) -> None:
+        if not schema_ids:
+            return
+        existing_schemas = {e.schema_id: e for e in self._list_label_schema_entities(exp_id)}
+        for sid in schema_ids:
+            if sid not in existing_schemas:
+                raise MlflowException(
+                    f"Label schema '{sid}' does not exist in experiment '{exp_id}'.",
+                    error_code=RESOURCE_DOES_NOT_EXIST,
+                )
+
+    def create_review_queue(
+        self,
+        experiment_id: str,
+        *,
+        name: str,
+        queue_type: Any,
+        created_by: str | None = None,
+        users: list[str] | None = None,
+        schema_ids: list[str] | None = None,
+    ) -> Any:
+        from mlflow.genai.review_queues.validation import validate_queue_for_create
+
+        validated = validate_queue_for_create(
+            name=name,
+            queue_type=queue_type,
+            users=users,
+            schema_ids=schema_ids,
+        )
+        exp_id = self._validate_exp_exists(experiment_id)
+        self._validate_review_queue_schema_ids(exp_id, list(validated.schema_ids))
+        name_key = validated.name.lower()
+        for existing in self._list_review_queue_entities(exp_id):
+            if existing.name_key == name_key:
+                raise MlflowException(
+                    f"Review queue with name '{validated.name}' already exists "
+                    "(names are case-insensitive).",
+                    error_code=RESOURCE_ALREADY_EXISTS,
+                )
+        now = _now_ms()
+        saved = self._save_review_queue_entity(
+            ReviewQueueEntity(
+                scope=_SCOPE,
+                queue_id=f"rq-{uuid.uuid4().hex}",
+                experiment_id=exp_id,
+                name=validated.name,
+                name_key=name_key,
+                queue_type=str(validated.queue_type),
+                created_by=created_by,
+                creation_time_ms=now,
+                last_update_time_ms=now,
+                packed_users=_pack_json(list(validated.users)),
+                packed_schema_ids=_pack_json(list(validated.schema_ids)),
+                packed_items=b"[]",
+            )
+        )
+        return self._review_queue_to_mlflow(saved)
+
+    def get_review_queue(self, queue_id: str) -> Any:
+        return self._review_queue_to_mlflow(self._fetch_review_queue_entity(queue_id))
+
+    def get_review_queue_by_name(self, experiment_id: str, *, name: str) -> Any:
+        exp_id = self._validate_exp_exists(experiment_id)
+        target_key = name.lower()
+        for entity in self._list_review_queue_entities(exp_id):
+            if entity.name_key == target_key:
+                return self._review_queue_to_mlflow(entity)
+        raise MlflowException(
+            f"Review queue with name '{name}' not found for experiment '{experiment_id}'.",
+            error_code=RESOURCE_DOES_NOT_EXIST,
+        )
+
+    def get_or_create_user_queue(self, experiment_id: str, *, user: str) -> Any:
+        from mlflow.genai.review_queues import ReviewQueueType
+        from mlflow.genai.review_queues.validation import normalize_user
+
+        name = normalize_user(user)
+        try:
+            return self.create_review_queue(
+                experiment_id,
+                name=name,
+                queue_type="user",
+                created_by=name,
+            )
+        except MlflowException as e:
+            if e.error_code != ErrorCode.Name(RESOURCE_ALREADY_EXISTS):
+                raise
+            existing = self.get_review_queue_by_name(experiment_id, name=name)
+            if ReviewQueueType(existing.queue_type) != ReviewQueueType.USER:
+                raise MlflowException(
+                    f"A non-user queue named '{name}' already exists; cannot get-or-create "
+                    f"a user queue with that name.",
+                    error_code=RESOURCE_ALREADY_EXISTS,
+                ) from e
+            return existing
+
+    def list_review_queues(
+        self,
+        experiment_id: str,
+        *,
+        user: str | None = None,
+        item_id: str | None = None,
+        max_results: int | None = None,
+        page_token: str | None = None,
+    ) -> PagedList[Any]:
+        from mlflow.genai.review_queues.validation import normalize_user
+
+        if max_results is None:
+            resolved_max = SEARCH_MAX_RESULTS_DEFAULT
+        else:
+            self._validate_gateway_max_results(max_results)
+            resolved_max = int(max_results)
+        offset = (
+            SearchUtils.parse_start_offset_from_page_token(page_token)  # type: ignore[no-untyped-call]
+            if page_token
+            else 0
+        )
+        exp_id = self._validate_exp_exists(experiment_id)
+        norm_user = normalize_user(user) if user is not None else None
+        matched: list[ReviewQueueEntity] = []
+        for entity in self._list_review_queue_entities(exp_id):
+            if norm_user is not None:
+                users_raw = json.loads(entity.packed_users.decode("utf-8"))
+                users_set = {str(u) for u in users_raw} if isinstance(users_raw, list) else set()
+                if norm_user not in users_set:
+                    continue
+            if item_id is not None:
+                items = _unpack_list(entity.packed_items)
+                if not any(str(it.get("item_id")) == item_id for it in items):
+                    continue
+            matched.append(entity)
+
+        matched.sort(key=lambda e: (-int(e.creation_time_ms), e.queue_id))
+        sliced = matched[offset : offset + resolved_max + 1]
+        next_token = None
+        if len(sliced) > resolved_max:
+            next_token = SearchUtils.create_page_token(offset + resolved_max)  # type: ignore[no-untyped-call]
+        return PagedList(
+            [self._review_queue_to_mlflow(e) for e in sliced[:resolved_max]], next_token
+        )
+
+    def update_review_queue(
+        self,
+        queue_id: str,
+        *,
+        users: list[str] | None = None,
+        schema_ids: list[str] | None = None,
+        name: str | None = None,
+        new_owner: str | None = None,
+    ) -> Any:
+        from mlflow.genai.review_queues import ReviewQueueType
+        from mlflow.genai.review_queues.validation import (
+            normalize_schema_ids,
+            normalize_users,
+            validate_custom_queue_name,
+            validate_queue_owner,
+        )
+
+        existing = self._fetch_review_queue_entity(queue_id)
+        if ReviewQueueType(existing.queue_type) == ReviewQueueType.USER:
+            raise MlflowException(
+                "A user queue's name, assigned user, schemas, and owner are fixed "
+                "and cannot be updated.",
+                error_code=INVALID_PARAMETER_VALUE,
+            )
+        if users is None and schema_ids is None and name is None and new_owner is None:
+            return self._review_queue_to_mlflow(existing)
+
+        resolved_owner = (
+            validate_queue_owner(new_owner) if new_owner is not None else existing.created_by
+        )
+        resolved_name = existing.name
+        resolved_name_key = existing.name_key
+        if name is not None:
+            new_name = validate_custom_queue_name(name)
+            new_key = new_name.lower()
+            if new_key != existing.name_key:
+                for other in self._list_review_queue_entities(int(existing.experiment_id)):
+                    if other.queue_id != queue_id and other.name_key == new_key:
+                        raise MlflowException(
+                            f"Review queue with name '{new_name}' already exists "
+                            "(names are case-insensitive).",
+                            error_code=RESOURCE_ALREADY_EXISTS,
+                        )
+            resolved_name = new_name
+            resolved_name_key = new_key
+
+        packed_users = (
+            _pack_json(list(normalize_users(users))) if users is not None else existing.packed_users
+        )
+        packed_schema_ids = existing.packed_schema_ids
+        if schema_ids is not None:
+            cur_items = _unpack_list(existing.packed_items)
+            if cur_items:
+                raise MlflowException(
+                    "A review queue's questions are locked once items are assigned to it. "
+                    "Remove the items before changing its questions.",
+                    error_code=INVALID_PARAMETER_VALUE,
+                )
+            norm_schemas = list(normalize_schema_ids(schema_ids))
+            self._validate_review_queue_schema_ids(int(existing.experiment_id), norm_schemas)
+            packed_schema_ids = _pack_json(norm_schemas)
+
+        saved = self._save_review_queue_entity(
+            ReviewQueueEntity(
+                scope=_SCOPE,
+                queue_id=existing.queue_id,
+                experiment_id=int(existing.experiment_id),
+                name=resolved_name,
+                name_key=resolved_name_key,
+                queue_type=existing.queue_type,
+                created_by=resolved_owner,
+                creation_time_ms=int(existing.creation_time_ms),
+                last_update_time_ms=_now_ms(),
+                packed_users=packed_users,
+                packed_schema_ids=packed_schema_ids,
+                packed_items=existing.packed_items,
+            )
+        )
+        return self._review_queue_to_mlflow(saved)
+
+    def delete_review_queue(self, queue_id: str) -> None:
+        client = self._gw_client()
+        res = client.delete_review_queue_entity(
+            DeleteReviewQueueEntityInput(request_id=str(uuid.uuid4()), queue_id=queue_id)
+        )
+        if not isinstance(
+            res.outcome,
+            DeleteReviewQueueEntityReviewQueueDeleted | DeleteReviewQueueEntityReviewQueueMissing,
+        ):
+            raise MlflowException("Invalid DeleteReviewQueueEntity response from RiffDB")
+
+    def add_items_to_review_queue(
+        self, queue_id: str, *, item_ids: list[str], item_type: str = "trace"
+    ) -> list[Any]:
+        from mlflow.genai.review_queues import ReviewStatus
+        from mlflow.genai.review_queues.validation import (
+            coerce_item_type,
+            validate_item_ids_for_attach,
+        )
+
+        coerced_type = str(coerce_item_type(item_type))
+        norm_ids = list(validate_item_ids_for_attach(item_ids))
+        existing = self._fetch_review_queue_entity(queue_id)
+        items = _unpack_list(existing.packed_items)
+        by_id: dict[str, dict[str, Any]] = {str(it["item_id"]): it for it in items}
+        now = _now_ms()
+        changed = False
+        for iid in norm_ids:
+            if iid not in by_id:
+                by_id[iid] = {
+                    "item_id": iid,
+                    "item_type": coerced_type,
+                    "status": str(ReviewStatus.PENDING),
+                    "creation_time_ms": now,
+                    "last_update_time_ms": now,
+                    "completed_by": None,
+                    "completed_time_ms": None,
+                }
+                changed = True
+        if changed:
+            self._save_review_queue_entity(
+                ReviewQueueEntity(
+                    scope=_SCOPE,
+                    queue_id=existing.queue_id,
+                    experiment_id=int(existing.experiment_id),
+                    name=existing.name,
+                    name_key=existing.name_key,
+                    queue_type=existing.queue_type,
+                    created_by=existing.created_by,
+                    creation_time_ms=int(existing.creation_time_ms),
+                    last_update_time_ms=int(existing.last_update_time_ms),
+                    packed_users=existing.packed_users,
+                    packed_schema_ids=existing.packed_schema_ids,
+                    packed_items=_pack_json(list(by_id.values())),
+                )
+            )
+        return [
+            self._review_queue_item_to_mlflow(queue_id, by_id[iid])
+            for iid in norm_ids
+            if iid in by_id
+        ]
+
+    def list_review_queue_items(
+        self,
+        queue_id: str,
+        *,
+        status: Any = None,
+        max_results: int | None = None,
+        page_token: str | None = None,
+    ) -> PagedList[Any]:
+        from mlflow.genai.review_queues.validation import coerce_status
+
+        if max_results is None:
+            resolved_max = SEARCH_MAX_RESULTS_DEFAULT
+        else:
+            self._validate_gateway_max_results(max_results)
+            resolved_max = int(max_results)
+        offset = (
+            SearchUtils.parse_start_offset_from_page_token(page_token)  # type: ignore[no-untyped-call]
+            if page_token
+            else 0
+        )
+        coerced_status = str(coerce_status(status)) if status is not None else None
+        existing = self._fetch_review_queue_entity(queue_id)
+        items = _unpack_list(existing.packed_items)
+        if coerced_status is not None:
+            items = [it for it in items if str(it.get("status")) == coerced_status]
+        items.sort(key=lambda it: (-int(it.get("creation_time_ms", 0)), str(it.get("item_id", ""))))
+        sliced = items[offset : offset + resolved_max + 1]
+        next_token = None
+        if len(sliced) > resolved_max:
+            next_token = SearchUtils.create_page_token(offset + resolved_max)  # type: ignore[no-untyped-call]
+        return PagedList(
+            [self._review_queue_item_to_mlflow(queue_id, it) for it in sliced[:resolved_max]],
+            next_token,
+        )
+
+    def set_review_queue_item_status(
+        self,
+        queue_id: str,
+        *,
+        item_id: str,
+        status: Any,
+        completed_by: str | None = None,
+    ) -> Any:
+        from mlflow.genai.review_queues import ReviewStatus
+        from mlflow.genai.review_queues.validation import (
+            USER_MAX_LENGTH,
+            coerce_status,
+            normalize_item_id,
+            normalize_user,
+        )
+
+        new_status = coerce_status(status)
+        norm_item_id = normalize_item_id(item_id)
+        norm_completed_by = normalize_user(completed_by) if completed_by is not None else None
+        if new_status == ReviewStatus.PENDING:
+            if norm_completed_by is not None:
+                raise MlflowException(
+                    "`completed_by` must not be set when reopening an item to `pending`.",
+                    error_code=INVALID_PARAMETER_VALUE,
+                )
+        elif not norm_completed_by:
+            raise MlflowException(
+                f"`completed_by` is required when setting status to `{new_status}`.",
+                error_code=INVALID_PARAMETER_VALUE,
+            )
+        if norm_completed_by is not None and len(norm_completed_by) > USER_MAX_LENGTH:
+            raise MlflowException(
+                f"`completed_by` must be at most {USER_MAX_LENGTH} characters; "
+                f"got {len(norm_completed_by)}.",
+                error_code=INVALID_PARAMETER_VALUE,
+            )
+
+        existing = self._fetch_review_queue_entity(queue_id)
+        items = _unpack_list(existing.packed_items)
+        by_id: dict[str, dict[str, Any]] = {str(it["item_id"]): it for it in items}
+        if norm_item_id not in by_id:
+            raise MlflowException(
+                f"Item '{norm_item_id}' is not attached to review queue '{queue_id}'.",
+                error_code=RESOURCE_DOES_NOT_EXIST,
+            )
+        target = by_id[norm_item_id]
+        if str(target.get("status")) == str(new_status):
+            return self._review_queue_item_to_mlflow(queue_id, target)
+
+        now = _now_ms()
+        target["status"] = str(new_status)
+        target["last_update_time_ms"] = now
+        if new_status == ReviewStatus.PENDING:
+            target["completed_by"] = None
+            target["completed_time_ms"] = None
+        else:
+            target["completed_by"] = norm_completed_by
+            target["completed_time_ms"] = now
+
+        self._save_review_queue_entity(
+            ReviewQueueEntity(
+                scope=_SCOPE,
+                queue_id=existing.queue_id,
+                experiment_id=int(existing.experiment_id),
+                name=existing.name,
+                name_key=existing.name_key,
+                queue_type=existing.queue_type,
+                created_by=existing.created_by,
+                creation_time_ms=int(existing.creation_time_ms),
+                last_update_time_ms=int(existing.last_update_time_ms),
+                packed_users=existing.packed_users,
+                packed_schema_ids=existing.packed_schema_ids,
+                packed_items=_pack_json(list(by_id.values())),
+            )
+        )
+        return self._review_queue_item_to_mlflow(queue_id, target)
+
+    def remove_items_from_review_queue(self, queue_id: str, *, item_ids: list[str]) -> None:
+        from mlflow.genai.review_queues.validation import validate_item_ids_for_attach
+
+        norm_ids = set(validate_item_ids_for_attach(item_ids))
+        existing = self._fetch_review_queue_entity(queue_id)
+        items = _unpack_list(existing.packed_items)
+        remaining = [it for it in items if str(it.get("item_id")) not in norm_ids]
+        if len(remaining) != len(items):
+            self._save_review_queue_entity(
+                ReviewQueueEntity(
+                    scope=_SCOPE,
+                    queue_id=existing.queue_id,
+                    experiment_id=int(existing.experiment_id),
+                    name=existing.name,
+                    name_key=existing.name_key,
+                    queue_type=existing.queue_type,
+                    created_by=existing.created_by,
+                    creation_time_ms=int(existing.creation_time_ms),
+                    last_update_time_ms=int(existing.last_update_time_ms),
+                    packed_users=existing.packed_users,
+                    packed_schema_ids=existing.packed_schema_ids,
+                    packed_items=_pack_json(remaining),
+                )
+            )
+
+    def _delete_review_queue_items_for_traces(self, trace_ids: list[str]) -> None:
+        target_set = set(trace_ids or [])
+        if not target_set:
+            return
+        for exp in self.search_experiments(ViewType.ALL):  # type: ignore[no-untyped-call]
+            for queue in self._list_review_queue_entities(int(exp.experiment_id)):
+                items = _unpack_list(queue.packed_items)
+                remaining = [it for it in items if str(it.get("item_id")) not in target_set]
+                if len(remaining) != len(items):
+                    self._save_review_queue_entity(
+                        ReviewQueueEntity(
+                            scope=_SCOPE,
+                            queue_id=queue.queue_id,
+                            experiment_id=int(queue.experiment_id),
+                            name=queue.name,
+                            name_key=queue.name_key,
+                            queue_type=queue.queue_type,
+                            created_by=queue.created_by,
+                            creation_time_ms=int(queue.creation_time_ms),
+                            last_update_time_ms=int(queue.last_update_time_ms),
+                            packed_users=queue.packed_users,
+                            packed_schema_ids=queue.packed_schema_ids,
+                            packed_items=_pack_json(remaining),
+                        )
+                    )
+
+    # ------------------------------------------------------------------
+    # Issues (MLflow 3.15+)
+    # ------------------------------------------------------------------
+
+    def _fetch_issue_entity(self, issue_id: str) -> IssueEntity:
+        client = self._gw_client()
+        res = client.get_issue(GetIssueParams(scope=_SCOPE, issue_id=issue_id))
+        if isinstance(res.value, GetIssueMissing) or not isinstance(res.value, GetIssueFound):
+            raise MlflowException(
+                f"Issue with ID '{issue_id}' not found",
+                error_code=RESOURCE_DOES_NOT_EXIST,
+            )
+        row = res.value.issue
+        return IssueEntity(
+            scope=_SCOPE,
+            issue_id=row.issue_id,
+            experiment_id=int(row.experiment_id),
+            name=row.name,
+            description=row.description,
+            status=row.status,
+            severity=row.severity,
+            root_causes_json=row.root_causes_json,
+            source_run_id=row.source_run_id,
+            categories_json=row.categories_json,
+            created_timestamp_ms=int(row.created_timestamp_ms),
+            last_updated_timestamp_ms=int(row.last_updated_timestamp_ms),
+            created_by=row.created_by,
+        )
+
+    def _list_issue_entities(self) -> list[IssueEntity]:
+        client = self._gw_client()
+        entities: list[IssueEntity] = []
+        cursor: str | None = None
+        while True:
+            res = client.list_issues(ListIssuesParams(scope=_SCOPE, limit=25, after=cursor))
+            if not isinstance(res.value, ListIssuesFound):
+                break
+            for row in res.value.issues:
+                entities.append(
+                    IssueEntity(
+                        scope=_SCOPE,
+                        issue_id=row.issue_id,
+                        experiment_id=int(row.experiment_id),
+                        name=row.name,
+                        description=row.description,
+                        status=row.status,
+                        severity=row.severity,
+                        root_causes_json=row.root_causes_json,
+                        source_run_id=row.source_run_id,
+                        categories_json=row.categories_json,
+                        created_timestamp_ms=int(row.created_timestamp_ms),
+                        last_updated_timestamp_ms=int(row.last_updated_timestamp_ms),
+                        created_by=row.created_by,
+                    )
+                )
+            cursor = res.next_cursor
+            if not cursor or not res.value.issues:
+                break
+        return entities
+
+    def _save_issue_entity(self, entity: IssueEntity) -> IssueEntity:
+        client = self._gw_client()
+        res = client.upsert_issue_entity(
+            UpsertIssueEntityInput(
+                request_id=str(uuid.uuid4()),
+                issue_id=entity.issue_id,
+                experiment_id=int(entity.experiment_id),
+                name=entity.name,
+                description=entity.description,
+                status=entity.status,
+                severity=entity.severity,
+                root_causes_json=entity.root_causes_json,
+                source_run_id=entity.source_run_id,
+                categories_json=entity.categories_json,
+                created_timestamp_ms=int(entity.created_timestamp_ms),
+                last_updated_timestamp_ms=int(entity.last_updated_timestamp_ms),
+                created_by=entity.created_by,
+            )
+        )
+        if not isinstance(res.outcome, UpsertIssueEntityIssueUpserted):
+            raise MlflowException("Invalid UpsertIssueEntity response from RiffDB")
+        return res.outcome.issue
+
+    @staticmethod
+    def _issue_to_mlflow(entity: IssueEntity, trace_count: int | None = None) -> Issue:
+        return Issue(
+            issue_id=entity.issue_id,
+            experiment_id=str(entity.experiment_id),
+            name=entity.name,
+            description=entity.description,
+            status=IssueStatus(entity.status),
+            severity=IssueSeverity(entity.severity) if entity.severity else None,
+            root_causes=(json.loads(entity.root_causes_json) if entity.root_causes_json else None),
+            source_run_id=entity.source_run_id,
+            categories=(json.loads(entity.categories_json) if entity.categories_json else None),
+            created_timestamp=int(entity.created_timestamp_ms),
+            last_updated_timestamp=int(entity.last_updated_timestamp_ms),
+            created_by=entity.created_by,
+            trace_count=trace_count,
+        )
+
+    def create_issue(
+        self,
+        experiment_id: str,
+        name: str,
+        description: str,
+        status: IssueStatus = IssueStatus.PENDING,
+        severity: IssueSeverity | None = None,
+        root_causes: list[str] | None = None,
+        source_run_id: str | None = None,
+        categories: list[str] | None = None,
+        created_by: str | None = None,
+    ) -> Issue:
+        exp_id = int(self._numeric_experiment_id(str(experiment_id)))  # type: ignore[attr-defined]
+        self._require_active_experiment(exp_id)  # type: ignore[attr-defined]
+        now = _now_ms()
+        status_val = status.value if isinstance(status, IssueStatus) else str(status)
+        sev_val = (
+            (severity.value if isinstance(severity, IssueSeverity) else str(severity))
+            if severity is not None
+            else None
+        )
+        saved = self._save_issue_entity(
+            IssueEntity(
+                scope=_SCOPE,
+                issue_id=f"iss-{uuid.uuid4().hex}",
+                experiment_id=exp_id,
+                name=name,
+                description=description,
+                status=status_val,
+                severity=sev_val,
+                root_causes_json=(json.dumps(root_causes) if root_causes is not None else None),
+                source_run_id=source_run_id,
+                categories_json=(json.dumps(categories) if categories is not None else None),
+                created_timestamp_ms=now,
+                last_updated_timestamp_ms=now,
+                created_by=created_by,
+            )
+        )
+        return self._issue_to_mlflow(saved)
+
+    def get_issue(self, issue_id: str) -> Issue:
+        return self._issue_to_mlflow(self._fetch_issue_entity(issue_id))
+
+    def search_issues(
+        self,
+        experiment_id: str | None = None,
+        filter_string: str | None = None,
+        max_results: int | None = None,
+        page_token: str | None = None,
+        include_trace_count: bool = False,
+    ) -> PagedList[Issue]:
+        if max_results is not None:
+            self._validate_gateway_max_results(max_results)
+            resolved_max = int(max_results)
+        else:
+            resolved_max = 100
+        offset = SearchTraceUtils.parse_start_offset_from_page_token(page_token)  # type: ignore[no-untyped-call]
+        parsed_filters = (
+            SearchIssuesUtils.parse_search_filter(filter_string)  # type: ignore[no-untyped-call]
+            if filter_string
+            else []
+        )
+        target_exp = int(experiment_id) if experiment_id is not None else None
+        matched: list[IssueEntity] = []
+        for entity in self._list_issue_entities():
+            if target_exp is not None and int(entity.experiment_id) != target_exp:
+                continue
+            ok = True
+            for flt in parsed_filters:
+                key = str(flt.get("key"))
+                comp = str(flt.get("comparator")).upper()
+                val = str(flt.get("value"))
+                actual = getattr(entity, key, None)
+                if comp == "=" and actual != val:
+                    ok = False
+                    break
+                if comp == "!=" and actual == val:
+                    ok = False
+                    break
+            if ok:
+                matched.append(entity)
+
+        severity_ranks = {s.value: s._rank for s in IssueSeverity}
+        matched.sort(
+            key=lambda e: (
+                -severity_ranks.get(e.severity or "", -1),
+                -int(e.created_timestamp_ms),
+                e.issue_id,
+            )
+        )
+        sliced = matched[offset : offset + resolved_max + 1]
+        next_token = None
+        if len(sliced) > resolved_max:
+            next_token = SearchTraceUtils.create_page_token(offset + resolved_max)  # type: ignore[no-untyped-call]
+        t_cnt = 0 if include_trace_count else None
+        return PagedList(
+            [self._issue_to_mlflow(e, trace_count=t_cnt) for e in sliced[:resolved_max]],
+            next_token,
+        )
+
+    def update_issue(
+        self,
+        issue_id: str,
+        status: IssueStatus | None = None,
+        name: str | None = None,
+        description: str | None = None,
+        severity: IssueSeverity | None = None,
+    ) -> Issue:
+        existing = self._fetch_issue_entity(issue_id)
+        resolved_status = (
+            (status.value if isinstance(status, IssueStatus) else str(status))
+            if status is not None
+            else existing.status
+        )
+        resolved_name = name if name is not None else existing.name
+        resolved_desc = description if description is not None else existing.description
+        resolved_sev = (
+            (severity.value if isinstance(severity, IssueSeverity) else str(severity))
+            if severity is not None
+            else existing.severity
+        )
+        saved = self._save_issue_entity(
+            IssueEntity(
+                scope=_SCOPE,
+                issue_id=existing.issue_id,
+                experiment_id=int(existing.experiment_id),
+                name=resolved_name,
+                description=resolved_desc,
+                status=resolved_status,
+                severity=resolved_sev,
+                root_causes_json=existing.root_causes_json,
+                source_run_id=existing.source_run_id,
+                categories_json=existing.categories_json,
+                created_timestamp_ms=int(existing.created_timestamp_ms),
+                last_updated_timestamp_ms=_now_ms(),
+                created_by=existing.created_by,
+            )
+        )
+        return self._issue_to_mlflow(saved)

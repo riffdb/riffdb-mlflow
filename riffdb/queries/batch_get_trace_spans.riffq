@@ -1,7 +1,7 @@
 query BatchGetTraceSpans(
     $experiment_id: TraceSpan.experiment_id,
     $trace_ids: Set<TraceSpan.trace_id>,
-    $limit: Limit<500> = 500,
+    $limit: Limit<100> = 100,
     $after: Cursor?,
 ) {
     many spans from TraceSpan

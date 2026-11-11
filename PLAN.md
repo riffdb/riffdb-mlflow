@@ -22,8 +22,8 @@ Status: complete (`v0.2.2`).
   traces, spans, assessments, columnar projections, logged models, registered
   models, model versions, registry webhooks, and MCP server registry entities
   with explicit bounds and indexes in `riffdb/contract.riff`.
-- Compile every mutation as a named command (50 commands) and every read as a
-  named RiffQL query (78 queries).
+- Compile every mutation as a named command (58 commands) and every read as a
+  named RiffQL query (86 queries).
 - Generate and verify `riffdb.application.json`, `riffdb.application.lock.json`,
   and `src/riffdb_mlflow/generated/client.py`.
 
@@ -77,11 +77,13 @@ Status: complete (`v0.2.2`).
 
 - Extend `riffdb/contract.riff` and `riffdb/queries/*.riffq` with compiled
   entities, commands, and queries for Gateway Secrets, Model Definitions,
-  Endpoints, Budget Policies, Guardrails, Scorers, and Server Jobs (50 commands,
-  78 queries total).
+  Endpoints, Budget Policies, Guardrails, Scorers, Evaluation Datasets, Label
+  Schemas, Human Review Queues, Issues, and Server Jobs (58 commands, 86
+  queries total).
 - Implement `RiffDBGatewayAndScorerMixin` covering all 36 `GatewayStoreMixin`
   methods, live invocation `config_resolver` methods (`get_endpoint_config`,
-  `get_resource_endpoint_configs`), and all Scorer & Online Scoring methods.
+  `get_resource_endpoint_configs`), all Scorer & Online Scoring methods, plus
+  Evaluation Datasets, Label Schemas, Human Review Queues, and Issues.
 - Implement `RiffDBJobStore(AbstractJobStore)` covering all 12 job-store
   methods and install `riffdb_mlflow._mlflow_hooks` (autoloaded via
   `riffdb_mlflow_autoload.pth`) so `mlflow server` and Huey job workers

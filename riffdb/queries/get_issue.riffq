@@ -1,0 +1,18 @@
+query GetIssue(
+    $scope: IssueEntity.scope,
+    $issue_id: IssueEntity.issue_id,
+) {
+    one issue from IssueEntity
+        where scope == $scope
+          && issue_id == $issue_id
+        else Missing
+
+    return Found {
+        issue: issue {
+            issue_id experiment_id name description status severity
+            root_causes_json source_run_id categories_json
+            created_timestamp_ms last_updated_timestamp_ms created_by
+        }
+    }
+    outcomes Found | Missing
+}

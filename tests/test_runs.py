@@ -256,14 +256,22 @@ class FakeRunClient:
 
     def _search(self, operation: str, parameters: Any) -> SimpleNamespace:
         self.search_calls.append((operation, parameters))
+        exp_ids = getattr(parameters, "experiment_ids", (getattr(parameters, "experiment_id", -1),))
         rows = [
             row
             for row in self.rows.values()
-            if row.experiment_id in parameters.experiment_ids
+            if row.experiment_id in exp_ids
             and (
                 not hasattr(parameters, "lifecycle_stage")
                 or row.lifecycle_stage == parameters.lifecycle_stage
             )
+            and (
+                not hasattr(parameters, "lifecycle_stages")
+                or row.lifecycle_stage in parameters.lifecycle_stages
+            )
+            and (not hasattr(parameters, "status") or row.status == parameters.status)
+            and (not hasattr(parameters, "run_name") or row.run_name == parameters.run_name)
+            and (not hasattr(parameters, "run_ids") or row.run_id in parameters.run_ids)
         ]
         rows.sort(key=lambda row: (-row.start_time, row.run_id))
         offset = int(parameters.after) if parameters.after is not None else 0
@@ -278,6 +286,18 @@ class FakeRunClient:
 
     def search_runs_by_lifecycle(self, parameters: Any) -> SimpleNamespace:
         return self._search("SearchRunsByLifecycle", parameters)
+
+    def search_runs_by_datum_digest(self, parameters: Any) -> SimpleNamespace:
+        return self._search("SearchRunsByDatumDigest", parameters)
+
+    def search_runs_by_ids(self, parameters: Any) -> SimpleNamespace:
+        return self._search("SearchRunsByIds", parameters)
+
+    def search_runs_by_name(self, parameters: Any) -> SimpleNamespace:
+        return self._search("SearchRunsByName", parameters)
+
+    def search_runs_by_status(self, parameters: Any) -> SimpleNamespace:
+        return self._search("SearchRunsByStatus", parameters)
 
 
 @pytest.fixture
@@ -377,9 +397,15 @@ def test_run_search_coalesces_compiled_pages_and_dispatches_lifecycle() -> None:
     assert [call[1].limit for call in client.search_calls] == [1] + [2] * 50
     assert {call[0] for call in client.search_calls} == {"SearchRunsByLifecycle"}
 
+    by_status = store.search_runs(
+        ["7"], "attributes.status = 'RUNNING'", ViewType.ALL, max_results=2
+    )
+    assert len(by_status) == 2
+    assert client.search_calls[-1][0] == "SearchRunsByStatus"
+
     before = len(client.search_calls)
     with pytest.raises(MlflowException, match="filters are not implemented"):
-        store.search_runs(["7"], "attributes.status = 'RUNNING'", ViewType.ALL)
+        store.search_runs(["7"], "metrics.loss < 0.5", ViewType.ALL)
     assert len(client.search_calls) == before
 
 

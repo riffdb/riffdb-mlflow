@@ -240,7 +240,7 @@ def test_experiment_create_get_name_and_lifecycle(
         tags=[ExperimentTag("team", "research"), ExperimentTag("stage", "dev")],
     )
 
-    assert experiment_id == "100000000000000007"
+    assert experiment_id == "100000007"
     experiment = store.get_experiment(experiment_id)
     assert experiment.name == "training"
     assert experiment.artifact_location == f"s3://artifacts/{experiment_id}"

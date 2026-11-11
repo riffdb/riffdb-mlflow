@@ -1,0 +1,18 @@
+query GetEvaluationDataset(
+    $scope: EvaluationDatasetEntity.scope,
+    $dataset_id: EvaluationDatasetEntity.dataset_id,
+) {
+    one dataset from EvaluationDatasetEntity
+        where scope == $scope
+          && dataset_id == $dataset_id
+        else Missing
+
+    return Found {
+        dataset: dataset {
+            dataset_id name digest created_time_ms last_update_time_ms
+            schema_json profile_json created_by last_updated_by
+            packed_tags packed_experiment_ids packed_records
+        }
+    }
+    outcomes Found | Missing
+}

@@ -1,0 +1,18 @@
+query GetLabelSchema(
+    $scope: LabelSchemaEntity.scope,
+    $schema_id: LabelSchemaEntity.schema_id,
+) {
+    one label_schema from LabelSchemaEntity
+        where scope == $scope
+          && schema_id == $schema_id
+        else Missing
+
+    return Found {
+        label_schema: label_schema {
+            schema_id experiment_id name schema_type instruction
+            enable_comment input_type input_config_json created_by
+            created_time_ms last_update_time_ms is_default
+        }
+    }
+    outcomes Found | Missing
+}

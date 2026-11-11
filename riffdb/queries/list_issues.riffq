@@ -1,0 +1,20 @@
+query ListIssues(
+    $scope: IssueEntity.scope,
+    $limit: Limit<25> = 25,
+    $after: Cursor?,
+) {
+    many issues from IssueEntity
+        where scope == $scope
+        order by issue_id asc
+        take $limit after $after
+        else IntegrityFailure
+
+    return Found {
+        issues: issues {
+            issue_id experiment_id name description status severity
+            root_causes_json source_run_id categories_json
+            created_timestamp_ms last_updated_timestamp_ms created_by
+        }
+    }
+    outcomes Found | IntegrityFailure
+}

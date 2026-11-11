@@ -822,7 +822,12 @@ def _verify_extended_tracking_store(store: object, exp_id: str, run_id: str) -> 
     )
     from mlflow.entities.model_registry import PromptVersion
     from mlflow.entities.trace_metrics import AggregationType, MetricAggregation, MetricViewType
-    from mlflow.tracing.constant import AssessmentMetricKey, SpanMetricKey, TraceMetricKey
+    from mlflow.tracing.constant import (
+        AssessmentMetricDimensionKey,
+        AssessmentMetricKey,
+        SpanMetricKey,
+        TraceMetricKey,
+    )
 
     from riffdb_mlflow.store import RiffDBTrackingStore
 
@@ -858,6 +863,58 @@ def _verify_extended_tracking_store(store: object, exp_id: str, run_id: str) -> 
         raise RuntimeError("store log_inputs did not persist model_inputs")
     if len(run_with_lineage.outputs.model_outputs) != 1:
         raise RuntimeError("store log_outputs did not persist model_outputs")
+    ds_summaries = s._search_datasets([exp_id])
+    if len(ds_summaries) != 1 or ds_summaries[0].name != "eval-ds":
+        raise RuntimeError(f"store _search_datasets mismatch: {ds_summaries}")
+    s.set_tag(run_id, RunTag("mlflow.parentRunId", "parent-run-1"))  # type: ignore[no-untyped-call]
+    if (
+        len(
+            s._search_runs(
+                [exp_id],
+                "tags.`mlflow.parentRunId` = 'parent-run-1'",
+                ViewType.ALL,
+                100,
+                None,
+                None,
+            )[0]
+        )
+        != 1
+    ):
+        raise RuntimeError("store search_runs by tag digest mismatch")
+    if len(s._search_runs([exp_id], "params.lr = '0.01'", ViewType.ALL, 100, None, None)[0]) != 1:
+        raise RuntimeError("store search_runs by param digest mismatch")
+    if (
+        len(
+            s._search_runs(
+                [exp_id], f"attributes.run_id = '{run_id}'", ViewType.ALL, 100, None, None
+            )[0]
+        )
+        != 1
+    ):
+        raise RuntimeError("store search_runs by run_id mismatch")
+    if (
+        len(
+            s._search_runs(
+                [exp_id],
+                "attributes.run_name = 'store-run-1-finished'",
+                ViewType.ALL,
+                100,
+                None,
+                None,
+            )[0]
+        )
+        != 1
+    ):
+        raise RuntimeError("store search_runs by run_name mismatch")
+    if (
+        len(
+            s._search_runs(
+                [exp_id], "attributes.status = 'FINISHED'", ViewType.ALL, 100, None, None
+            )[0]
+        )
+        != 1
+    ):
+        raise RuntimeError("store search_runs by status mismatch")
 
     # 2. Out-of-order span ingestion: ingest child and root spans BEFORE start_trace!
     ooo_trace_id = f"tr-{int(exp_id):016x}0000000000000001"
@@ -981,6 +1038,27 @@ def _verify_extended_tracking_store(store: object, exp_id: str, run_id: str) -> 
     )
     # Re-link run for search_traces by run_id test
     s.link_traces_to_run([ooo_trace_id], run_id)
+
+    # Verify get_trace and batch_get_trace_infos with a cold trace_experiment_map
+    s._trace_experiment_map.clear()
+    fetched_full_trace = s.get_trace(ooo_trace_id, allow_partial=True)
+    if fetched_full_trace.info.trace_id != ooo_trace_id or len(fetched_full_trace.data.spans) != 2:
+        raise RuntimeError("get_trace with cold cache did not return full trace")
+    if [ti.trace_id for ti in s.batch_get_trace_infos([ooo_trace_id])] != [ooo_trace_id]:
+        raise RuntimeError("batch_get_trace_infos did not return trace info")
+
+    # Verify query_trace_metrics(ASSESSMENTS) succeeds with [] when no assessments exist yet
+    empty_ass_metrics = s.query_trace_metrics(
+        experiment_ids=[exp_id],
+        view_type=MetricViewType.ASSESSMENTS,
+        metric_name=AssessmentMetricKey.ASSESSMENT_COUNT,
+        aggregations=[MetricAggregation(AggregationType.COUNT)],
+        dimensions=[AssessmentMetricDimensionKey.ASSESSMENT_NAME],
+    )
+    if empty_ass_metrics != []:
+        raise RuntimeError(
+            f"Expected empty assessment metrics before assessments exist, got {empty_ass_metrics}"
+        )
 
     # 3. Assessments (Feedback and Expectation)
     fb = s.create_assessment(
@@ -1450,6 +1528,73 @@ def _verify_extended_tracking_store(store: object, exp_id: str, run_id: str) -> 
     deleted_jobs = job_store.delete_jobs(job_ids=[job.job_id])
     if deleted_jobs != [job.job_id]:
         raise RuntimeError("RiffDBJobStore delete_jobs failed")
+
+    # 10. Evaluation Datasets, Label Schemas, Review Queues, and Issues
+    from mlflow.entities.issue import IssueSeverity, IssueStatus
+    from mlflow.genai.label_schemas import InputCategorical, LabelSchemaType
+
+    eval_ds = s.create_dataset(
+        name="conformance-eval-ds",
+        tags={"purpose": "conformance"},
+        experiment_ids=[exp_id],
+    )
+    upsert_res = s.upsert_dataset_records(
+        dataset_id=eval_ds.dataset_id,
+        records=[{"inputs": {"q": "hello"}, "outputs": {"a": "world"}}],
+    )
+    if (upsert_res.get("inserted"), upsert_res.get("updated")) != (1, 0):
+        raise RuntimeError("upsert_dataset_records did not insert record")
+    fetched_ds = s.get_dataset(eval_ds.dataset_id)
+    loaded_records, _ = s._load_dataset_records(eval_ds.dataset_id)
+    if fetched_ds.name != "conformance-eval-ds" or len(loaded_records) != 1:
+        raise RuntimeError("get_dataset / _load_dataset_records verification failed")
+    if [d.dataset_id for d in s.search_datasets(experiment_ids=[exp_id])] != [eval_ds.dataset_id]:
+        raise RuntimeError("search_datasets verification failed")
+    s.delete_dataset(eval_ds.dataset_id)
+
+    default_schemas = s.list_label_schemas(experiment_id=exp_id)
+    if not any(ls.name == "Feedback" for ls in default_schemas):
+        raise RuntimeError("list_label_schemas did not seed default Feedback schema")
+    custom_ls = s.create_label_schema(
+        experiment_id=exp_id,
+        name="tone",
+        type=LabelSchemaType.FEEDBACK,
+        instruction="Tone",
+        input=InputCategorical(options=["polite", "neutral"]),
+    )
+    s.delete_label_schema(custom_ls.schema_id)
+
+    user_rq = s.get_or_create_user_queue(exp_id, user="reviewer-1")
+    if str(user_rq.queue_type) != "user":
+        raise RuntimeError("get_or_create_user_queue did not return user queue")
+    added_rq_items = s.add_items_to_review_queue(
+        user_rq.queue_id,
+        item_ids=[ooo_trace_id],
+    )
+    if len(added_rq_items) != 1:
+        raise RuntimeError("add_items_to_review_queue failed")
+    updated_rq_item = s.set_review_queue_item_status(
+        user_rq.queue_id,
+        item_id=ooo_trace_id,
+        status="complete",
+        completed_by="reviewer-1",
+    )
+    if str(updated_rq_item.status) != "complete":
+        raise RuntimeError("set_review_queue_item_status failed")
+    s.delete_review_queue(user_rq.queue_id)
+
+    issue = s.create_issue(
+        experiment_id=exp_id,
+        name="Latency regression",
+        description="High latency on retrieval span",
+        severity=IssueSeverity.HIGH,
+    )
+    updated_issue = s.update_issue(issue.issue_id, status=IssueStatus.RESOLVED)
+    if (
+        updated_issue.status != IssueStatus.RESOLVED
+        or len(s.search_issues(experiment_id=exp_id)) != 1
+    ):
+        raise RuntimeError("Issue CRUD verification failed")
 
 
 def main() -> None:

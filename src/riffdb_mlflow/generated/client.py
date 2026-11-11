@@ -22,8 +22,8 @@ def _compact_tag(value: object, tag: str, keys: frozenset[str]) -> dict[str, obj
 
 CONTRACT_LINEAGE: Final[str] = "RiffDBMLflow"
 CONTRACT_VERSION: Final[int] = 1
-CONTRACT_BUNDLE_HASH: Final[str] = "e33d420a33b939de946cb79eedb45d409a71aed1da5b76f25e7fc38b60653d3f"
-QUERY_MODULE_HASH: Final[str] = "919ed0d070f2bef42a3d45124a8d1b879b61623029b222fb7604971f224ad255"
+CONTRACT_BUNDLE_HASH: Final[str] = "4f358f0b300fc43a76db61fa740a0aef1d55a1a74496c2807b85be6c9ed4ea4e"
+QUERY_MODULE_HASH: Final[str] = "7288e5b9d115737e564fe2aa13170c0a88c5091a473ab419f2a91d1e97f563c2"
 
 COLLECTION_COUNT: Final[str] = "collection_count"
 INDIVIDUAL_VALUE_BYTES: Final[str] = "individual_value_bytes"
@@ -183,6 +183,22 @@ class RunLineage:
     packed_model_outputs: bytes
 
 @dataclass(frozen=True, slots=True, kw_only=True)
+class IssueEntity:
+    name: str
+    scope: str
+    status: str
+    issue_id: str
+    severity: str | None
+    created_by: str | None
+    description: str
+    experiment_id: Annotated[int, "u64"]
+    source_run_id: str | None
+    categories_json: str | None
+    root_causes_json: str | None
+    created_timestamp_ms: Annotated[int, "i64"]
+    last_updated_timestamp_ms: Annotated[int, "i64"]
+
+@dataclass(frozen=True, slots=True, kw_only=True)
 class ScorerEntity:
     scope: str
     scorer_id: str
@@ -244,6 +260,22 @@ class TraceAssessment:
     last_updated_timestamp_ms: Annotated[int, "i64"]
 
 @dataclass(frozen=True, slots=True, kw_only=True)
+class LabelSchemaEntity:
+    name: str
+    scope: str
+    schema_id: str
+    created_by: str | None
+    input_type: str
+    is_default: bool
+    instruction: str | None
+    schema_type: str
+    experiment_id: Annotated[int, "u64"]
+    enable_comment: bool
+    created_time_ms: Annotated[int, "i64"]
+    input_config_json: str
+    last_update_time_ms: Annotated[int, "i64"]
+
+@dataclass(frozen=True, slots=True, kw_only=True)
 class LoggedModelEntity:
     name: str
     status: str
@@ -259,6 +291,21 @@ class LoggedModelEntity:
     artifact_location: str
     creation_timestamp_ms: Annotated[int, "i64"]
     last_updated_timestamp_ms: Annotated[int, "i64"]
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class ReviewQueueEntity:
+    name: str
+    scope: str
+    name_key: str
+    queue_id: str
+    created_by: str | None
+    queue_type: str
+    packed_items: bytes
+    packed_users: bytes
+    experiment_id: Annotated[int, "u64"]
+    creation_time_ms: Annotated[int, "i64"]
+    packed_schema_ids: bytes
+    last_update_time_ms: Annotated[int, "i64"]
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class ModelVersionEntity:
@@ -373,6 +420,22 @@ class MCPServerVersionEntity:
     version_prerelease_sort_key: str
 
 @dataclass(frozen=True, slots=True, kw_only=True)
+class EvaluationDatasetEntity:
+    name: str
+    scope: str
+    digest: str
+    created_by: str | None
+    dataset_id: str
+    packed_tags: bytes
+    schema_json: str | None
+    profile_json: str | None
+    packed_records: bytes
+    created_time_ms: Annotated[int, "i64"]
+    last_updated_by: str | None
+    last_update_time_ms: Annotated[int, "i64"]
+    packed_experiment_ids: bytes
+
+@dataclass(frozen=True, slots=True, kw_only=True)
 class MCPAccessEndpointEntity:
     url: str
     scope: str
@@ -415,7 +478,7 @@ class GatewayModelDefinitionEntity:
     last_updated_at_ms: Annotated[int, "i64"]
     model_definition_id: str
 
-AGGREGATE_SPAN_ANALYTICS_BY_MODEL_QUERY_PLAN_HASH: Final[str] = "5535574c14a4c0fc7a17933d1122c8d684da905d3d95a353503f82f634e4c9a5"
+AGGREGATE_SPAN_ANALYTICS_BY_MODEL_QUERY_PLAN_HASH: Final[str] = "69a52e35b2b0fa8d21bccbab29c0dbbda0dd2ee6583c57f31b64a1ad58b4314a"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class AggregateSpanAnalyticsByModelParams:
@@ -452,7 +515,7 @@ class AggregateSpanAnalyticsByModelFound:
 
 AggregateSpanAnalyticsByModelResult: TypeAlias = AggregateSpanAnalyticsByModelFound
 
-AGGREGATE_SPAN_ANALYTICS_BY_NAME_STATUS_QUERY_PLAN_HASH: Final[str] = "573a0969d3cf87a0c501b224a839bd37e2ea43f26a28b68b61aa464c83fa0dca"
+AGGREGATE_SPAN_ANALYTICS_BY_NAME_STATUS_QUERY_PLAN_HASH: Final[str] = "035614c3a14e5dbfb53d03e87a3f1a87163c232e4a7b17d6cbad3f660721ce1a"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class AggregateSpanAnalyticsByNameStatusParams:
@@ -487,7 +550,7 @@ class AggregateSpanAnalyticsByNameStatusFound:
 
 AggregateSpanAnalyticsByNameStatusResult: TypeAlias = AggregateSpanAnalyticsByNameStatusFound
 
-AGGREGATE_TRACE_ANALYTICS_BY_NAME_QUERY_PLAN_HASH: Final[str] = "18e22082aee013d5756e39f0090250140fa6ec9a55b90039ee0d82a3e0af744d"
+AGGREGATE_TRACE_ANALYTICS_BY_NAME_QUERY_PLAN_HASH: Final[str] = "966b5744406fb945913a2bf8dad5db8365952c4b819a296df59b142ee42c848a"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class AggregateTraceAnalyticsByNameParams:
@@ -521,7 +584,7 @@ class AggregateTraceAnalyticsByNameFound:
 
 AggregateTraceAnalyticsByNameResult: TypeAlias = AggregateTraceAnalyticsByNameFound
 
-AGGREGATE_TRACE_ANALYTICS_BY_STATUS_QUERY_PLAN_HASH: Final[str] = "2b3827738c0623593bc3b8061f9dd1abd9c567d55e0f9fe5dd6c8e21f38dc099"
+AGGREGATE_TRACE_ANALYTICS_BY_STATUS_QUERY_PLAN_HASH: Final[str] = "236487c8d9a7c558690d336a214c857c96cd2b46c7e8a4afb2a143690b8805c3"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class AggregateTraceAnalyticsByStatusParams:
@@ -555,7 +618,7 @@ class AggregateTraceAnalyticsByStatusFound:
 
 AggregateTraceAnalyticsByStatusResult: TypeAlias = AggregateTraceAnalyticsByStatusFound
 
-BATCH_GET_TRACE_ASSESSMENTS_QUERY_PLAN_HASH: Final[str] = "ae3d98947887eb2f33d1ad6ac31d697b7e3dc334f23550c537e66cc46ef095da"
+BATCH_GET_TRACE_ASSESSMENTS_QUERY_PLAN_HASH: Final[str] = "10f8429f9061dad1aaf651c62ad467b73d2b61293696d88c55da1e7706409c78"
 BATCH_GET_TRACE_ASSESSMENTS_TRACE_IDS_MAX_ITEMS: Final[int] = 200
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -603,7 +666,7 @@ class BatchGetTraceAssessmentsIntegrityFailure:
 
 BatchGetTraceAssessmentsResult: TypeAlias = BatchGetTraceAssessmentsFound | BatchGetTraceAssessmentsIntegrityFailure
 
-BATCH_GET_TRACE_SPANS_QUERY_PLAN_HASH: Final[str] = "cb8566f0cbe35773b707b79e49cc820b6f1683b2b2038ef5da72ad6ade1c0a06"
+BATCH_GET_TRACE_SPANS_QUERY_PLAN_HASH: Final[str] = "65407fe7a9f941fede972cecf7f59ffa379a04deb6ea6d46c26e3bc7bead8931"
 BATCH_GET_TRACE_SPANS_TRACE_IDS_MAX_ITEMS: Final[int] = 200
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -647,7 +710,7 @@ class BatchGetTraceSpansIntegrityFailure:
 
 BatchGetTraceSpansResult: TypeAlias = BatchGetTraceSpansFound | BatchGetTraceSpansIntegrityFailure
 
-BATCH_GET_TRACES_QUERY_PLAN_HASH: Final[str] = "4840989fee5cee5bfdb747843bb0cb9b115b530be5db607e34285f67e15416df"
+BATCH_GET_TRACES_QUERY_PLAN_HASH: Final[str] = "cba5470e5ee475a321c6ef675f7686dc1a429ff63909258313ccdbc554b8a2f4"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class BatchGetTracesParams:
@@ -724,7 +787,58 @@ class BatchGetTracesIntegrityFailure:
 
 BatchGetTracesResult: TypeAlias = BatchGetTracesFound | BatchGetTracesIntegrityFailure
 
-GET_EXPERIMENT_QUERY_PLAN_HASH: Final[str] = "5636edb45f9318eaf1cecec654d31d88e35ed09683db291775f84d8114033713"
+GET_EVALUATION_DATASET_QUERY_PLAN_HASH: Final[str] = "cad853082797db6ec4049f94bac2951122acb7b3923297d79e1abf5f26cbfe05"
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class GetEvaluationDatasetParams:
+    scope: str
+    dataset_id: str
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class GetEvaluationDatasetFoundDataset:
+    dataset_id: str
+    name: str
+    digest: str
+    created_time_ms: Annotated[int, "i64"]
+    last_update_time_ms: Annotated[int, "i64"]
+    schema_json: str | None
+    profile_json: str | None
+    created_by: str | None
+    last_updated_by: str | None
+    packed_tags: bytes
+    packed_experiment_ids: bytes
+    packed_records: bytes
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class GetEvaluationDatasetFound:
+    dataset: GetEvaluationDatasetFoundDataset
+    outcome: Literal["Found"] = field(default="Found", init=False)
+
+    def is_found(self) -> bool:
+        return True
+
+    def is_missing(self) -> bool:
+        return False
+
+    def unwrap_found(self) -> GetEvaluationDatasetFound:
+        return self
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class GetEvaluationDatasetMissing:
+    outcome: Literal["Missing"] = field(default="Missing", init=False)
+
+    def is_found(self) -> bool:
+        return False
+
+    def is_missing(self) -> bool:
+        return True
+
+    def unwrap_found(self) -> GetEvaluationDatasetFound:
+        raise ValueError("expected GetEvaluationDataset outcome found")
+
+GetEvaluationDatasetResult: TypeAlias = GetEvaluationDatasetFound | GetEvaluationDatasetMissing
+
+GET_EXPERIMENT_QUERY_PLAN_HASH: Final[str] = "7985dc06aae94c4d4604459427e01ecc66f1f5a86db949f6a8bb561224845fbd"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class GetExperimentParams:
@@ -771,7 +885,7 @@ class GetExperimentMissing:
 
 GetExperimentResult: TypeAlias = GetExperimentFound | GetExperimentMissing
 
-GET_EXPERIMENT_BY_NAME_QUERY_PLAN_HASH: Final[str] = "294bfe7c0fadeb84f83f932db08199c2f6287ff4a081f97589aa98396438d266"
+GET_EXPERIMENT_BY_NAME_QUERY_PLAN_HASH: Final[str] = "19ab7461e20117789410b40c0e9b92f1f91b9cae8443399a41a9c974b28b1d63"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class GetExperimentByNameParams:
@@ -818,7 +932,7 @@ class GetExperimentByNameMissing:
 
 GetExperimentByNameResult: TypeAlias = GetExperimentByNameFound | GetExperimentByNameMissing
 
-GET_GATEWAY_BUDGET_POLICY_QUERY_PLAN_HASH: Final[str] = "1b8d13d89b6cfbda5d9a3aa7066f971242ce6e3350b3d4ad5ad53f5f424767de"
+GET_GATEWAY_BUDGET_POLICY_QUERY_PLAN_HASH: Final[str] = "1b7b872977738a8b17b6c1f802df63477dd397a86fdc8be721cae07b94bdb8f1"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class GetGatewayBudgetPolicyParams:
@@ -869,7 +983,7 @@ class GetGatewayBudgetPolicyMissing:
 
 GetGatewayBudgetPolicyResult: TypeAlias = GetGatewayBudgetPolicyFound | GetGatewayBudgetPolicyMissing
 
-GET_GATEWAY_ENDPOINT_QUERY_PLAN_HASH: Final[str] = "ecaf4d81b45f7e243a5ee3c5f7ac96d3cb19375ab2e4a41def6e77fcdb0125e7"
+GET_GATEWAY_ENDPOINT_QUERY_PLAN_HASH: Final[str] = "0ee2c737a9fc9b0ef8c4c57661104738ae9caa1b465da0d249634ee346c51a3e"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class GetGatewayEndpointParams:
@@ -922,7 +1036,7 @@ class GetGatewayEndpointMissing:
 
 GetGatewayEndpointResult: TypeAlias = GetGatewayEndpointFound | GetGatewayEndpointMissing
 
-GET_GATEWAY_GUARDRAIL_QUERY_PLAN_HASH: Final[str] = "c6b5c1bd10a7a4757a51e0c2d3309c76404d7c8a5d149d4cb4f7ff85450c79e1"
+GET_GATEWAY_GUARDRAIL_QUERY_PLAN_HASH: Final[str] = "93fcca7dd514fa9ae9aa426bff0a73d4416745ad4380025740708ee905ccc04d"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class GetGatewayGuardrailParams:
@@ -972,7 +1086,7 @@ class GetGatewayGuardrailMissing:
 
 GetGatewayGuardrailResult: TypeAlias = GetGatewayGuardrailFound | GetGatewayGuardrailMissing
 
-GET_GATEWAY_MODEL_DEFINITION_QUERY_PLAN_HASH: Final[str] = "ac13e42c6e3c4fe89dfcd5c42ee306bdcdad9d38fa1f32b66010acfb7ad5c9bd"
+GET_GATEWAY_MODEL_DEFINITION_QUERY_PLAN_HASH: Final[str] = "1721a8df5fa86668c1018aae3b9edb6a4b40088d652a973e75794bce2476c4dc"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class GetGatewayModelDefinitionParams:
@@ -1020,7 +1134,7 @@ class GetGatewayModelDefinitionMissing:
 
 GetGatewayModelDefinitionResult: TypeAlias = GetGatewayModelDefinitionFound | GetGatewayModelDefinitionMissing
 
-GET_GATEWAY_SECRET_QUERY_PLAN_HASH: Final[str] = "a1893ad447ead2473645aeb4b4308600172e123dde76a940de679db4b6572d78"
+GET_GATEWAY_SECRET_QUERY_PLAN_HASH: Final[str] = "81a7bb81dd7eefdd91f26be4dc0ff5ab5f4cfc44b4f19252a1f4cb2884d1ceb1"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class GetGatewaySecretParams:
@@ -1071,7 +1185,109 @@ class GetGatewaySecretMissing:
 
 GetGatewaySecretResult: TypeAlias = GetGatewaySecretFound | GetGatewaySecretMissing
 
-GET_LOGGED_MODEL_QUERY_PLAN_HASH: Final[str] = "51f917515527f1a80c22ab0b2b43d63b0f409a62207fb2929a114573ae64c5fc"
+GET_ISSUE_QUERY_PLAN_HASH: Final[str] = "43e6693ad6439caa6f56f498366e8ac0f31ce64978cd657235b425203a19ade2"
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class GetIssueParams:
+    scope: str
+    issue_id: str
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class GetIssueFoundIssue:
+    issue_id: str
+    experiment_id: Annotated[int, "u64"]
+    name: str
+    description: str
+    status: str
+    severity: str | None
+    root_causes_json: str | None
+    source_run_id: str | None
+    categories_json: str | None
+    created_timestamp_ms: Annotated[int, "i64"]
+    last_updated_timestamp_ms: Annotated[int, "i64"]
+    created_by: str | None
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class GetIssueFound:
+    issue: GetIssueFoundIssue
+    outcome: Literal["Found"] = field(default="Found", init=False)
+
+    def is_found(self) -> bool:
+        return True
+
+    def is_missing(self) -> bool:
+        return False
+
+    def unwrap_found(self) -> GetIssueFound:
+        return self
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class GetIssueMissing:
+    outcome: Literal["Missing"] = field(default="Missing", init=False)
+
+    def is_found(self) -> bool:
+        return False
+
+    def is_missing(self) -> bool:
+        return True
+
+    def unwrap_found(self) -> GetIssueFound:
+        raise ValueError("expected GetIssue outcome found")
+
+GetIssueResult: TypeAlias = GetIssueFound | GetIssueMissing
+
+GET_LABEL_SCHEMA_QUERY_PLAN_HASH: Final[str] = "3ecbdd903181678285348887fa54f4230df8c3ecf3ddbf1966204f4c234e7601"
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class GetLabelSchemaParams:
+    scope: str
+    schema_id: str
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class GetLabelSchemaFoundLabelSchema:
+    schema_id: str
+    experiment_id: Annotated[int, "u64"]
+    name: str
+    schema_type: str
+    instruction: str | None
+    enable_comment: bool
+    input_type: str
+    input_config_json: str
+    created_by: str | None
+    created_time_ms: Annotated[int, "i64"]
+    last_update_time_ms: Annotated[int, "i64"]
+    is_default: bool
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class GetLabelSchemaFound:
+    label_schema: GetLabelSchemaFoundLabelSchema
+    outcome: Literal["Found"] = field(default="Found", init=False)
+
+    def is_found(self) -> bool:
+        return True
+
+    def is_missing(self) -> bool:
+        return False
+
+    def unwrap_found(self) -> GetLabelSchemaFound:
+        return self
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class GetLabelSchemaMissing:
+    outcome: Literal["Missing"] = field(default="Missing", init=False)
+
+    def is_found(self) -> bool:
+        return False
+
+    def is_missing(self) -> bool:
+        return True
+
+    def unwrap_found(self) -> GetLabelSchemaFound:
+        raise ValueError("expected GetLabelSchema outcome found")
+
+GetLabelSchemaResult: TypeAlias = GetLabelSchemaFound | GetLabelSchemaMissing
+
+GET_LOGGED_MODEL_QUERY_PLAN_HASH: Final[str] = "c9fa05b7e964f608a1638e4763b0e484507cfbbc57f3e935a5512da9f39272b9"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class GetLoggedModelParams:
@@ -1124,7 +1340,7 @@ class GetLoggedModelMissing:
 
 GetLoggedModelResult: TypeAlias = GetLoggedModelFound | GetLoggedModelMissing
 
-GET_MCPACCESS_ENDPOINT_QUERY_PLAN_HASH: Final[str] = "f6d2d24371712cafa338e6e7bb0aee9aa71468188c14cd432333b8ce1e46a523"
+GET_MCPACCESS_ENDPOINT_QUERY_PLAN_HASH: Final[str] = "b32e67e07d03ebd5f584d37105f4393027be0984777a4216d3f85f3a1795b6f3"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class GetMCPAccessEndpointParams:
@@ -1173,7 +1389,7 @@ class GetMCPAccessEndpointMissing:
 
 GetMCPAccessEndpointResult: TypeAlias = GetMCPAccessEndpointFound | GetMCPAccessEndpointMissing
 
-GET_MCPSERVER_QUERY_PLAN_HASH: Final[str] = "05479fe367dfe76cbac5c0bbcde4173d9dda859342a8b0a97a23476b956a409a"
+GET_MCPSERVER_QUERY_PLAN_HASH: Final[str] = "192b815f2a9896b2b589971f29bb47ddc77f7ed4fe44084b0505a67732ba5751"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class GetMCPServerParams:
@@ -1222,7 +1438,7 @@ class GetMCPServerMissing:
 
 GetMCPServerResult: TypeAlias = GetMCPServerFound | GetMCPServerMissing
 
-GET_MCPSERVER_VERSION_QUERY_PLAN_HASH: Final[str] = "b9ef3f7001d4ce21c0c779819bb733080362669d2d2cab9d8fd35ee47506e9b1"
+GET_MCPSERVER_VERSION_QUERY_PLAN_HASH: Final[str] = "64e8139bbd3c9706b2a9e70b5a818d91b38e11f1b63ab0aef92062f98337fa78"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class GetMCPServerVersionParams:
@@ -1278,7 +1494,7 @@ class GetMCPServerVersionMissing:
 
 GetMCPServerVersionResult: TypeAlias = GetMCPServerVersionFound | GetMCPServerVersionMissing
 
-GET_METRIC_HISTORY_QUERY_PLAN_HASH: Final[str] = "448907280d97d92cc9a939b9094f69577903ef32b5202dd240de6b45eb8dd3e7"
+GET_METRIC_HISTORY_QUERY_PLAN_HASH: Final[str] = "6163f83c49e389f19e1a665a9f34b528625df9c175127554c96f92d074fdeb50"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class GetMetricHistoryParams:
@@ -1326,7 +1542,7 @@ class GetMetricHistoryIntegrityFailure:
 
 GetMetricHistoryResult: TypeAlias = GetMetricHistoryFound | GetMetricHistoryIntegrityFailure
 
-GET_MODEL_VERSION_QUERY_PLAN_HASH: Final[str] = "232b9ee690599999f4f8d4c9b3c904e3be81c2d9c9d4d1d96b18278474f86f09"
+GET_MODEL_VERSION_QUERY_PLAN_HASH: Final[str] = "a89f88812cf52acc2187f1571b90ff514919e76544dd3f74305aed35105e91b9"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class GetModelVersionParams:
@@ -1380,7 +1596,7 @@ class GetModelVersionMissing:
 
 GetModelVersionResult: TypeAlias = GetModelVersionFound | GetModelVersionMissing
 
-GET_REGISTERED_MODEL_QUERY_PLAN_HASH: Final[str] = "e5460524d36ee603dd0800eb8fe45c5b444b0dacbc410130b68524835903a5a0"
+GET_REGISTERED_MODEL_QUERY_PLAN_HASH: Final[str] = "7055727296b672d90f8f0ec36d58ada31be3285e8d3fd4ac2dc20fec7ebc97a5"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class GetRegisteredModelParams:
@@ -1426,7 +1642,7 @@ class GetRegisteredModelMissing:
 
 GetRegisteredModelResult: TypeAlias = GetRegisteredModelFound | GetRegisteredModelMissing
 
-GET_REGISTRY_WEBHOOK_QUERY_PLAN_HASH: Final[str] = "93912d05cb75ea4dedca36bc4143d4223976e00d3b53dafef791eb0ee2b8527b"
+GET_REGISTRY_WEBHOOK_QUERY_PLAN_HASH: Final[str] = "8c980c144389c0abcb0bf57ef0634526fef1b356b0766b5e4afa4eb9e54a5c05"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class GetRegistryWebhookParams:
@@ -1475,7 +1691,57 @@ class GetRegistryWebhookMissing:
 
 GetRegistryWebhookResult: TypeAlias = GetRegistryWebhookFound | GetRegistryWebhookMissing
 
-GET_RUN_QUERY_PLAN_HASH: Final[str] = "d093bd6690297dde297a88972e6be706854dd3ba1325150de40d70748fa9ecbe"
+GET_REVIEW_QUEUE_QUERY_PLAN_HASH: Final[str] = "9f44a59c1073a6992dc070d0137dbe9bfe819f040640bcc801c48a53e8136ff6"
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class GetReviewQueueParams:
+    scope: str
+    queue_id: str
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class GetReviewQueueFoundReviewQueue:
+    queue_id: str
+    experiment_id: Annotated[int, "u64"]
+    name: str
+    name_key: str
+    queue_type: str
+    created_by: str | None
+    creation_time_ms: Annotated[int, "i64"]
+    last_update_time_ms: Annotated[int, "i64"]
+    packed_users: bytes
+    packed_schema_ids: bytes
+    packed_items: bytes
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class GetReviewQueueFound:
+    review_queue: GetReviewQueueFoundReviewQueue
+    outcome: Literal["Found"] = field(default="Found", init=False)
+
+    def is_found(self) -> bool:
+        return True
+
+    def is_missing(self) -> bool:
+        return False
+
+    def unwrap_found(self) -> GetReviewQueueFound:
+        return self
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class GetReviewQueueMissing:
+    outcome: Literal["Missing"] = field(default="Missing", init=False)
+
+    def is_found(self) -> bool:
+        return False
+
+    def is_missing(self) -> bool:
+        return True
+
+    def unwrap_found(self) -> GetReviewQueueFound:
+        raise ValueError("expected GetReviewQueue outcome found")
+
+GetReviewQueueResult: TypeAlias = GetReviewQueueFound | GetReviewQueueMissing
+
+GET_RUN_QUERY_PLAN_HASH: Final[str] = "ddc987c82e26ff503c7915e9b5253f5cdd7496deb93a04bcac7669e07757cf43"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class GetRunParams:
@@ -1528,7 +1794,7 @@ class GetRunMissing:
 
 GetRunResult: TypeAlias = GetRunFound | GetRunMissing
 
-GET_RUN_LINEAGE_QUERY_PLAN_HASH: Final[str] = "c897acb13f4130bd294f9c74b6c7ca8dbdc5c5bff454e277cb2c74161ad97750"
+GET_RUN_LINEAGE_QUERY_PLAN_HASH: Final[str] = "6c57aecc6ebef25c1a56f8f168a82e3ec30382302397d6e7b5955437a0045e0b"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class GetRunLineageParams:
@@ -1572,7 +1838,7 @@ class GetRunLineageMissing:
 
 GetRunLineageResult: TypeAlias = GetRunLineageFound | GetRunLineageMissing
 
-GET_SCORER_QUERY_PLAN_HASH: Final[str] = "533ce2af81cfa790a2ad9f17309e9a0de2ba747b20fcc38ca58474e74a5715cf"
+GET_SCORER_QUERY_PLAN_HASH: Final[str] = "38a317ef787bbab88e8674e832abee18d30d0f78739aa8ec4e91f434f61c3e94"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class GetScorerParams:
@@ -1617,7 +1883,7 @@ class GetScorerMissing:
 
 GetScorerResult: TypeAlias = GetScorerFound | GetScorerMissing
 
-GET_SERVER_JOB_QUERY_PLAN_HASH: Final[str] = "62ede0a9351e852df68573245be35ea2510c36c611b2e71e9847ca40d2e41b2b"
+GET_SERVER_JOB_QUERY_PLAN_HASH: Final[str] = "905ba1a12e4e47f7824b60a6f4a7334ce0f05a2ae1b89186a913bd56440adebc"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class GetServerJobParams:
@@ -1666,7 +1932,7 @@ class GetServerJobMissing:
 
 GetServerJobResult: TypeAlias = GetServerJobFound | GetServerJobMissing
 
-GET_TRACE_QUERY_PLAN_HASH: Final[str] = "cd0a1bbf04d5a0153d90119e07793ce96352795fbbe316078bf4718805ae4617"
+GET_TRACE_QUERY_PLAN_HASH: Final[str] = "e07d78cc06cdc712f8a03150e476a589fc717123212270501ef53eb3d20e9633"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class GetTraceParams:
@@ -1770,7 +2036,59 @@ class GetTraceMissing:
 
 GetTraceResult: TypeAlias = GetTraceFound | GetTraceMissing
 
-LIST_GATEWAY_BUDGET_POLICIES_QUERY_PLAN_HASH: Final[str] = "d41c45969a8ca3c65e9c2003b2f41f43f07d4737914a848799c8d03693b38bed"
+LIST_EVALUATION_DATASETS_QUERY_PLAN_HASH: Final[str] = "ee59902984e9a0b3b9e32493b12d395fb686233981cfbd51d092d45e7e847e7e"
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class ListEvaluationDatasetsParams:
+    scope: str
+    limit: Annotated[int, "u64"] | None = None
+    after: str | None = None
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class ListEvaluationDatasetsFoundDatasets:
+    dataset_id: str
+    name: str
+    digest: str
+    created_time_ms: Annotated[int, "i64"]
+    last_update_time_ms: Annotated[int, "i64"]
+    schema_json: str | None
+    profile_json: str | None
+    created_by: str | None
+    last_updated_by: str | None
+    packed_tags: bytes
+    packed_experiment_ids: bytes
+    packed_records: bytes
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class ListEvaluationDatasetsFound:
+    datasets: tuple[ListEvaluationDatasetsFoundDatasets, ...]
+    outcome: Literal["Found"] = field(default="Found", init=False)
+
+    def is_found(self) -> bool:
+        return True
+
+    def is_integrity_failure(self) -> bool:
+        return False
+
+    def unwrap_found(self) -> ListEvaluationDatasetsFound:
+        return self
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class ListEvaluationDatasetsIntegrityFailure:
+    outcome: Literal["IntegrityFailure"] = field(default="IntegrityFailure", init=False)
+
+    def is_found(self) -> bool:
+        return False
+
+    def is_integrity_failure(self) -> bool:
+        return True
+
+    def unwrap_found(self) -> ListEvaluationDatasetsFound:
+        raise ValueError("expected ListEvaluationDatasets outcome found")
+
+ListEvaluationDatasetsResult: TypeAlias = ListEvaluationDatasetsFound | ListEvaluationDatasetsIntegrityFailure
+
+LIST_GATEWAY_BUDGET_POLICIES_QUERY_PLAN_HASH: Final[str] = "98e01fa33354c1e87a997ae818158bf51d91ce8130b521417041b8eb20b4d81b"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class ListGatewayBudgetPoliciesParams:
@@ -1822,7 +2140,7 @@ class ListGatewayBudgetPoliciesIntegrityFailure:
 
 ListGatewayBudgetPoliciesResult: TypeAlias = ListGatewayBudgetPoliciesFound | ListGatewayBudgetPoliciesIntegrityFailure
 
-LIST_GATEWAY_ENDPOINTS_QUERY_PLAN_HASH: Final[str] = "5d229a8af94175e36da7dbf0156aacc754ee861720316ad8ea28b15d4c4a4adf"
+LIST_GATEWAY_ENDPOINTS_QUERY_PLAN_HASH: Final[str] = "7123e684de25aae5472983e99376df44c4e18090d6f1389962fc623b206fc26b"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class ListGatewayEndpointsParams:
@@ -1876,7 +2194,7 @@ class ListGatewayEndpointsIntegrityFailure:
 
 ListGatewayEndpointsResult: TypeAlias = ListGatewayEndpointsFound | ListGatewayEndpointsIntegrityFailure
 
-LIST_GATEWAY_GUARDRAILS_QUERY_PLAN_HASH: Final[str] = "37486eefad8047d7c1fe869dc01899c9f1e647633715200d3678450390a5c637"
+LIST_GATEWAY_GUARDRAILS_QUERY_PLAN_HASH: Final[str] = "9bd7ba21aaa7eb670ba91d6c75441793442cb9af37f1f447677862ca72791733"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class ListGatewayGuardrailsParams:
@@ -1927,7 +2245,7 @@ class ListGatewayGuardrailsIntegrityFailure:
 
 ListGatewayGuardrailsResult: TypeAlias = ListGatewayGuardrailsFound | ListGatewayGuardrailsIntegrityFailure
 
-LIST_GATEWAY_MODEL_DEFINITIONS_QUERY_PLAN_HASH: Final[str] = "05c72f26f8cad9c75c335ceafe5ece8f65b6d62893d3798ac14e34d574e83cc6"
+LIST_GATEWAY_MODEL_DEFINITIONS_QUERY_PLAN_HASH: Final[str] = "e5ab7acdf3223ee0724ff8106b9f862f05df764f1589a7aeacaab937f26e424c"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class ListGatewayModelDefinitionsParams:
@@ -1976,7 +2294,7 @@ class ListGatewayModelDefinitionsIntegrityFailure:
 
 ListGatewayModelDefinitionsResult: TypeAlias = ListGatewayModelDefinitionsFound | ListGatewayModelDefinitionsIntegrityFailure
 
-LIST_GATEWAY_SECRETS_QUERY_PLAN_HASH: Final[str] = "142eb22759d8d7abd67e84ddd116d25ab8ecab59dac3fce1568d791e5db4eef5"
+LIST_GATEWAY_SECRETS_QUERY_PLAN_HASH: Final[str] = "6cbbe097c21a5cc2f4b591f2cd51d3db5ff5311d69414cfac4162dcb8a8bdd10"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class ListGatewaySecretsParams:
@@ -2028,7 +2346,111 @@ class ListGatewaySecretsIntegrityFailure:
 
 ListGatewaySecretsResult: TypeAlias = ListGatewaySecretsFound | ListGatewaySecretsIntegrityFailure
 
-LIST_MCPACCESS_ENDPOINTS_BY_SERVER_QUERY_PLAN_HASH: Final[str] = "4b319091103263d43a6438f8b3aa1f262e82b36d486590719c3cbc2b45b3b8cc"
+LIST_ISSUES_QUERY_PLAN_HASH: Final[str] = "f111f1b6caec2489eb14a48fb2f804e597d547b5aee1932e934afcfb761444b1"
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class ListIssuesParams:
+    scope: str
+    limit: Annotated[int, "u64"] | None = None
+    after: str | None = None
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class ListIssuesFoundIssues:
+    issue_id: str
+    experiment_id: Annotated[int, "u64"]
+    name: str
+    description: str
+    status: str
+    severity: str | None
+    root_causes_json: str | None
+    source_run_id: str | None
+    categories_json: str | None
+    created_timestamp_ms: Annotated[int, "i64"]
+    last_updated_timestamp_ms: Annotated[int, "i64"]
+    created_by: str | None
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class ListIssuesFound:
+    issues: tuple[ListIssuesFoundIssues, ...]
+    outcome: Literal["Found"] = field(default="Found", init=False)
+
+    def is_found(self) -> bool:
+        return True
+
+    def is_integrity_failure(self) -> bool:
+        return False
+
+    def unwrap_found(self) -> ListIssuesFound:
+        return self
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class ListIssuesIntegrityFailure:
+    outcome: Literal["IntegrityFailure"] = field(default="IntegrityFailure", init=False)
+
+    def is_found(self) -> bool:
+        return False
+
+    def is_integrity_failure(self) -> bool:
+        return True
+
+    def unwrap_found(self) -> ListIssuesFound:
+        raise ValueError("expected ListIssues outcome found")
+
+ListIssuesResult: TypeAlias = ListIssuesFound | ListIssuesIntegrityFailure
+
+LIST_LABEL_SCHEMAS_QUERY_PLAN_HASH: Final[str] = "458cac8caa07a54509cec64582af9f162d5d82b4289c1d2d9b6d7cac1a7a1b14"
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class ListLabelSchemasParams:
+    scope: str
+    limit: Annotated[int, "u64"] | None = None
+    after: str | None = None
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class ListLabelSchemasFoundLabelSchemas:
+    schema_id: str
+    experiment_id: Annotated[int, "u64"]
+    name: str
+    schema_type: str
+    instruction: str | None
+    enable_comment: bool
+    input_type: str
+    input_config_json: str
+    created_by: str | None
+    created_time_ms: Annotated[int, "i64"]
+    last_update_time_ms: Annotated[int, "i64"]
+    is_default: bool
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class ListLabelSchemasFound:
+    label_schemas: tuple[ListLabelSchemasFoundLabelSchemas, ...]
+    outcome: Literal["Found"] = field(default="Found", init=False)
+
+    def is_found(self) -> bool:
+        return True
+
+    def is_integrity_failure(self) -> bool:
+        return False
+
+    def unwrap_found(self) -> ListLabelSchemasFound:
+        return self
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class ListLabelSchemasIntegrityFailure:
+    outcome: Literal["IntegrityFailure"] = field(default="IntegrityFailure", init=False)
+
+    def is_found(self) -> bool:
+        return False
+
+    def is_integrity_failure(self) -> bool:
+        return True
+
+    def unwrap_found(self) -> ListLabelSchemasFound:
+        raise ValueError("expected ListLabelSchemas outcome found")
+
+ListLabelSchemasResult: TypeAlias = ListLabelSchemasFound | ListLabelSchemasIntegrityFailure
+
+LIST_MCPACCESS_ENDPOINTS_BY_SERVER_QUERY_PLAN_HASH: Final[str] = "969b889851f3baa0b58949a69110f5392ef422d32a210e65696562e5af03476e"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class ListMCPAccessEndpointsByServerParams:
@@ -2079,7 +2501,7 @@ class ListMCPAccessEndpointsByServerIntegrityFailure:
 
 ListMCPAccessEndpointsByServerResult: TypeAlias = ListMCPAccessEndpointsByServerFound | ListMCPAccessEndpointsByServerIntegrityFailure
 
-LIST_MCPSERVER_VERSIONS_BY_SERVER_QUERY_PLAN_HASH: Final[str] = "175c829119f5265c7ead0b17fc6a96cf0334bec910afb1b188bfb203843fa257"
+LIST_MCPSERVER_VERSIONS_BY_SERVER_QUERY_PLAN_HASH: Final[str] = "3d76eb4e7c3de7ea08c33a368a52b8380caca79f3d53ea8090a90415b460e18f"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class ListMCPServerVersionsByServerParams:
@@ -2136,7 +2558,7 @@ class ListMCPServerVersionsByServerIntegrityFailure:
 
 ListMCPServerVersionsByServerResult: TypeAlias = ListMCPServerVersionsByServerFound | ListMCPServerVersionsByServerIntegrityFailure
 
-LIST_MODEL_VERSIONS_BY_MODEL_QUERY_PLAN_HASH: Final[str] = "6c39f5d24248f921f7afa3e5c2099e4d69a9e242e3137695cb3d05e989dd4d09"
+LIST_MODEL_VERSIONS_BY_MODEL_QUERY_PLAN_HASH: Final[str] = "fedbb74e2d23a21185b5098d8f08dad3f8620d86a9ef533458c0612c1c634cbd"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class ListModelVersionsByModelParams:
@@ -2191,7 +2613,7 @@ class ListModelVersionsByModelIntegrityFailure:
 
 ListModelVersionsByModelResult: TypeAlias = ListModelVersionsByModelFound | ListModelVersionsByModelIntegrityFailure
 
-LIST_REGISTRY_WEBHOOKS_QUERY_PLAN_HASH: Final[str] = "ed641d663bc1449713061827db4dad255bc84f4653b45b98f8e6b07bbbc5edb5"
+LIST_REGISTRY_WEBHOOKS_QUERY_PLAN_HASH: Final[str] = "66eb28516532483ebd7a85173da82e810b3d8512a44807c5ed5b06f3fa3b1b00"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class ListRegistryWebhooksParams:
@@ -2241,7 +2663,58 @@ class ListRegistryWebhooksIntegrityFailure:
 
 ListRegistryWebhooksResult: TypeAlias = ListRegistryWebhooksFound | ListRegistryWebhooksIntegrityFailure
 
-LIST_SCORERS_QUERY_PLAN_HASH: Final[str] = "797b48e9a5fb75b28e049182c03d6f90721b39efe219c22191247bcba8a44b70"
+LIST_REVIEW_QUEUES_QUERY_PLAN_HASH: Final[str] = "a403d3a957adaae75f1fc96c729bbb33690130e4293c432bc47eac207b906259"
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class ListReviewQueuesParams:
+    scope: str
+    limit: Annotated[int, "u64"] | None = None
+    after: str | None = None
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class ListReviewQueuesFoundReviewQueues:
+    queue_id: str
+    experiment_id: Annotated[int, "u64"]
+    name: str
+    name_key: str
+    queue_type: str
+    created_by: str | None
+    creation_time_ms: Annotated[int, "i64"]
+    last_update_time_ms: Annotated[int, "i64"]
+    packed_users: bytes
+    packed_schema_ids: bytes
+    packed_items: bytes
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class ListReviewQueuesFound:
+    review_queues: tuple[ListReviewQueuesFoundReviewQueues, ...]
+    outcome: Literal["Found"] = field(default="Found", init=False)
+
+    def is_found(self) -> bool:
+        return True
+
+    def is_integrity_failure(self) -> bool:
+        return False
+
+    def unwrap_found(self) -> ListReviewQueuesFound:
+        return self
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class ListReviewQueuesIntegrityFailure:
+    outcome: Literal["IntegrityFailure"] = field(default="IntegrityFailure", init=False)
+
+    def is_found(self) -> bool:
+        return False
+
+    def is_integrity_failure(self) -> bool:
+        return True
+
+    def unwrap_found(self) -> ListReviewQueuesFound:
+        raise ValueError("expected ListReviewQueues outcome found")
+
+ListReviewQueuesResult: TypeAlias = ListReviewQueuesFound | ListReviewQueuesIntegrityFailure
+
+LIST_SCORERS_QUERY_PLAN_HASH: Final[str] = "e134aba8c52ad09ba3d856bdd1b40d4c457c26836057bf72abc0acfdb16f8882"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class ListScorersParams:
@@ -2287,7 +2760,7 @@ class ListScorersIntegrityFailure:
 
 ListScorersResult: TypeAlias = ListScorersFound | ListScorersIntegrityFailure
 
-LIST_SERVER_JOBS_QUERY_PLAN_HASH: Final[str] = "e5ae5b54ae0d084924a3eeeee70f90418faf923c65222f153e1bdd585e7bec18"
+LIST_SERVER_JOBS_QUERY_PLAN_HASH: Final[str] = "010939bcb387668d604a66eb2924251fda34a9b3ab79e1c456d1125e44133b56"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class ListServerJobsParams:
@@ -2337,7 +2810,7 @@ class ListServerJobsIntegrityFailure:
 
 ListServerJobsResult: TypeAlias = ListServerJobsFound | ListServerJobsIntegrityFailure
 
-QUERY_ASSESSMENT_ANALYTICS_QUERY_PLAN_HASH: Final[str] = "c528e51543fc08cf02d1c3f6f7fefb116146686ac30c3900448834beb7c93e79"
+QUERY_ASSESSMENT_ANALYTICS_QUERY_PLAN_HASH: Final[str] = "6c0b7bd643219f1c14ceebc3175a3711d57cc44ca28ad2c8a8d4c83715cd2fdc"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class QueryAssessmentAnalyticsParams:
@@ -2385,7 +2858,7 @@ class QueryAssessmentAnalyticsIntegrityFailure:
 
 QueryAssessmentAnalyticsResult: TypeAlias = QueryAssessmentAnalyticsFound | QueryAssessmentAnalyticsIntegrityFailure
 
-QUERY_SPAN_ANALYTICS_QUERY_PLAN_HASH: Final[str] = "16f168323fe3d33f5209053ac0de296d6447739139c42759c62ab96cbe8d7e66"
+QUERY_SPAN_ANALYTICS_QUERY_PLAN_HASH: Final[str] = "cd65108b7b8efab4ce11f15de16d52f4bb552c5168170b803075144baddc104c"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class QuerySpanAnalyticsParams:
@@ -2443,7 +2916,7 @@ class QuerySpanAnalyticsIntegrityFailure:
 
 QuerySpanAnalyticsResult: TypeAlias = QuerySpanAnalyticsFound | QuerySpanAnalyticsIntegrityFailure
 
-QUERY_SPAN_MODEL_ROLLUP_QUERY_PLAN_HASH: Final[str] = "cf5a30f00b111c8c64da8b058c88cde7a0e006f7feb048d307809cc352d7a534"
+QUERY_SPAN_MODEL_ROLLUP_QUERY_PLAN_HASH: Final[str] = "989c6b06c9092f0322281c5225342d860c9a8e9d47ca7d5e388e87c28581318c"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class QuerySpanModelRollupParams:
@@ -2500,7 +2973,7 @@ class QuerySpanModelRollupIntegrityFailure:
 
 QuerySpanModelRollupResult: TypeAlias = QuerySpanModelRollupFound | QuerySpanModelRollupIntegrityFailure
 
-QUERY_TRACE_ANALYTICS_QUERY_PLAN_HASH: Final[str] = "d7354f1a96701306612f50b9a70e0551fb511c08940551b8097b4e36c54ea8b9"
+QUERY_TRACE_ANALYTICS_QUERY_PLAN_HASH: Final[str] = "0b6bdf38c7f623a48fd643c248b6b8d441ea91176bd0d26fffae294da209a14c"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class QueryTraceAnalyticsParams:
@@ -2557,7 +3030,7 @@ class QueryTraceAnalyticsIntegrityFailure:
 
 QueryTraceAnalyticsResult: TypeAlias = QueryTraceAnalyticsFound | QueryTraceAnalyticsIntegrityFailure
 
-SEARCH_EXPERIMENTS_QUERY_PLAN_HASH: Final[str] = "9f75223d34e3501941ff550aff6952902924f929c97aa389acca3c9bcb50e0fd"
+SEARCH_EXPERIMENTS_QUERY_PLAN_HASH: Final[str] = "5ffdacd5f641fb0168d292ddd8ee60873f25273df085d7edbd0f7f8c51e65f99"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsParams:
@@ -2607,7 +3080,7 @@ class SearchExperimentsIntegrityFailure:
 
 SearchExperimentsResult: TypeAlias = SearchExperimentsFound | SearchExperimentsIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_NAME_QUERY_PLAN_HASH: Final[str] = "410db1a2f78de1056ad4a2b249714398181c94ccb27141867eb05f05356b3fe7"
+SEARCH_EXPERIMENTS_BY_NAME_QUERY_PLAN_HASH: Final[str] = "625e3f4d7024b2d90ca8bf32b49bb39a97419fe35e89bf0ffdc62330917cd134"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByNameParams:
@@ -2658,7 +3131,7 @@ class SearchExperimentsByNameIntegrityFailure:
 
 SearchExperimentsByNameResult: TypeAlias = SearchExperimentsByNameFound | SearchExperimentsByNameIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_NAME_AND_TAG_QUERY_PLAN_HASH: Final[str] = "0f569f779387b7c08918705e714de9c85297d56449279ed203adf4c0df513efa"
+SEARCH_EXPERIMENTS_BY_NAME_AND_TAG_QUERY_PLAN_HASH: Final[str] = "c5f3fd77f144442f6bbf4d96055b4971f6afd90836255048566efde668fd73f8"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByNameAndTagParams:
@@ -2711,7 +3184,7 @@ class SearchExperimentsByNameAndTagIntegrityFailure:
 
 SearchExperimentsByNameAndTagResult: TypeAlias = SearchExperimentsByNameAndTagFound | SearchExperimentsByNameAndTagIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_NAME_AND_TAG_IS_NULL_QUERY_PLAN_HASH: Final[str] = "47703c0f4bdb31fd51654b9ff0bb310f56d74cf9cd768d7021596f0ac51995cf"
+SEARCH_EXPERIMENTS_BY_NAME_AND_TAG_IS_NULL_QUERY_PLAN_HASH: Final[str] = "cbd926ad9b545aa165d050174ba34408089c0640b6e11456317e35a653352705"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByNameAndTagIsNullParams:
@@ -2763,7 +3236,7 @@ class SearchExperimentsByNameAndTagIsNullIntegrityFailure:
 
 SearchExperimentsByNameAndTagIsNullResult: TypeAlias = SearchExperimentsByNameAndTagIsNullFound | SearchExperimentsByNameAndTagIsNullIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_NAME_ILIKE_QUERY_PLAN_HASH: Final[str] = "8739106103e3f387c56e7b0e334c256469d47d11c658c7a14017cb2cdc935b94"
+SEARCH_EXPERIMENTS_BY_NAME_ILIKE_QUERY_PLAN_HASH: Final[str] = "2e871b200371ce591379e3d8042186ef2973879d6b8d8b3293c4fe98e8253737"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByNameILikeParams:
@@ -2814,7 +3287,7 @@ class SearchExperimentsByNameILikeIntegrityFailure:
 
 SearchExperimentsByNameILikeResult: TypeAlias = SearchExperimentsByNameILikeFound | SearchExperimentsByNameILikeIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_NAME_ILIKE_AND_GATEWAY_IS_NULL_QUERY_PLAN_HASH: Final[str] = "7314236b16c6a2cc3426f071b6af1e102becb5e01155f7a01a9ecc7656e9fcd9"
+SEARCH_EXPERIMENTS_BY_NAME_ILIKE_AND_GATEWAY_IS_NULL_QUERY_PLAN_HASH: Final[str] = "88fca988da865c718d8e3d336153039fc60095acacd50041157be0e5fbec7579"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByNameILikeAndGatewayIsNullParams:
@@ -2865,7 +3338,7 @@ class SearchExperimentsByNameILikeAndGatewayIsNullIntegrityFailure:
 
 SearchExperimentsByNameILikeAndGatewayIsNullResult: TypeAlias = SearchExperimentsByNameILikeAndGatewayIsNullFound | SearchExperimentsByNameILikeAndGatewayIsNullIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_NAME_ILIKE_AND_TAG_QUERY_PLAN_HASH: Final[str] = "b00a0bd5617b1dcc3430633d29d31aaafd83df8b6577bb2308e0864574d153d8"
+SEARCH_EXPERIMENTS_BY_NAME_ILIKE_AND_TAG_QUERY_PLAN_HASH: Final[str] = "987b0936a6295e47d5c43bc9b0696fe7cfe818ed7144d3c0a4328f2fa72b2534"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByNameILikeAndTagParams:
@@ -2918,7 +3391,7 @@ class SearchExperimentsByNameILikeAndTagIntegrityFailure:
 
 SearchExperimentsByNameILikeAndTagResult: TypeAlias = SearchExperimentsByNameILikeAndTagFound | SearchExperimentsByNameILikeAndTagIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_NAME_ILIKE_AND_TAG_AND_GATEWAY_IS_NULL_QUERY_PLAN_HASH: Final[str] = "36800571e1e86b749a5a2fe8ac6e0d7e108c67cf3353532a208f4cb4b7804ee3"
+SEARCH_EXPERIMENTS_BY_NAME_ILIKE_AND_TAG_AND_GATEWAY_IS_NULL_QUERY_PLAN_HASH: Final[str] = "27ea1d0d28f2981f07ed07b03852bb0efabbd9f1ac57f6c983608ff6876c57f3"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByNameILikeAndTagAndGatewayIsNullParams:
@@ -2971,7 +3444,7 @@ class SearchExperimentsByNameILikeAndTagAndGatewayIsNullIntegrityFailure:
 
 SearchExperimentsByNameILikeAndTagAndGatewayIsNullResult: TypeAlias = SearchExperimentsByNameILikeAndTagAndGatewayIsNullFound | SearchExperimentsByNameILikeAndTagAndGatewayIsNullIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_NAME_ILIKE_AND_TAG_IS_NOT_NULL_QUERY_PLAN_HASH: Final[str] = "1621e51252231cbb8003f93a675a502fd28d0400ab17e66e54294af4e2f3a4c6"
+SEARCH_EXPERIMENTS_BY_NAME_ILIKE_AND_TAG_IS_NOT_NULL_QUERY_PLAN_HASH: Final[str] = "c32560ffa0a852bdfd6f6d0e67b4f8faad45b53f1a6d218a304e0139678122a6"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByNameILikeAndTagIsNotNullParams:
@@ -3023,7 +3496,7 @@ class SearchExperimentsByNameILikeAndTagIsNotNullIntegrityFailure:
 
 SearchExperimentsByNameILikeAndTagIsNotNullResult: TypeAlias = SearchExperimentsByNameILikeAndTagIsNotNullFound | SearchExperimentsByNameILikeAndTagIsNotNullIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_NAME_LIKE_QUERY_PLAN_HASH: Final[str] = "d973d0937a9199851cc717438485577953dd202a10908dea256a04b1b5df826b"
+SEARCH_EXPERIMENTS_BY_NAME_LIKE_QUERY_PLAN_HASH: Final[str] = "a5ab2d014422db428c6a9b2e201036b20f0b7fc5fca572a848877d007ffad930"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByNameLikeParams:
@@ -3074,7 +3547,7 @@ class SearchExperimentsByNameLikeIntegrityFailure:
 
 SearchExperimentsByNameLikeResult: TypeAlias = SearchExperimentsByNameLikeFound | SearchExperimentsByNameLikeIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_NAME_LIKE_AND_GATEWAY_IS_NULL_QUERY_PLAN_HASH: Final[str] = "ede4f6c6f27731b7ba9afc642d260ddb72d78404df39a74fafa03f5243730fd0"
+SEARCH_EXPERIMENTS_BY_NAME_LIKE_AND_GATEWAY_IS_NULL_QUERY_PLAN_HASH: Final[str] = "ee4b5c531b8e0d6a11e140a5d929c785c0b00d583b1078b27ace5295bce7736d"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByNameLikeAndGatewayIsNullParams:
@@ -3125,7 +3598,7 @@ class SearchExperimentsByNameLikeAndGatewayIsNullIntegrityFailure:
 
 SearchExperimentsByNameLikeAndGatewayIsNullResult: TypeAlias = SearchExperimentsByNameLikeAndGatewayIsNullFound | SearchExperimentsByNameLikeAndGatewayIsNullIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_NAME_LIKE_AND_TAG_QUERY_PLAN_HASH: Final[str] = "a6ef5022c999bf515c985808dace4a067c1a6d31e558109e36965f3526ba1bd7"
+SEARCH_EXPERIMENTS_BY_NAME_LIKE_AND_TAG_QUERY_PLAN_HASH: Final[str] = "4f2ea0fdbb0150d3b35e72d4584cc968690d079a8ef75c7ee887cfe88153d999"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByNameLikeAndTagParams:
@@ -3178,7 +3651,7 @@ class SearchExperimentsByNameLikeAndTagIntegrityFailure:
 
 SearchExperimentsByNameLikeAndTagResult: TypeAlias = SearchExperimentsByNameLikeAndTagFound | SearchExperimentsByNameLikeAndTagIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_NAME_NOT_EQUAL_QUERY_PLAN_HASH: Final[str] = "5f1371b2cae54aec12889e5a0a41fa55e3672dca7096f8733dc94b5597ac8916"
+SEARCH_EXPERIMENTS_BY_NAME_NOT_EQUAL_QUERY_PLAN_HASH: Final[str] = "71008774be2f53ba6ef5d555064c6d24ec80f231634cda2ec16840e545021702"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByNameNotEqualParams:
@@ -3229,7 +3702,7 @@ class SearchExperimentsByNameNotEqualIntegrityFailure:
 
 SearchExperimentsByNameNotEqualResult: TypeAlias = SearchExperimentsByNameNotEqualFound | SearchExperimentsByNameNotEqualIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_NAME_NOT_EQUAL_AND_TAG_IS_NULL_QUERY_PLAN_HASH: Final[str] = "30acacd682958177c3fecdd27aba80365d51c5b783bfc0b4bd6c6044140ad364"
+SEARCH_EXPERIMENTS_BY_NAME_NOT_EQUAL_AND_TAG_IS_NULL_QUERY_PLAN_HASH: Final[str] = "2091bf64bbda801af3ed130c07b558b9c343f1fef8f6e966068c7b35657d1caa"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByNameNotEqualAndTagIsNullParams:
@@ -3281,7 +3754,7 @@ class SearchExperimentsByNameNotEqualAndTagIsNullIntegrityFailure:
 
 SearchExperimentsByNameNotEqualAndTagIsNullResult: TypeAlias = SearchExperimentsByNameNotEqualAndTagIsNullFound | SearchExperimentsByNameNotEqualAndTagIsNullIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_TAG_QUERY_PLAN_HASH: Final[str] = "6a20738f2c1d7c7df353233cb8b93436ad2e426165a9257aa6f06550ddc324de"
+SEARCH_EXPERIMENTS_BY_TAG_QUERY_PLAN_HASH: Final[str] = "983c1f60f7472c37002b56f45dc0db81e0e6f9c60be2db4652bddcdb90705631"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByTagParams:
@@ -3333,7 +3806,7 @@ class SearchExperimentsByTagIntegrityFailure:
 
 SearchExperimentsByTagResult: TypeAlias = SearchExperimentsByTagFound | SearchExperimentsByTagIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_TAG_AND_GATEWAY_IS_NULL_QUERY_PLAN_HASH: Final[str] = "9e9b7c06f4761f7af6218dc2cd911f45005e20630cf473d2a85556e7d2da5034"
+SEARCH_EXPERIMENTS_BY_TAG_AND_GATEWAY_IS_NULL_QUERY_PLAN_HASH: Final[str] = "8d265f04527e19c31862841e812b1bda7f530b91ab206ed15026ecb6292ef5d2"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByTagAndGatewayIsNullParams:
@@ -3385,7 +3858,7 @@ class SearchExperimentsByTagAndGatewayIsNullIntegrityFailure:
 
 SearchExperimentsByTagAndGatewayIsNullResult: TypeAlias = SearchExperimentsByTagAndGatewayIsNullFound | SearchExperimentsByTagAndGatewayIsNullIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_TAG_AND_TAG_IS_NOT_NULL_QUERY_PLAN_HASH: Final[str] = "b0c95cf0a913152e8748233daf878a542a6fa89d9de4845b11b8dc3280c0ebdb"
+SEARCH_EXPERIMENTS_BY_TAG_AND_TAG_IS_NOT_NULL_QUERY_PLAN_HASH: Final[str] = "e82a34c58249a96d1fd214f7b3d4c022cd2706d42e82093fa1720e20ccf3da8d"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByTagAndTagIsNotNullParams:
@@ -3438,7 +3911,7 @@ class SearchExperimentsByTagAndTagIsNotNullIntegrityFailure:
 
 SearchExperimentsByTagAndTagIsNotNullResult: TypeAlias = SearchExperimentsByTagAndTagIsNotNullFound | SearchExperimentsByTagAndTagIsNotNullIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_TAG_ILIKE_QUERY_PLAN_HASH: Final[str] = "532ecee2c14fa7376bb151fce3146d040322a4ac71705a8065607e96f8c087c0"
+SEARCH_EXPERIMENTS_BY_TAG_ILIKE_QUERY_PLAN_HASH: Final[str] = "29c197ca51b401e784379b1bfc7285ea9e5dec9d61eb0ee3e86daf9c6c6baad4"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByTagILikeParams:
@@ -3490,7 +3963,7 @@ class SearchExperimentsByTagILikeIntegrityFailure:
 
 SearchExperimentsByTagILikeResult: TypeAlias = SearchExperimentsByTagILikeFound | SearchExperimentsByTagILikeIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_TAG_IS_NOT_NULL_QUERY_PLAN_HASH: Final[str] = "1392467fac9205aeea8dd356c0039d855cecc78eef74beb5b2a360f655f0bcc1"
+SEARCH_EXPERIMENTS_BY_TAG_IS_NOT_NULL_QUERY_PLAN_HASH: Final[str] = "9cfd0ee6117d6da023ddb0e85e318e5e4a22acafe196622a535f76bb4a24996b"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByTagIsNotNullParams:
@@ -3541,7 +4014,7 @@ class SearchExperimentsByTagIsNotNullIntegrityFailure:
 
 SearchExperimentsByTagIsNotNullResult: TypeAlias = SearchExperimentsByTagIsNotNullFound | SearchExperimentsByTagIsNotNullIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_TAG_IS_NOT_NULL_AND_GATEWAY_IS_NULL_QUERY_PLAN_HASH: Final[str] = "6081e48eb928a6cef79c0fb97713dbc35332972ab69020b98ddd82d34f287313"
+SEARCH_EXPERIMENTS_BY_TAG_IS_NOT_NULL_AND_GATEWAY_IS_NULL_QUERY_PLAN_HASH: Final[str] = "590635fd3aef1e878100c0ad464d0ec92bba0b962f8b66699dd54ed51842bd09"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByTagIsNotNullAndGatewayIsNullParams:
@@ -3592,7 +4065,7 @@ class SearchExperimentsByTagIsNotNullAndGatewayIsNullIntegrityFailure:
 
 SearchExperimentsByTagIsNotNullAndGatewayIsNullResult: TypeAlias = SearchExperimentsByTagIsNotNullAndGatewayIsNullFound | SearchExperimentsByTagIsNotNullAndGatewayIsNullIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_TAG_IS_NULL_QUERY_PLAN_HASH: Final[str] = "be0b70ebdc474823488a65c076e8d0dae667b4de79a9d5f0ef0470d56abaffad"
+SEARCH_EXPERIMENTS_BY_TAG_IS_NULL_QUERY_PLAN_HASH: Final[str] = "bc64f23581685c1cdbcef2f67eaa2611812dabc2a036930ec4fbf2bde4530149"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByTagIsNullParams:
@@ -3643,7 +4116,7 @@ class SearchExperimentsByTagIsNullIntegrityFailure:
 
 SearchExperimentsByTagIsNullResult: TypeAlias = SearchExperimentsByTagIsNullFound | SearchExperimentsByTagIsNullIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_TAG_LIKE_QUERY_PLAN_HASH: Final[str] = "789ea2f037fedeae4254571ce102ff02d6eefe4d5c1b324cd766801b3fae6896"
+SEARCH_EXPERIMENTS_BY_TAG_LIKE_QUERY_PLAN_HASH: Final[str] = "533328b6601f992f2484393214ab414582fa7a6f1ffbc46da846dd171a8fa31e"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByTagLikeParams:
@@ -3695,7 +4168,7 @@ class SearchExperimentsByTagLikeIntegrityFailure:
 
 SearchExperimentsByTagLikeResult: TypeAlias = SearchExperimentsByTagLikeFound | SearchExperimentsByTagLikeIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_TAG_NOT_EQUAL_QUERY_PLAN_HASH: Final[str] = "f74b9f2e3b5d2888cd77ddf3b1fd75a4d71c89a7997d4bace6e321723d5acfbc"
+SEARCH_EXPERIMENTS_BY_TAG_NOT_EQUAL_QUERY_PLAN_HASH: Final[str] = "40df4d3e3fa33a4c29dc95c2145feea2e46e65d2deab040a789d2008e20d151d"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByTagNotEqualParams:
@@ -3747,7 +4220,7 @@ class SearchExperimentsByTagNotEqualIntegrityFailure:
 
 SearchExperimentsByTagNotEqualResult: TypeAlias = SearchExperimentsByTagNotEqualFound | SearchExperimentsByTagNotEqualIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_TAG_NOT_EQUAL_AND_GATEWAY_IS_NULL_QUERY_PLAN_HASH: Final[str] = "8e16ef3c6d7b8d86c2dca8e7a84572b843cc8d5d47f35976cb241d9d537a3871"
+SEARCH_EXPERIMENTS_BY_TAG_NOT_EQUAL_AND_GATEWAY_IS_NULL_QUERY_PLAN_HASH: Final[str] = "ab44a8c4bdcbbc458f476a3cbf33a203ad23adc852aa5bf03a63dfa97130c7b6"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByTagNotEqualAndGatewayIsNullParams:
@@ -3799,7 +4272,7 @@ class SearchExperimentsByTagNotEqualAndGatewayIsNullIntegrityFailure:
 
 SearchExperimentsByTagNotEqualAndGatewayIsNullResult: TypeAlias = SearchExperimentsByTagNotEqualAndGatewayIsNullFound | SearchExperimentsByTagNotEqualAndGatewayIsNullIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_TWO_TAGS_QUERY_PLAN_HASH: Final[str] = "0895a39c30867eb622ee22b690e472c1ca1d9c93adcc378e5f15a39c0970c5c8"
+SEARCH_EXPERIMENTS_BY_TWO_TAGS_QUERY_PLAN_HASH: Final[str] = "c52fb4e19ac477ffd418ea8d590bee366cbb1f806e3246d378d554d5aa81062e"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByTwoTagsParams:
@@ -3853,7 +4326,7 @@ class SearchExperimentsByTwoTagsIntegrityFailure:
 
 SearchExperimentsByTwoTagsResult: TypeAlias = SearchExperimentsByTwoTagsFound | SearchExperimentsByTwoTagsIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_TWO_TAGS_ILIKE_QUERY_PLAN_HASH: Final[str] = "4d1cb57b41c2f56e80e923610922e51e4a6cdd6e54a84d39e66f103a752bc571"
+SEARCH_EXPERIMENTS_BY_TWO_TAGS_ILIKE_QUERY_PLAN_HASH: Final[str] = "1c66f8395f155ad587484a837b2880fc930552e07df9b9af8248f46bd4f7c7c5"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByTwoTagsILikeParams:
@@ -3907,7 +4380,7 @@ class SearchExperimentsByTwoTagsILikeIntegrityFailure:
 
 SearchExperimentsByTwoTagsILikeResult: TypeAlias = SearchExperimentsByTwoTagsILikeFound | SearchExperimentsByTwoTagsILikeIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_TWO_TAGS_IS_NULL_QUERY_PLAN_HASH: Final[str] = "537a11e1c4b4f9872b94846659d5ad24cafc67ab6faf4ae3d786caba71312b3d"
+SEARCH_EXPERIMENTS_BY_TWO_TAGS_IS_NULL_QUERY_PLAN_HASH: Final[str] = "59ad4219b253e01125f6c222baf89cc7ea9075850b69f84cc9b1f772b178e99e"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByTwoTagsIsNullParams:
@@ -3959,7 +4432,7 @@ class SearchExperimentsByTwoTagsIsNullIntegrityFailure:
 
 SearchExperimentsByTwoTagsIsNullResult: TypeAlias = SearchExperimentsByTwoTagsIsNullFound | SearchExperimentsByTwoTagsIsNullIntegrityFailure
 
-SEARCH_EXPERIMENTS_BY_TWO_TAGS_NOT_EQUAL_QUERY_PLAN_HASH: Final[str] = "579640f8741ceebde708dca90c72994fb64ea853f0feeb8557b8a7537a145204"
+SEARCH_EXPERIMENTS_BY_TWO_TAGS_NOT_EQUAL_QUERY_PLAN_HASH: Final[str] = "b42d12ff23b33047c0638de16c15fa0e228459aaddf3bf85289a788d3d7f8578"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchExperimentsByTwoTagsNotEqualParams:
@@ -4013,7 +4486,7 @@ class SearchExperimentsByTwoTagsNotEqualIntegrityFailure:
 
 SearchExperimentsByTwoTagsNotEqualResult: TypeAlias = SearchExperimentsByTwoTagsNotEqualFound | SearchExperimentsByTwoTagsNotEqualIntegrityFailure
 
-SEARCH_LOGGED_MODELS_QUERY_PLAN_HASH: Final[str] = "7272a54047e73cee8af4ff74e111c2cfec933b235a4f233016b36762d7841db8"
+SEARCH_LOGGED_MODELS_QUERY_PLAN_HASH: Final[str] = "fabf8cfca55202a7b3f2c1b7fccaf54ace4801df4f648d109a41b9569c8b3ecd"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchLoggedModelsParams:
@@ -4067,7 +4540,7 @@ class SearchLoggedModelsIntegrityFailure:
 
 SearchLoggedModelsResult: TypeAlias = SearchLoggedModelsFound | SearchLoggedModelsIntegrityFailure
 
-SEARCH_MCPACCESS_ENDPOINTS_QUERY_PLAN_HASH: Final[str] = "2f8c2a53f22199744b9e0ab4282b4ffd4e56a3b06d7be9fe3dfab0b8c64e063b"
+SEARCH_MCPACCESS_ENDPOINTS_QUERY_PLAN_HASH: Final[str] = "e8c3b12af8ab8a465723702ca203514ee7dd3d0743db7702118d4f4d87598f37"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchMCPAccessEndpointsParams:
@@ -4117,7 +4590,7 @@ class SearchMCPAccessEndpointsIntegrityFailure:
 
 SearchMCPAccessEndpointsResult: TypeAlias = SearchMCPAccessEndpointsFound | SearchMCPAccessEndpointsIntegrityFailure
 
-SEARCH_MCPSERVERS_QUERY_PLAN_HASH: Final[str] = "417220791c23fab0df4db7f216f472d878987e4ea278a9694a75ba835ca7a4b8"
+SEARCH_MCPSERVERS_QUERY_PLAN_HASH: Final[str] = "2527e23869c9f267e2c4992eb830ea02f36d3b8290df855eef04a0043be5f6ed"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchMCPServersParams:
@@ -4167,7 +4640,7 @@ class SearchMCPServersIntegrityFailure:
 
 SearchMCPServersResult: TypeAlias = SearchMCPServersFound | SearchMCPServersIntegrityFailure
 
-SEARCH_MODEL_VERSIONS_QUERY_PLAN_HASH: Final[str] = "e49fd8cea42f334bb3ed5bfd94410bdf89a2dbae80b85fe8ea8c608009bcfc1c"
+SEARCH_MODEL_VERSIONS_QUERY_PLAN_HASH: Final[str] = "9eaa41494d1cb545ece6ef727e184742f05bb59482a552e0b88e7c594f0d4ea7"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchModelVersionsParams:
@@ -4221,7 +4694,7 @@ class SearchModelVersionsIntegrityFailure:
 
 SearchModelVersionsResult: TypeAlias = SearchModelVersionsFound | SearchModelVersionsIntegrityFailure
 
-SEARCH_REGISTERED_MODELS_QUERY_PLAN_HASH: Final[str] = "104b3eba84ea4a25b00ff0e8707a9076792f2a31f4ae4fe41a4df5d8154e25f2"
+SEARCH_REGISTERED_MODELS_QUERY_PLAN_HASH: Final[str] = "940f472b841e9834b48ad19e704d4ae9a108f06ef2ef3ffddfd919a67c957cce"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchRegisteredModelsParams:
@@ -4268,7 +4741,7 @@ class SearchRegisteredModelsIntegrityFailure:
 
 SearchRegisteredModelsResult: TypeAlias = SearchRegisteredModelsFound | SearchRegisteredModelsIntegrityFailure
 
-SEARCH_RUNS_QUERY_PLAN_HASH: Final[str] = "28e3cfb80455ecbe79b7ec768da9c82589cf66d654b5e288a33f1c8f4ec82713"
+SEARCH_RUNS_QUERY_PLAN_HASH: Final[str] = "e50875514592c45b2ea9fa51480623c769f2fe2ee62015a156003efb4cd2eba7"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchRunsParams:
@@ -4322,7 +4795,121 @@ class SearchRunsIntegrityFailure:
 
 SearchRunsResult: TypeAlias = SearchRunsFound | SearchRunsIntegrityFailure
 
-SEARCH_RUNS_BY_LIFECYCLE_QUERY_PLAN_HASH: Final[str] = "03cfb0e4f5e88335046ca57aa8d4f6c1912a606a22e11d48dc3e59780c6f2f5e"
+SEARCH_RUNS_BY_DATUM_DIGEST_QUERY_PLAN_HASH: Final[str] = "0a04451b36fa76e7a40d7681742692b01f3dc13d48466f0d82106889f4948c4a"
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchRunsByDatumDigestParams:
+    experiment_id: Annotated[int, "u64"]
+    kind: RunDataKind
+    item_key: str
+    value_digest: bytes
+    lifecycle_stages: tuple[LifecycleStage, ...]
+    limit: Annotated[int, "u64"] | None = None
+    after: str | None = None
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchRunsByDatumDigestFoundRuns:
+    experiment_id: Annotated[int, "u64"]
+    run_id: str
+    user_id: str
+    status: RunStatus
+    start_time: Annotated[int, "i64"]
+    end_time: Annotated[int, "i64"] | None
+    lifecycle_stage: LifecycleStage
+    artifact_uri: str
+    run_name: str
+    packed_tags: bytes
+    packed_params: bytes
+    packed_latest_metrics: bytes
+    revision: Annotated[int, "u64"]
+    initialized: bool
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchRunsByDatumDigestFound:
+    runs: tuple[SearchRunsByDatumDigestFoundRuns, ...]
+    outcome: Literal["Found"] = field(default="Found", init=False)
+
+    def is_found(self) -> bool:
+        return True
+
+    def is_integrity_failure(self) -> bool:
+        return False
+
+    def unwrap_found(self) -> SearchRunsByDatumDigestFound:
+        return self
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchRunsByDatumDigestIntegrityFailure:
+    outcome: Literal["IntegrityFailure"] = field(default="IntegrityFailure", init=False)
+
+    def is_found(self) -> bool:
+        return False
+
+    def is_integrity_failure(self) -> bool:
+        return True
+
+    def unwrap_found(self) -> SearchRunsByDatumDigestFound:
+        raise ValueError("expected SearchRunsByDatumDigest outcome found")
+
+SearchRunsByDatumDigestResult: TypeAlias = SearchRunsByDatumDigestFound | SearchRunsByDatumDigestIntegrityFailure
+
+SEARCH_RUNS_BY_IDS_QUERY_PLAN_HASH: Final[str] = "c43035c6633c3b2151c24e805eb131ef59a888ac850a131baced71e8892d88be"
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchRunsByIdsParams:
+    experiment_id: Annotated[int, "u64"]
+    run_ids: tuple[str, ...]
+    lifecycle_stages: tuple[LifecycleStage, ...]
+    limit: Annotated[int, "u64"] | None = None
+    after: str | None = None
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchRunsByIdsFoundRuns:
+    experiment_id: Annotated[int, "u64"]
+    run_id: str
+    user_id: str
+    status: RunStatus
+    start_time: Annotated[int, "i64"]
+    end_time: Annotated[int, "i64"] | None
+    lifecycle_stage: LifecycleStage
+    artifact_uri: str
+    run_name: str
+    packed_tags: bytes
+    packed_params: bytes
+    packed_latest_metrics: bytes
+    revision: Annotated[int, "u64"]
+    initialized: bool
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchRunsByIdsFound:
+    runs: tuple[SearchRunsByIdsFoundRuns, ...]
+    outcome: Literal["Found"] = field(default="Found", init=False)
+
+    def is_found(self) -> bool:
+        return True
+
+    def is_integrity_failure(self) -> bool:
+        return False
+
+    def unwrap_found(self) -> SearchRunsByIdsFound:
+        return self
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchRunsByIdsIntegrityFailure:
+    outcome: Literal["IntegrityFailure"] = field(default="IntegrityFailure", init=False)
+
+    def is_found(self) -> bool:
+        return False
+
+    def is_integrity_failure(self) -> bool:
+        return True
+
+    def unwrap_found(self) -> SearchRunsByIdsFound:
+        raise ValueError("expected SearchRunsByIds outcome found")
+
+SearchRunsByIdsResult: TypeAlias = SearchRunsByIdsFound | SearchRunsByIdsIntegrityFailure
+
+SEARCH_RUNS_BY_LIFECYCLE_QUERY_PLAN_HASH: Final[str] = "4df923b81451bfb9b8525e36a135c51ea1ac4895d539fb2c8541f46d2460b748"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchRunsByLifecycleParams:
@@ -4377,7 +4964,119 @@ class SearchRunsByLifecycleIntegrityFailure:
 
 SearchRunsByLifecycleResult: TypeAlias = SearchRunsByLifecycleFound | SearchRunsByLifecycleIntegrityFailure
 
-SEARCH_TRACES_QUERY_PLAN_HASH: Final[str] = "77f7e09b13179a7fa5c80f4831e8381f68e35bc981f43d6ada4870873c177737"
+SEARCH_RUNS_BY_NAME_QUERY_PLAN_HASH: Final[str] = "c9305800b677ca0e8d11a4057383e0cf20585928517f759bf3c86322a5698597"
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchRunsByNameParams:
+    experiment_id: Annotated[int, "u64"]
+    run_name: str
+    lifecycle_stages: tuple[LifecycleStage, ...]
+    limit: Annotated[int, "u64"] | None = None
+    after: str | None = None
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchRunsByNameFoundRuns:
+    experiment_id: Annotated[int, "u64"]
+    run_id: str
+    user_id: str
+    status: RunStatus
+    start_time: Annotated[int, "i64"]
+    end_time: Annotated[int, "i64"] | None
+    lifecycle_stage: LifecycleStage
+    artifact_uri: str
+    run_name: str
+    packed_tags: bytes
+    packed_params: bytes
+    packed_latest_metrics: bytes
+    revision: Annotated[int, "u64"]
+    initialized: bool
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchRunsByNameFound:
+    runs: tuple[SearchRunsByNameFoundRuns, ...]
+    outcome: Literal["Found"] = field(default="Found", init=False)
+
+    def is_found(self) -> bool:
+        return True
+
+    def is_integrity_failure(self) -> bool:
+        return False
+
+    def unwrap_found(self) -> SearchRunsByNameFound:
+        return self
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchRunsByNameIntegrityFailure:
+    outcome: Literal["IntegrityFailure"] = field(default="IntegrityFailure", init=False)
+
+    def is_found(self) -> bool:
+        return False
+
+    def is_integrity_failure(self) -> bool:
+        return True
+
+    def unwrap_found(self) -> SearchRunsByNameFound:
+        raise ValueError("expected SearchRunsByName outcome found")
+
+SearchRunsByNameResult: TypeAlias = SearchRunsByNameFound | SearchRunsByNameIntegrityFailure
+
+SEARCH_RUNS_BY_STATUS_QUERY_PLAN_HASH: Final[str] = "edeec0a88aa34ced74e4cef1e72eac8f6aed1d6e1561dbf3c8d008db426d2f63"
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchRunsByStatusParams:
+    experiment_id: Annotated[int, "u64"]
+    status: RunStatus
+    lifecycle_stages: tuple[LifecycleStage, ...]
+    limit: Annotated[int, "u64"] | None = None
+    after: str | None = None
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchRunsByStatusFoundRuns:
+    experiment_id: Annotated[int, "u64"]
+    run_id: str
+    user_id: str
+    status: RunStatus
+    start_time: Annotated[int, "i64"]
+    end_time: Annotated[int, "i64"] | None
+    lifecycle_stage: LifecycleStage
+    artifact_uri: str
+    run_name: str
+    packed_tags: bytes
+    packed_params: bytes
+    packed_latest_metrics: bytes
+    revision: Annotated[int, "u64"]
+    initialized: bool
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchRunsByStatusFound:
+    runs: tuple[SearchRunsByStatusFoundRuns, ...]
+    outcome: Literal["Found"] = field(default="Found", init=False)
+
+    def is_found(self) -> bool:
+        return True
+
+    def is_integrity_failure(self) -> bool:
+        return False
+
+    def unwrap_found(self) -> SearchRunsByStatusFound:
+        return self
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchRunsByStatusIntegrityFailure:
+    outcome: Literal["IntegrityFailure"] = field(default="IntegrityFailure", init=False)
+
+    def is_found(self) -> bool:
+        return False
+
+    def is_integrity_failure(self) -> bool:
+        return True
+
+    def unwrap_found(self) -> SearchRunsByStatusFound:
+        raise ValueError("expected SearchRunsByStatus outcome found")
+
+SearchRunsByStatusResult: TypeAlias = SearchRunsByStatusFound | SearchRunsByStatusIntegrityFailure
+
+SEARCH_TRACES_QUERY_PLAN_HASH: Final[str] = "bf285c66cc86bf6692f350d346f46cf1dbdbc70d56f8056a2b4187ad028e2fa6"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchTracesParams:
@@ -4453,7 +5152,7 @@ class CreateExperimentInput:
     experiment_id: Annotated[int, "u64"]
     artifact_location: str | None
 
-CREATE_EXPERIMENT_PLAN_HASH: Final[str] = "9f81af14dfdfe20bc24811052ff1000864feb92dbaa12fa57cc6bba4acc68784"
+CREATE_EXPERIMENT_PLAN_HASH: Final[str] = "a91f1b3de81039b1c6122d6cdac7043cb7272bb391f465680fa94976f17a0245"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class CreateExperimentExperimentExists:
     outcome: Literal["ExperimentExists"] = field(default="ExperimentExists", init=False)
@@ -4488,7 +5187,7 @@ class CreateExperimentWithTagsInput:
     experiment_id: Annotated[int, "u64"]
     artifact_location: str | None
 
-CREATE_EXPERIMENT_WITH_TAGS_PLAN_HASH: Final[str] = "8ff90a943b330c0dceb16d2ae825d54e24d7eaa881701059c0e7af63537e4c54"
+CREATE_EXPERIMENT_WITH_TAGS_PLAN_HASH: Final[str] = "bdc07f3f06f98dc3044304de93d61d0036cb410d9014186fd61ae54b6ea6bc2b"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class CreateExperimentWithTagsExperimentExists:
     outcome: Literal["ExperimentExists"] = field(default="ExperimentExists", init=False)
@@ -4545,7 +5244,7 @@ class CreateMCPServerEntityInput:
     last_updated_by: str | None
     last_updated_at_ms: Annotated[int, "i64"]
 
-CREATE_MCPSERVER_ENTITY_PLAN_HASH: Final[str] = "e7e7100e09c16c13c8df9cdca04637001a75ea8e7b6ddbdd84a45237be9fcd9c"
+CREATE_MCPSERVER_ENTITY_PLAN_HASH: Final[str] = "2db32d321291197df3376d346b84a369681f5b899f2605899ce23c732b144622"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class CreateMCPServerEntityMCPServerExists:
     outcome: Literal["MCPServerExists"] = field(default="MCPServerExists", init=False)
@@ -4589,7 +5288,7 @@ class CreateMCPServerVersionEntityInput:
     packed_connect_options: bytes
     version_prerelease_sort_key: str
 
-CREATE_MCPSERVER_VERSION_ENTITY_PLAN_HASH: Final[str] = "b7851585d83b6eac1bd783a87fb085d756f36970faadabc406776dcd3ab3aaff"
+CREATE_MCPSERVER_VERSION_ENTITY_PLAN_HASH: Final[str] = "4795347c7a3292a5191ff1a6e7079804fbb91d7faf9bc6c9885e7f31dc97877a"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class CreateMCPServerVersionEntityMCPServerVersionExists:
     outcome: Literal["MCPServerVersionExists"] = field(default="MCPServerVersionExists", init=False)
@@ -4624,7 +5323,7 @@ class CreateRegisteredModelEntityInput:
     creation_timestamp_ms: Annotated[int, "i64"]
     last_updated_timestamp_ms: Annotated[int, "i64"]
 
-CREATE_REGISTERED_MODEL_ENTITY_PLAN_HASH: Final[str] = "acc5cf1a39946fc274459476be46d200644bd4f32080f69d67916429c67b03de"
+CREATE_REGISTERED_MODEL_ENTITY_PLAN_HASH: Final[str] = "56e1d0501a13a06e0772f8b6e32b44828836eeaaff9a1e3e7ef6bfa6c6040c82"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class CreateRegisteredModelEntityRegisteredModelExists:
     outcome: Literal["RegisteredModelExists"] = field(default="RegisteredModelExists", init=False)
@@ -4661,7 +5360,7 @@ class CreateRunInput:
     packed_params: bytes
     packed_latest_metrics: bytes
 
-CREATE_RUN_PLAN_HASH: Final[str] = "e7e4e70bec70f027124189452a50fe48c0206a009c28e7dfa5809b56374169a1"
+CREATE_RUN_PLAN_HASH: Final[str] = "d605f3d7c94189d6c5173340629b1aeebf643e8b095635a7d21e6d1095cb9b31"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class CreateRunRunExists:
     outcome: Literal["RunExists"] = field(default="RunExists", init=False)
@@ -4699,7 +5398,7 @@ class CreateRunWithTagsInput:
     packed_params: bytes
     packed_latest_metrics: bytes
 
-CREATE_RUN_WITH_TAGS_PLAN_HASH: Final[str] = "259b85bb4882ff7ac699109cd20d048004c7475ec2d7f352a236f3a70150d1a4"
+CREATE_RUN_WITH_TAGS_PLAN_HASH: Final[str] = "d2cb89d1672b04b34f4e8a7db037f0153543f2fc3d71f253e0a501d8c4f819d4"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class CreateRunWithTagsRunExists:
     outcome: Literal["RunExists"] = field(default="RunExists", init=False)
@@ -4743,11 +5442,40 @@ class CreateRunWithTagsRunTagExists:
 CreateRunWithTagsOutcome: TypeAlias = CreateRunWithTagsRunExists | CreateRunWithTagsRunCreated | CreateRunWithTagsRunTagExists
 
 @dataclass(frozen=True, slots=True, kw_only=True)
+class DeleteEvaluationDatasetEntityInput:
+    dataset_id: str
+    request_id: str = field(default_factory=lambda: str(__import__("uuid").uuid4()))
+
+DELETE_EVALUATION_DATASET_ENTITY_PLAN_HASH: Final[str] = "b5d0b3c12478ccd9a24891a244dd187594653f25cb391cc2a0785daea9699fe4"
+@dataclass(frozen=True, slots=True, kw_only=True)
+class DeleteEvaluationDatasetEntityEvaluationDatasetDeleted:
+    dataset: EvaluationDatasetEntity
+    outcome: Literal["EvaluationDatasetDeleted"] = field(default="EvaluationDatasetDeleted", init=False)
+
+    def is_evaluation_dataset_deleted(self) -> bool:
+        return True
+
+    def is_evaluation_dataset_missing(self) -> bool:
+        return False
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class DeleteEvaluationDatasetEntityEvaluationDatasetMissing:
+    outcome: Literal["EvaluationDatasetMissing"] = field(default="EvaluationDatasetMissing", init=False)
+
+    def is_evaluation_dataset_deleted(self) -> bool:
+        return False
+
+    def is_evaluation_dataset_missing(self) -> bool:
+        return True
+
+DeleteEvaluationDatasetEntityOutcome: TypeAlias = DeleteEvaluationDatasetEntityEvaluationDatasetDeleted | DeleteEvaluationDatasetEntityEvaluationDatasetMissing
+
+@dataclass(frozen=True, slots=True, kw_only=True)
 class DeleteExperimentInput:
     request_id: str = field(default_factory=lambda: str(__import__("uuid").uuid4()))
     experiment_id: Annotated[int, "u64"]
 
-DELETE_EXPERIMENT_PLAN_HASH: Final[str] = "5d3242b0b92287a790aae5a07b5a2c71bfbb9fea06b0550e8c3077bfa925d42b"
+DELETE_EXPERIMENT_PLAN_HASH: Final[str] = "615dfb1fa469462706797c6021e3f2fd236a478fa1d87f2eee48fe363799aec9"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class DeleteExperimentExperimentDeleted:
     experiment: Experiment
@@ -4780,7 +5508,7 @@ class DeleteExperimentTagInput:
     experiment_id: Annotated[int, "u64"]
     expected_revision: Annotated[int, "u64"]
 
-DELETE_EXPERIMENT_TAG_PLAN_HASH: Final[str] = "073028f32af2e14baf5e18f8048311685c0e4e823bb856699331f6f014a4951a"
+DELETE_EXPERIMENT_TAG_PLAN_HASH: Final[str] = "192c50558428fbcbcbd366e7af0d13d789a8100ba8e823c50f74e640e343010d"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class DeleteExperimentTagExperimentStale:
     outcome: Literal["ExperimentStale"] = field(default="ExperimentStale", init=False)
@@ -4884,7 +5612,7 @@ class DeleteGatewayBudgetPolicyEntityInput:
     request_id: str = field(default_factory=lambda: str(__import__("uuid").uuid4()))
     budget_policy_id: str
 
-DELETE_GATEWAY_BUDGET_POLICY_ENTITY_PLAN_HASH: Final[str] = "3e72ff945d4ffa955c6603447b6b4a33c749205244c14a39053782d8c224add9"
+DELETE_GATEWAY_BUDGET_POLICY_ENTITY_PLAN_HASH: Final[str] = "c5561995e61308ddfba3631be56cfd3523cd5bc7bc3d0041bcab07b4b54ce768"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class DeleteGatewayBudgetPolicyEntityGatewayBudgetPolicyDeleted:
     policy: GatewayBudgetPolicyEntity
@@ -4913,7 +5641,7 @@ class DeleteGatewayEndpointEntityInput:
     request_id: str = field(default_factory=lambda: str(__import__("uuid").uuid4()))
     endpoint_id: str
 
-DELETE_GATEWAY_ENDPOINT_ENTITY_PLAN_HASH: Final[str] = "de87db02af0c0f2b0634b40ce7a96db9cdb4385485c7070c3ebeeda66ea1dd4a"
+DELETE_GATEWAY_ENDPOINT_ENTITY_PLAN_HASH: Final[str] = "4bfda75ea6c2a58eb9a77f6846f177afad49571a68758270c1226b56b83d3480"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class DeleteGatewayEndpointEntityGatewayEndpointDeleted:
     endpoint: GatewayEndpointEntity
@@ -4942,7 +5670,7 @@ class DeleteGatewayGuardrailEntityInput:
     request_id: str = field(default_factory=lambda: str(__import__("uuid").uuid4()))
     guardrail_id: str
 
-DELETE_GATEWAY_GUARDRAIL_ENTITY_PLAN_HASH: Final[str] = "4a9085cb1a5dede58f5e55689009a908d6913613484de12427bfa1bb0bc8f461"
+DELETE_GATEWAY_GUARDRAIL_ENTITY_PLAN_HASH: Final[str] = "c43d273a04583e86e5b4dee9df3ba6da62940de076c1ac212407c49115789ae8"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class DeleteGatewayGuardrailEntityGatewayGuardrailDeleted:
     guardrail: GatewayGuardrailEntity
@@ -4971,7 +5699,7 @@ class DeleteGatewayModelDefinitionEntityInput:
     request_id: str = field(default_factory=lambda: str(__import__("uuid").uuid4()))
     model_definition_id: str
 
-DELETE_GATEWAY_MODEL_DEFINITION_ENTITY_PLAN_HASH: Final[str] = "2f004b0fa2710c698cda047e3a7c3da6cf8978a268e364ede3e9cb1b56634c7f"
+DELETE_GATEWAY_MODEL_DEFINITION_ENTITY_PLAN_HASH: Final[str] = "6c61cce79acf96a27e699aa123bb2f214ae5482a8a1a637def896065b824327a"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class DeleteGatewayModelDefinitionEntityGatewayModelDefinitionDeleted:
     model_def: GatewayModelDefinitionEntity
@@ -5000,7 +5728,7 @@ class DeleteGatewaySecretEntityInput:
     secret_id: str
     request_id: str = field(default_factory=lambda: str(__import__("uuid").uuid4()))
 
-DELETE_GATEWAY_SECRET_ENTITY_PLAN_HASH: Final[str] = "7ad0801e59f423b7d0b02b582b205c01ec104e11a0562ea1fb43d4605a5a8a6e"
+DELETE_GATEWAY_SECRET_ENTITY_PLAN_HASH: Final[str] = "c7b0c494db8bddb6068e97896687d5d6dca7fd69f09839b8af5d75038416f7c8"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class DeleteGatewaySecretEntityGatewaySecretDeleted:
     secret: GatewaySecretEntity
@@ -5025,12 +5753,70 @@ class DeleteGatewaySecretEntityGatewaySecretMissing:
 DeleteGatewaySecretEntityOutcome: TypeAlias = DeleteGatewaySecretEntityGatewaySecretDeleted | DeleteGatewaySecretEntityGatewaySecretMissing
 
 @dataclass(frozen=True, slots=True, kw_only=True)
+class DeleteIssueEntityInput:
+    issue_id: str
+    request_id: str = field(default_factory=lambda: str(__import__("uuid").uuid4()))
+
+DELETE_ISSUE_ENTITY_PLAN_HASH: Final[str] = "47cdac5e970d7b75aece677f09a2a5485cbea4ef41fdb492dc272a4fba8304f5"
+@dataclass(frozen=True, slots=True, kw_only=True)
+class DeleteIssueEntityIssueDeleted:
+    issue: IssueEntity
+    outcome: Literal["IssueDeleted"] = field(default="IssueDeleted", init=False)
+
+    def is_issue_deleted(self) -> bool:
+        return True
+
+    def is_issue_missing(self) -> bool:
+        return False
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class DeleteIssueEntityIssueMissing:
+    outcome: Literal["IssueMissing"] = field(default="IssueMissing", init=False)
+
+    def is_issue_deleted(self) -> bool:
+        return False
+
+    def is_issue_missing(self) -> bool:
+        return True
+
+DeleteIssueEntityOutcome: TypeAlias = DeleteIssueEntityIssueDeleted | DeleteIssueEntityIssueMissing
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class DeleteLabelSchemaEntityInput:
+    schema_id: str
+    request_id: str = field(default_factory=lambda: str(__import__("uuid").uuid4()))
+
+DELETE_LABEL_SCHEMA_ENTITY_PLAN_HASH: Final[str] = "0ccf2c29f16884d8258eb2d59c0f38f2d4e7cf36d14b34fa8eb98a77cb2c9933"
+@dataclass(frozen=True, slots=True, kw_only=True)
+class DeleteLabelSchemaEntityLabelSchemaDeleted:
+    label_schema: LabelSchemaEntity
+    outcome: Literal["LabelSchemaDeleted"] = field(default="LabelSchemaDeleted", init=False)
+
+    def is_label_schema_deleted(self) -> bool:
+        return True
+
+    def is_label_schema_missing(self) -> bool:
+        return False
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class DeleteLabelSchemaEntityLabelSchemaMissing:
+    outcome: Literal["LabelSchemaMissing"] = field(default="LabelSchemaMissing", init=False)
+
+    def is_label_schema_deleted(self) -> bool:
+        return False
+
+    def is_label_schema_missing(self) -> bool:
+        return True
+
+DeleteLabelSchemaEntityOutcome: TypeAlias = DeleteLabelSchemaEntityLabelSchemaDeleted | DeleteLabelSchemaEntityLabelSchemaMissing
+
+@dataclass(frozen=True, slots=True, kw_only=True)
 class DeleteLoggedModelEntityInput:
     model_id: str
     request_id: str = field(default_factory=lambda: str(__import__("uuid").uuid4()))
     experiment_id: Annotated[int, "u64"]
 
-DELETE_LOGGED_MODEL_ENTITY_PLAN_HASH: Final[str] = "f0a9da1b7ce5bfbf834f31c3d31035660ebe1e0b2f0e6c605921530b792ce6f0"
+DELETE_LOGGED_MODEL_ENTITY_PLAN_HASH: Final[str] = "a96807cd621ce4bac8117850677e8b9413f047ba5c6b4a7678c061406737d274"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class DeleteLoggedModelEntityLoggedModelDeleted:
     model: LoggedModelEntity
@@ -5059,7 +5845,7 @@ class DeleteMCPAccessEndpointEntityInput:
     request_id: str = field(default_factory=lambda: str(__import__("uuid").uuid4()))
     endpoint_id: str
 
-DELETE_MCPACCESS_ENDPOINT_ENTITY_PLAN_HASH: Final[str] = "a446a1669d61731a2d03319600934801a64ed78f3ec485ee8ff8c81d0e7f0fac"
+DELETE_MCPACCESS_ENDPOINT_ENTITY_PLAN_HASH: Final[str] = "22b2043f953ab69fd168ecc8027aafbfda1ede39a2d317e9315d9c9a0918f158"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class DeleteMCPAccessEndpointEntityMCPAccessEndpointDeleted:
     endpoint: MCPAccessEndpointEntity
@@ -5088,7 +5874,7 @@ class DeleteMCPServerEntityInput:
     name: str
     request_id: str = field(default_factory=lambda: str(__import__("uuid").uuid4()))
 
-DELETE_MCPSERVER_ENTITY_PLAN_HASH: Final[str] = "471490462d6bc38196bfc0eb710921cd1257b53a865cd1c90358e0726ba85f99"
+DELETE_MCPSERVER_ENTITY_PLAN_HASH: Final[str] = "106e2e5f83acdffb33cb2987b2544688427d6af3de5a4495b73c3b02c7bc0217"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class DeleteMCPServerEntityMCPServerDeleted:
     server: MCPServerEntity
@@ -5118,7 +5904,7 @@ class DeleteModelVersionEntityInput:
     request_id: str = field(default_factory=lambda: str(__import__("uuid").uuid4()))
     version_num: Annotated[int, "u64"]
 
-DELETE_MODEL_VERSION_ENTITY_PLAN_HASH: Final[str] = "b1aacba7822e006a8454d030d3ae2ecfb4af0e8ae629f10a6d7dcf9d56b1d900"
+DELETE_MODEL_VERSION_ENTITY_PLAN_HASH: Final[str] = "50691f75b663033dec2aaa8e8ccb21f0c20e5bc8fda76555cca006c1cf6c90fc"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class DeleteModelVersionEntityModelVersionDeleted:
     model_version: ModelVersionEntity
@@ -5147,7 +5933,7 @@ class DeleteRegisteredModelEntityInput:
     name: str
     request_id: str = field(default_factory=lambda: str(__import__("uuid").uuid4()))
 
-DELETE_REGISTERED_MODEL_ENTITY_PLAN_HASH: Final[str] = "939fcbfcd1bf84570ecf4e5fb760b1e1b150047218677d51c29c2318d4704393"
+DELETE_REGISTERED_MODEL_ENTITY_PLAN_HASH: Final[str] = "dd2858ba80d7474e450a00ba47caee0abdee64ec1a61f9f055f3468fc5a2e302"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class DeleteRegisteredModelEntityRegisteredModelDeleted:
     model: RegisteredModelEntity
@@ -5172,12 +5958,41 @@ class DeleteRegisteredModelEntityRegisteredModelMissing:
 DeleteRegisteredModelEntityOutcome: TypeAlias = DeleteRegisteredModelEntityRegisteredModelDeleted | DeleteRegisteredModelEntityRegisteredModelMissing
 
 @dataclass(frozen=True, slots=True, kw_only=True)
+class DeleteReviewQueueEntityInput:
+    queue_id: str
+    request_id: str = field(default_factory=lambda: str(__import__("uuid").uuid4()))
+
+DELETE_REVIEW_QUEUE_ENTITY_PLAN_HASH: Final[str] = "525d0048674f2f5771d29f13b9ab4fe39ff1d529efa8fd2b9ebc7cf22c184df2"
+@dataclass(frozen=True, slots=True, kw_only=True)
+class DeleteReviewQueueEntityReviewQueueDeleted:
+    review_queue: ReviewQueueEntity
+    outcome: Literal["ReviewQueueDeleted"] = field(default="ReviewQueueDeleted", init=False)
+
+    def is_review_queue_deleted(self) -> bool:
+        return True
+
+    def is_review_queue_missing(self) -> bool:
+        return False
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class DeleteReviewQueueEntityReviewQueueMissing:
+    outcome: Literal["ReviewQueueMissing"] = field(default="ReviewQueueMissing", init=False)
+
+    def is_review_queue_deleted(self) -> bool:
+        return False
+
+    def is_review_queue_missing(self) -> bool:
+        return True
+
+DeleteReviewQueueEntityOutcome: TypeAlias = DeleteReviewQueueEntityReviewQueueDeleted | DeleteReviewQueueEntityReviewQueueMissing
+
+@dataclass(frozen=True, slots=True, kw_only=True)
 class DeleteRunInput:
     run_id: str
     request_id: str = field(default_factory=lambda: str(__import__("uuid").uuid4()))
     experiment_id: Annotated[int, "u64"]
 
-DELETE_RUN_PLAN_HASH: Final[str] = "11ae09670b542d321d3510c96153683e303a9c9cc5a7d0f00947875615211496"
+DELETE_RUN_PLAN_HASH: Final[str] = "a77e1e729659b126400ea345b974e359819a2b77a2ebfe7d3239cb31e79aef4e"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class DeleteRunRunDeleted:
     run: Run
@@ -5206,7 +6021,7 @@ class DeleteScorerEntityInput:
     scorer_id: str
     request_id: str = field(default_factory=lambda: str(__import__("uuid").uuid4()))
 
-DELETE_SCORER_ENTITY_PLAN_HASH: Final[str] = "5fb991ebf00468fa879007e0ddc6b4f0b84e36780f08fec63f678b3f3d3a679c"
+DELETE_SCORER_ENTITY_PLAN_HASH: Final[str] = "22fddcc49edc5b8da960fc8c88c31e4f64a502cc77aecfb9e40742c7812a7ef7"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class DeleteScorerEntityScorerDeleted:
     scorer: ScorerEntity
@@ -5235,7 +6050,7 @@ class DeleteServerJobEntityInput:
     job_id: str
     request_id: str = field(default_factory=lambda: str(__import__("uuid").uuid4()))
 
-DELETE_SERVER_JOB_ENTITY_PLAN_HASH: Final[str] = "07e74e1b6cb6a22a5226ecbded1e1b6c54313c1ced17932beb42fb936d95aa6c"
+DELETE_SERVER_JOB_ENTITY_PLAN_HASH: Final[str] = "5c9cdd4b06e77e19332f8af7e24b72df7bcd7604f9741ef2a29b173bd1bf2884"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class DeleteServerJobEntityServerJobDeleted:
     job: ServerJobEntity
@@ -5265,7 +6080,7 @@ class DeleteTraceInput:
     request_id: str = field(default_factory=lambda: str(__import__("uuid").uuid4()))
     experiment_id: Annotated[int, "u64"]
 
-DELETE_TRACE_PLAN_HASH: Final[str] = "ca23204312659df959b67d23449fe8eba4701e7dbd61741e1025bd395dd08540"
+DELETE_TRACE_PLAN_HASH: Final[str] = "80f032ca0010284a3f76e07d9b829c896f7db96e9273d51636e81558c78e6f51"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class DeleteTraceTraceDeleted:
     trace: Trace
@@ -5296,7 +6111,7 @@ class DeleteTraceAssessmentInput:
     assessment_id: str
     experiment_id: Annotated[int, "u64"]
 
-DELETE_TRACE_ASSESSMENT_PLAN_HASH: Final[str] = "563d82b2d0167413c0f9fdaf3a0c273374bd2a1896b7781515d0b64bac02313b"
+DELETE_TRACE_ASSESSMENT_PLAN_HASH: Final[str] = "8e8651dbb4528cf816e95c81444b47a2e8c385d81592e8bc85db41be65b9d329"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class DeleteTraceAssessmentTraceAssessmentDeleted:
     assessment: TraceAssessment
@@ -5327,7 +6142,7 @@ class DeleteTraceSpanInput:
     request_id: str = field(default_factory=lambda: str(__import__("uuid").uuid4()))
     experiment_id: Annotated[int, "u64"]
 
-DELETE_TRACE_SPAN_PLAN_HASH: Final[str] = "429b9af33761d96cff9a8da13424f54d198e6dd58e3edd4d22214e993d848be6"
+DELETE_TRACE_SPAN_PLAN_HASH: Final[str] = "781b1555f48c6949cdc418553156f7b4bea55cb8905afab2786f2a9b0584009a"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class DeleteTraceSpanTraceSpanDeleted:
     span: TraceSpan
@@ -5382,7 +6197,7 @@ class IngestTraceSpansInput:
     cache_read_input_tokens: Annotated[int, "i64"]
     cache_creation_input_tokens: Annotated[int, "i64"]
 
-INGEST_TRACE_SPANS_PLAN_HASH: Final[str] = "e2fc2688307ab04a801d3fc1b9a02dd6a091507b05b64ba1a5395b2c84e3205d"
+INGEST_TRACE_SPANS_PLAN_HASH: Final[str] = "6f7f4fa8d4e122675b3efee35564797595aefebcc5d5f411f0c380ad2a550efd"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class IngestTraceSpansTraceSpansIngested:
     trace: Trace
@@ -5404,7 +6219,7 @@ class LogBatchInput:
     expected_revision: Annotated[int, "u64"]
     packed_latest_metrics: bytes
 
-LOG_BATCH_PLAN_HASH: Final[str] = "74b44518644f2b432a28dc7a995e23552443988c648057146233aad7945c8b9d"
+LOG_BATCH_PLAN_HASH: Final[str] = "d7e350e4a194ff3f951408da1d700691678d0cc07ffd9b7db13101b0962413df"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class LogBatchRunStale:
     outcome: Literal["RunStale"] = field(default="RunStale", init=False)
@@ -5511,7 +6326,7 @@ class RenameExperimentInput:
     name_digest: bytes
     experiment_id: Annotated[int, "u64"]
 
-RENAME_EXPERIMENT_PLAN_HASH: Final[str] = "09d08a6563af026692a04a34d0e32dc000bed9bf6919563ad5ed8d9aa80179a3"
+RENAME_EXPERIMENT_PLAN_HASH: Final[str] = "934e49a55857c773d57e835a72f2d27355a4335f028669af4b3aa267e860566d"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class RenameExperimentExperimentMissing:
     outcome: Literal["ExperimentMissing"] = field(default="ExperimentMissing", init=False)
@@ -5540,7 +6355,7 @@ class RestoreExperimentInput:
     request_id: str = field(default_factory=lambda: str(__import__("uuid").uuid4()))
     experiment_id: Annotated[int, "u64"]
 
-RESTORE_EXPERIMENT_PLAN_HASH: Final[str] = "9b6773b409c8d7fe6c1b8d0b9f9024e00a5238130a2246382d3e11d99bcb7677"
+RESTORE_EXPERIMENT_PLAN_HASH: Final[str] = "dde1c08ecb1bd4172fb89b531f6a8d772402811373f1eb0718b5dc2916a5bc41"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class RestoreExperimentExperimentMissing:
     outcome: Literal["ExperimentMissing"] = field(default="ExperimentMissing", init=False)
@@ -5570,7 +6385,7 @@ class RestoreRunInput:
     request_id: str = field(default_factory=lambda: str(__import__("uuid").uuid4()))
     experiment_id: Annotated[int, "u64"]
 
-RESTORE_RUN_PLAN_HASH: Final[str] = "b7eed5b46e3c03de8cb963365671f49093934f1a0b5a0f15579323bddac98ea5"
+RESTORE_RUN_PLAN_HASH: Final[str] = "1db06eaf457a101866a9c7189a092bb47df8d0f7d2ece82541964085d622a2cf"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class RestoreRunRunMissing:
     outcome: Literal["RunMissing"] = field(default="RunMissing", init=False)
@@ -5606,7 +6421,7 @@ class SetExperimentTagInput:
     experiment_id: Annotated[int, "u64"]
     expected_revision: Annotated[int, "u64"]
 
-SET_EXPERIMENT_TAG_PLAN_HASH: Final[str] = "ef2bd5b9d103963fd7219554dea19fb1e984b20b48baaff3acb8b67279f9a424"
+SET_EXPERIMENT_TAG_PLAN_HASH: Final[str] = "34a3cbb843d6ecc38a7ec53f991bb05eb2308ee742e8740fb3c4b4125fbd0d39"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SetExperimentTagExperimentStale:
     outcome: Literal["ExperimentStale"] = field(default="ExperimentStale", init=False)
@@ -5687,7 +6502,7 @@ class UpdateRunInfoInput:
     expected_revision: Annotated[int, "u64"]
     run_name_tag_value: str
 
-UPDATE_RUN_INFO_PLAN_HASH: Final[str] = "b81ca793cba8da12b1ed42fe600919507db7c32b9864350c2e1ebe3e7ceeb35b"
+UPDATE_RUN_INFO_PLAN_HASH: Final[str] = "7c954562f806ab8de83d383dbb032821dfe6746975fbfd3ab9f6b6e6e78fa7b0"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class UpdateRunInfoRunStale:
     outcome: Literal["RunStale"] = field(default="RunStale", init=False)
@@ -5756,6 +6571,33 @@ class UpdateRunInfoRunInactive:
 UpdateRunInfoOutcome: TypeAlias = UpdateRunInfoRunStale | UpdateRunInfoRunMissing | UpdateRunInfoRunUpdated | UpdateRunInfoRunInactive
 
 @dataclass(frozen=True, slots=True, kw_only=True)
+class UpsertEvaluationDatasetEntityInput:
+    name: str
+    digest: str
+    created_by: str | None
+    dataset_id: str
+    request_id: str = field(default_factory=lambda: str(__import__("uuid").uuid4()))
+    packed_tags: bytes
+    schema_json: str | None
+    profile_json: str | None
+    packed_records: bytes
+    created_time_ms: Annotated[int, "i64"]
+    last_updated_by: str | None
+    last_update_time_ms: Annotated[int, "i64"]
+    packed_experiment_ids: bytes
+
+UPSERT_EVALUATION_DATASET_ENTITY_PLAN_HASH: Final[str] = "f8f0d21bf9af470c36ac178c9e408b84d1b54938d91da9b047b6ddc13a0b4163"
+@dataclass(frozen=True, slots=True, kw_only=True)
+class UpsertEvaluationDatasetEntityEvaluationDatasetUpserted:
+    dataset: EvaluationDatasetEntity
+    outcome: Literal["EvaluationDatasetUpserted"] = field(default="EvaluationDatasetUpserted", init=False)
+
+    def is_evaluation_dataset_upserted(self) -> bool:
+        return True
+
+UpsertEvaluationDatasetEntityOutcome: TypeAlias = UpsertEvaluationDatasetEntityEvaluationDatasetUpserted
+
+@dataclass(frozen=True, slots=True, kw_only=True)
 class UpsertGatewayBudgetPolicyEntityInput:
     created_by: str | None
     request_id: str = field(default_factory=lambda: str(__import__("uuid").uuid4()))
@@ -5771,7 +6613,7 @@ class UpsertGatewayBudgetPolicyEntityInput:
     budget_amount_json: str
     last_updated_at_ms: Annotated[int, "i64"]
 
-UPSERT_GATEWAY_BUDGET_POLICY_ENTITY_PLAN_HASH: Final[str] = "c5bdc573d6d4e01ae83997d6a96e871034d28c99720d9c0ae168b8756bea5616"
+UPSERT_GATEWAY_BUDGET_POLICY_ENTITY_PLAN_HASH: Final[str] = "d1bb6b7df1f83d1b37666cfabac914e5dad545b79f2579f0ab3ea31b293db207"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class UpsertGatewayBudgetPolicyEntityGatewayBudgetPolicyUpserted:
     policy: GatewayBudgetPolicyEntity
@@ -5800,7 +6642,7 @@ class UpsertGatewayEndpointEntityInput:
     packed_model_mappings: bytes
     packed_guardrail_configs: bytes
 
-UPSERT_GATEWAY_ENDPOINT_ENTITY_PLAN_HASH: Final[str] = "dc15d9321ad267a34310e255dea425795da3ab171a532d4a77accc90005d79ef"
+UPSERT_GATEWAY_ENDPOINT_ENTITY_PLAN_HASH: Final[str] = "d02a4886830e5285ce3f3688f6d942ae06e943d557eb1348ffc5a53f433f95c2"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class UpsertGatewayEndpointEntityGatewayEndpointUpserted:
     endpoint: GatewayEndpointEntity
@@ -5826,7 +6668,7 @@ class UpsertGatewayGuardrailEntityInput:
     action_endpoint_id: str | None
     last_updated_at_ms: Annotated[int, "i64"]
 
-UPSERT_GATEWAY_GUARDRAIL_ENTITY_PLAN_HASH: Final[str] = "bfb192627a936656adff27bc2c675481aaafc6e3053edc288b20a8acc9d6e034"
+UPSERT_GATEWAY_GUARDRAIL_ENTITY_PLAN_HASH: Final[str] = "03f330ce7068df8be05f573f87688c18da089d57d280d451044928d2d0e51b16"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class UpsertGatewayGuardrailEntityGatewayGuardrailUpserted:
     guardrail: GatewayGuardrailEntity
@@ -5850,7 +6692,7 @@ class UpsertGatewayModelDefinitionEntityInput:
     last_updated_at_ms: Annotated[int, "i64"]
     model_definition_id: str
 
-UPSERT_GATEWAY_MODEL_DEFINITION_ENTITY_PLAN_HASH: Final[str] = "88773fb5a0f09874724aa313bd00eccaf18334201d9ef40513d63b18a67112bd"
+UPSERT_GATEWAY_MODEL_DEFINITION_ENTITY_PLAN_HASH: Final[str] = "618f3fc01b2a154121479de179bb731a5dd8940500711f32df49daba7ffdcf85"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class UpsertGatewayModelDefinitionEntityGatewayModelDefinitionUpserted:
     model_def: GatewayModelDefinitionEntity
@@ -5877,7 +6719,7 @@ class UpsertGatewaySecretEntityInput:
     masked_value_json: str
     last_updated_at_ms: Annotated[int, "i64"]
 
-UPSERT_GATEWAY_SECRET_ENTITY_PLAN_HASH: Final[str] = "4e30b9cf9d83276094497ceac2b62c37b8f9e5184857972c8c3216849f9eece4"
+UPSERT_GATEWAY_SECRET_ENTITY_PLAN_HASH: Final[str] = "d7633e677b7f32986f8cf10fb969f6cfde41ad01ae37cfe9ba2041bde9faca40"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class UpsertGatewaySecretEntityGatewaySecretUpserted:
     secret: GatewaySecretEntity
@@ -5887,6 +6729,60 @@ class UpsertGatewaySecretEntityGatewaySecretUpserted:
         return True
 
 UpsertGatewaySecretEntityOutcome: TypeAlias = UpsertGatewaySecretEntityGatewaySecretUpserted
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class UpsertIssueEntityInput:
+    name: str
+    status: str
+    issue_id: str
+    severity: str | None
+    created_by: str | None
+    request_id: str = field(default_factory=lambda: str(__import__("uuid").uuid4()))
+    description: str
+    experiment_id: Annotated[int, "u64"]
+    source_run_id: str | None
+    categories_json: str | None
+    root_causes_json: str | None
+    created_timestamp_ms: Annotated[int, "i64"]
+    last_updated_timestamp_ms: Annotated[int, "i64"]
+
+UPSERT_ISSUE_ENTITY_PLAN_HASH: Final[str] = "9ee6a49f143b111a572d1cace7474fd22937ec227f1e0a6032e810285b2e49d1"
+@dataclass(frozen=True, slots=True, kw_only=True)
+class UpsertIssueEntityIssueUpserted:
+    issue: IssueEntity
+    outcome: Literal["IssueUpserted"] = field(default="IssueUpserted", init=False)
+
+    def is_issue_upserted(self) -> bool:
+        return True
+
+UpsertIssueEntityOutcome: TypeAlias = UpsertIssueEntityIssueUpserted
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class UpsertLabelSchemaEntityInput:
+    name: str
+    schema_id: str
+    created_by: str | None
+    input_type: str
+    is_default: bool
+    request_id: str = field(default_factory=lambda: str(__import__("uuid").uuid4()))
+    instruction: str | None
+    schema_type: str
+    experiment_id: Annotated[int, "u64"]
+    enable_comment: bool
+    created_time_ms: Annotated[int, "i64"]
+    input_config_json: str
+    last_update_time_ms: Annotated[int, "i64"]
+
+UPSERT_LABEL_SCHEMA_ENTITY_PLAN_HASH: Final[str] = "078184defdf59ada5d8a245b81c04ad07c1979bd0e18d474c98a1c3d81a8d23a"
+@dataclass(frozen=True, slots=True, kw_only=True)
+class UpsertLabelSchemaEntityLabelSchemaUpserted:
+    label_schema: LabelSchemaEntity
+    outcome: Literal["LabelSchemaUpserted"] = field(default="LabelSchemaUpserted", init=False)
+
+    def is_label_schema_upserted(self) -> bool:
+        return True
+
+UpsertLabelSchemaEntityOutcome: TypeAlias = UpsertLabelSchemaEntityLabelSchemaUpserted
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class UpsertLoggedModelInput:
@@ -5906,7 +6802,7 @@ class UpsertLoggedModelInput:
     creation_timestamp_ms: Annotated[int, "i64"]
     last_updated_timestamp_ms: Annotated[int, "i64"]
 
-UPSERT_LOGGED_MODEL_PLAN_HASH: Final[str] = "b35659e94114a1bcde508cddd2ff32f9219ac97983dc3013cb4ac31087e61780"
+UPSERT_LOGGED_MODEL_PLAN_HASH: Final[str] = "a4f2fb7a8f326aa4b60394ab921e89f48f3e3b6a8af2bbdefc73facce651c5a4"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class UpsertLoggedModelLoggedModelUpserted:
     model: LoggedModelEntity
@@ -5931,7 +6827,7 @@ class UpsertMCPAccessEndpointEntityInput:
     last_updated_by: str | None
     last_updated_at_ms: Annotated[int, "i64"]
 
-UPSERT_MCPACCESS_ENDPOINT_ENTITY_PLAN_HASH: Final[str] = "db547541101de6de100d221a348d056d1ef55e643f9d53f3c994d7b0cc2d2b95"
+UPSERT_MCPACCESS_ENDPOINT_ENTITY_PLAN_HASH: Final[str] = "ce7d4caf3097138926805190756c651af1a50e6e990ad1992fd7a183015aa161"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class UpsertMCPAccessEndpointEntityMCPAccessEndpointUpserted:
     endpoint: MCPAccessEndpointEntity
@@ -5956,7 +6852,7 @@ class UpsertMCPServerEntityInput:
     last_updated_by: str | None
     last_updated_at_ms: Annotated[int, "i64"]
 
-UPSERT_MCPSERVER_ENTITY_PLAN_HASH: Final[str] = "a50b4e5fef936e22dd8b60f557e7a6b69deca99e050a21e60a0a132160b8dbb7"
+UPSERT_MCPSERVER_ENTITY_PLAN_HASH: Final[str] = "de5c660e28efb8c1b87bb28715f3f1acf447be59a47e99154916121ac9a6d59d"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class UpsertMCPServerEntityMCPServerUpserted:
     server: MCPServerEntity
@@ -5987,7 +6883,7 @@ class UpsertMCPServerVersionEntityInput:
     packed_connect_options: bytes
     version_prerelease_sort_key: str
 
-UPSERT_MCPSERVER_VERSION_ENTITY_PLAN_HASH: Final[str] = "3a6db5f6aa6979261a8349589ab6585ca8fc7a62374f22b3e82abba84c1e9ac9"
+UPSERT_MCPSERVER_VERSION_ENTITY_PLAN_HASH: Final[str] = "186f53a92a958039c04eb53e61e17fa369940a6d76cffa101c8344d904d71a5a"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class UpsertMCPServerVersionEntityMCPServerVersionUpserted:
     server_version: MCPServerVersionEntity
@@ -6016,7 +6912,7 @@ class UpsertModelVersionEntityInput:
     creation_timestamp_ms: Annotated[int, "i64"]
     last_updated_timestamp_ms: Annotated[int, "i64"]
 
-UPSERT_MODEL_VERSION_ENTITY_PLAN_HASH: Final[str] = "ccd99621e1efa6262feac5aa9fe38c40d7c4b6e7c3145499e56a95571e8b0f02"
+UPSERT_MODEL_VERSION_ENTITY_PLAN_HASH: Final[str] = "1f474539ca2fcd96e7540e23d2e39db9a0937fde6af5bae9ae76a4e4c156e9d5"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class UpsertModelVersionEntityModelVersionUpserted:
     model_version: ModelVersionEntity
@@ -6038,7 +6934,7 @@ class UpsertRegisteredModelEntityInput:
     creation_timestamp_ms: Annotated[int, "i64"]
     last_updated_timestamp_ms: Annotated[int, "i64"]
 
-UPSERT_REGISTERED_MODEL_ENTITY_PLAN_HASH: Final[str] = "0d5e838f833220809b65dc9069a6f2110f74aa09edde0c51e01be9817ef53a34"
+UPSERT_REGISTERED_MODEL_ENTITY_PLAN_HASH: Final[str] = "46aff0103a8dfe740b12eb4623209c68b10acf8f161a64c3062fadaed23d5c96"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class UpsertRegisteredModelEntityRegisteredModelUpserted:
     model: RegisteredModelEntity
@@ -6063,7 +6959,7 @@ class UpsertRegistryWebhookEntityInput:
     creation_timestamp_ms: Annotated[int, "i64"]
     last_updated_timestamp_ms: Annotated[int, "i64"]
 
-UPSERT_REGISTRY_WEBHOOK_ENTITY_PLAN_HASH: Final[str] = "33e25bcd0271b338e5fedb235d43337553c74031a348824a572cda7aebb7d240"
+UPSERT_REGISTRY_WEBHOOK_ENTITY_PLAN_HASH: Final[str] = "44d36af20ff92695ae48ee7df46602edb0dcb78946fe950fad86041d5cae1a4a"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class UpsertRegistryWebhookEntityRegistryWebhookUpserted:
     webhook: RegistryWebhookEntity
@@ -6075,6 +6971,32 @@ class UpsertRegistryWebhookEntityRegistryWebhookUpserted:
 UpsertRegistryWebhookEntityOutcome: TypeAlias = UpsertRegistryWebhookEntityRegistryWebhookUpserted
 
 @dataclass(frozen=True, slots=True, kw_only=True)
+class UpsertReviewQueueEntityInput:
+    name: str
+    name_key: str
+    queue_id: str
+    created_by: str | None
+    queue_type: str
+    request_id: str = field(default_factory=lambda: str(__import__("uuid").uuid4()))
+    packed_items: bytes
+    packed_users: bytes
+    experiment_id: Annotated[int, "u64"]
+    creation_time_ms: Annotated[int, "i64"]
+    packed_schema_ids: bytes
+    last_update_time_ms: Annotated[int, "i64"]
+
+UPSERT_REVIEW_QUEUE_ENTITY_PLAN_HASH: Final[str] = "5ed83ee2d83e8d70ee7f2ad26121ed7bf886a2630f818d59e791b5f8da5fa7b6"
+@dataclass(frozen=True, slots=True, kw_only=True)
+class UpsertReviewQueueEntityReviewQueueUpserted:
+    review_queue: ReviewQueueEntity
+    outcome: Literal["ReviewQueueUpserted"] = field(default="ReviewQueueUpserted", init=False)
+
+    def is_review_queue_upserted(self) -> bool:
+        return True
+
+UpsertReviewQueueEntityOutcome: TypeAlias = UpsertReviewQueueEntityReviewQueueUpserted
+
+@dataclass(frozen=True, slots=True, kw_only=True)
 class UpsertRunLineageInput:
     run_id: str
     request_id: str = field(default_factory=lambda: str(__import__("uuid").uuid4()))
@@ -6083,7 +7005,7 @@ class UpsertRunLineageInput:
     packed_model_inputs: bytes
     packed_model_outputs: bytes
 
-UPSERT_RUN_LINEAGE_PLAN_HASH: Final[str] = "2c6c19e6ab8b2fea31e387e97b19687a7668b269fe0636c32ec9ecdc1018bb4f"
+UPSERT_RUN_LINEAGE_PLAN_HASH: Final[str] = "8fd76c60dc1d6ccf7e1a164595b62f0e92e3153fbe285ecdda14cb8ee3b85423"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class UpsertRunLineageRunMissing:
     outcome: Literal["RunMissing"] = field(default="RunMissing", init=False)
@@ -6136,7 +7058,7 @@ class UpsertScorerEntityInput:
     packed_versions: bytes
     packed_online_config: bytes
 
-UPSERT_SCORER_ENTITY_PLAN_HASH: Final[str] = "77d599412b48abe11d597b603b711d5444b556cdef30e08fabf359855967a149"
+UPSERT_SCORER_ENTITY_PLAN_HASH: Final[str] = "19bee30df03dc146549ec227d74da5b09e575b47633f9faad6ec0d0bc76e34cf"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class UpsertScorerEntityScorerUpserted:
     scorer: ScorerEntity
@@ -6161,7 +7083,7 @@ class UpsertServerJobEntityInput:
     last_update_time_ms: Annotated[int, "i64"]
     status_details_json: str | None
 
-UPSERT_SERVER_JOB_ENTITY_PLAN_HASH: Final[str] = "246bd2f52d8cd9efd9ebd7b3aa41c4d9f7b53d0bec3ad6faa0d957ef8de18c83"
+UPSERT_SERVER_JOB_ENTITY_PLAN_HASH: Final[str] = "0f5328e70deaeabca5c9a2b4685eb1a96f529eb86945e06db6c22722c54c2946"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class UpsertServerJobEntityServerJobUpserted:
     job: ServerJobEntity
@@ -6202,7 +7124,7 @@ class UpsertTraceInput:
     cache_read_input_tokens: Annotated[int, "i64"]
     cache_creation_input_tokens: Annotated[int, "i64"]
 
-UPSERT_TRACE_PLAN_HASH: Final[str] = "a58559e8aa740b3613efc1ef6878f800fa6ac29e576d8c8d93f99053cd135b2f"
+UPSERT_TRACE_PLAN_HASH: Final[str] = "81fb30d2246ef8c05a560a21033f772f0da249f082f556af4201ec7fca79faf7"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class UpsertTraceTraceUpserted:
     trace: Trace
@@ -6228,7 +7150,7 @@ class UpsertTraceAssessmentInput:
     packed_assessment_json: str
     last_updated_timestamp_ms: Annotated[int, "i64"]
 
-UPSERT_TRACE_ASSESSMENT_PLAN_HASH: Final[str] = "78005137130a2cb05e163a8e13e04d25a5f82f43b544e4713312b16b78f60072"
+UPSERT_TRACE_ASSESSMENT_PLAN_HASH: Final[str] = "0d15b039f81f6c58d4df2aac30becbb9d3303cbf53074a555deec34b35b6e393"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class UpsertTraceAssessmentTraceMissing:
     outcome: Literal["TraceMissing"] = field(default="TraceMissing", init=False)
@@ -6258,7 +7180,7 @@ class ValidateRunActiveInput:
     request_id: str
     experiment_id: Annotated[int, "u64"]
 
-VALIDATE_RUN_ACTIVE_PLAN_HASH: Final[str] = "948d5f1606cb48131c359d2f31c709d1cc0cb969de73034d53c94cc317fe0fd4"
+VALIDATE_RUN_ACTIVE_PLAN_HASH: Final[str] = "b3eecc39874572f29c33cabdfabd6a72ac79109a67c98f321ffee4baf5b09952"
 @dataclass(frozen=True, slots=True, kw_only=True)
 class ValidateRunActiveRunActive:
     outcome: Literal["RunActive"] = field(default="RunActive", init=False)
@@ -6471,8 +7393,8 @@ class RiffDBMLflowClient:
         return TypedQueryResult(identity=latest_page.identity, value=BatchGetTraceAssessmentsFound(assessments=tuple(merged)), application_head=highest_head, next_cursor=None)
 
     def batch_get_trace_spans(self, parameters: BatchGetTraceSpansParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[BatchGetTraceSpansResult]:
-        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 500):
-            raise ValueError("limit must be an integer from 1 through 500")
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 100):
+            raise ValueError("limit must be an integer from 1 through 100")
         encoded_parameters = encode_record(parameters)
         generated_cursor = parameters.after
         if generated_cursor is not None:
@@ -6593,6 +7515,24 @@ class RiffDBMLflowClient:
                 break
             cursor = page.next_cursor
         return pages
+
+    def get_evaluation_dataset(self, parameters: GetEvaluationDatasetParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetEvaluationDatasetResult]:
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="GetEvaluationDataset", plan_hash=GET_EVALUATION_DATASET_QUERY_PLAN_HASH,
+            parameters=encode_record(parameters), options=options,
+        )
+        outcomes = {
+            "Found": GetEvaluationDatasetFound,
+            "Missing": GetEvaluationDatasetMissing,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    def get_evaluation_dataset_after_commit(self, parameters: GetEvaluationDatasetParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetEvaluationDatasetResult]:
+        return self.get_evaluation_dataset(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
 
     def get_experiment(self, parameters: GetExperimentParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetExperimentResult]:
         if options.read_after_commit is None and self._read_after_commit is not None:
@@ -6719,6 +7659,42 @@ class RiffDBMLflowClient:
 
     def get_gateway_secret_after_commit(self, parameters: GetGatewaySecretParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetGatewaySecretResult]:
         return self.get_gateway_secret(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    def get_issue(self, parameters: GetIssueParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetIssueResult]:
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="GetIssue", plan_hash=GET_ISSUE_QUERY_PLAN_HASH,
+            parameters=encode_record(parameters), options=options,
+        )
+        outcomes = {
+            "Found": GetIssueFound,
+            "Missing": GetIssueMissing,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    def get_issue_after_commit(self, parameters: GetIssueParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetIssueResult]:
+        return self.get_issue(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    def get_label_schema(self, parameters: GetLabelSchemaParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetLabelSchemaResult]:
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="GetLabelSchema", plan_hash=GET_LABEL_SCHEMA_QUERY_PLAN_HASH,
+            parameters=encode_record(parameters), options=options,
+        )
+        outcomes = {
+            "Found": GetLabelSchemaFound,
+            "Missing": GetLabelSchemaMissing,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    def get_label_schema_after_commit(self, parameters: GetLabelSchemaParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetLabelSchemaResult]:
+        return self.get_label_schema(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
 
     def get_logged_model(self, parameters: GetLoggedModelParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetLoggedModelResult]:
         if options.read_after_commit is None and self._read_after_commit is not None:
@@ -6889,6 +7865,24 @@ class RiffDBMLflowClient:
     def get_registry_webhook_after_commit(self, parameters: GetRegistryWebhookParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetRegistryWebhookResult]:
         return self.get_registry_webhook(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
 
+    def get_review_queue(self, parameters: GetReviewQueueParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetReviewQueueResult]:
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="GetReviewQueue", plan_hash=GET_REVIEW_QUEUE_QUERY_PLAN_HASH,
+            parameters=encode_record(parameters), options=options,
+        )
+        outcomes = {
+            "Found": GetReviewQueueFound,
+            "Missing": GetReviewQueueMissing,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    def get_review_queue_after_commit(self, parameters: GetReviewQueueParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetReviewQueueResult]:
+        return self.get_review_queue(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
     def get_run(self, parameters: GetRunParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetRunResult]:
         if options.read_after_commit is None and self._read_after_commit is not None:
             options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
@@ -6978,6 +7972,49 @@ class RiffDBMLflowClient:
 
     def get_trace_after_commit(self, parameters: GetTraceParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetTraceResult]:
         return self.get_trace(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    def list_evaluation_datasets(self, parameters: ListEvaluationDatasetsParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[ListEvaluationDatasetsResult]:
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 5):
+            raise ValueError("limit must be an integer from 1 through 5")
+        encoded_parameters = encode_record(parameters)
+        generated_cursor = parameters.after
+        if generated_cursor is not None:
+            if options.cursor is not None:
+                raise ValueError("generated cursor conflicts with query options")
+            options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
+        encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="ListEvaluationDatasets", plan_hash=LIST_EVALUATION_DATASETS_QUERY_PLAN_HASH,
+            parameters=encoded_parameters, options=options,
+        )
+        outcomes = {
+            "Found": ListEvaluationDatasetsFound,
+            "IntegrityFailure": ListEvaluationDatasetsIntegrityFailure,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    def list_evaluation_datasets_after_commit(self, parameters: ListEvaluationDatasetsParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[ListEvaluationDatasetsResult]:
+        return self.list_evaluation_datasets(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    def list_evaluation_datasets_pages(self, parameters: ListEvaluationDatasetsParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[ListEvaluationDatasetsResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[ListEvaluationDatasetsResult]] = []
+        for _ in range(max_pages):
+            page_parameters = ListEvaluationDatasetsParams(scope=parameters.scope, limit=parameters.limit, after=None)
+            page = self.list_evaluation_datasets(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
 
     def list_gateway_budget_policies(self, parameters: ListGatewayBudgetPoliciesParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[ListGatewayBudgetPoliciesResult]:
         if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 50):
@@ -7194,6 +8231,92 @@ class RiffDBMLflowClient:
             cursor = page.next_cursor
         return pages
 
+    def list_issues(self, parameters: ListIssuesParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[ListIssuesResult]:
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 25):
+            raise ValueError("limit must be an integer from 1 through 25")
+        encoded_parameters = encode_record(parameters)
+        generated_cursor = parameters.after
+        if generated_cursor is not None:
+            if options.cursor is not None:
+                raise ValueError("generated cursor conflicts with query options")
+            options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
+        encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="ListIssues", plan_hash=LIST_ISSUES_QUERY_PLAN_HASH,
+            parameters=encoded_parameters, options=options,
+        )
+        outcomes = {
+            "Found": ListIssuesFound,
+            "IntegrityFailure": ListIssuesIntegrityFailure,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    def list_issues_after_commit(self, parameters: ListIssuesParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[ListIssuesResult]:
+        return self.list_issues(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    def list_issues_pages(self, parameters: ListIssuesParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[ListIssuesResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[ListIssuesResult]] = []
+        for _ in range(max_pages):
+            page_parameters = ListIssuesParams(scope=parameters.scope, limit=parameters.limit, after=None)
+            page = self.list_issues(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
+
+    def list_label_schemas(self, parameters: ListLabelSchemasParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[ListLabelSchemasResult]:
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 25):
+            raise ValueError("limit must be an integer from 1 through 25")
+        encoded_parameters = encode_record(parameters)
+        generated_cursor = parameters.after
+        if generated_cursor is not None:
+            if options.cursor is not None:
+                raise ValueError("generated cursor conflicts with query options")
+            options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
+        encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="ListLabelSchemas", plan_hash=LIST_LABEL_SCHEMAS_QUERY_PLAN_HASH,
+            parameters=encoded_parameters, options=options,
+        )
+        outcomes = {
+            "Found": ListLabelSchemasFound,
+            "IntegrityFailure": ListLabelSchemasIntegrityFailure,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    def list_label_schemas_after_commit(self, parameters: ListLabelSchemasParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[ListLabelSchemasResult]:
+        return self.list_label_schemas(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    def list_label_schemas_pages(self, parameters: ListLabelSchemasParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[ListLabelSchemasResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[ListLabelSchemasResult]] = []
+        for _ in range(max_pages):
+            page_parameters = ListLabelSchemasParams(scope=parameters.scope, limit=parameters.limit, after=None)
+            page = self.list_label_schemas(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
+
     def list_mcpaccess_endpoints_by_server(self, parameters: ListMCPAccessEndpointsByServerParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[ListMCPAccessEndpointsByServerResult]:
         if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 50):
             raise ValueError("limit must be an integer from 1 through 50")
@@ -7360,6 +8483,49 @@ class RiffDBMLflowClient:
         for _ in range(max_pages):
             page_parameters = ListRegistryWebhooksParams(scope=parameters.scope, limit=parameters.limit, after=None)
             page = self.list_registry_webhooks(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
+
+    def list_review_queues(self, parameters: ListReviewQueuesParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[ListReviewQueuesResult]:
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 10):
+            raise ValueError("limit must be an integer from 1 through 10")
+        encoded_parameters = encode_record(parameters)
+        generated_cursor = parameters.after
+        if generated_cursor is not None:
+            if options.cursor is not None:
+                raise ValueError("generated cursor conflicts with query options")
+            options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
+        encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="ListReviewQueues", plan_hash=LIST_REVIEW_QUEUES_QUERY_PLAN_HASH,
+            parameters=encoded_parameters, options=options,
+        )
+        outcomes = {
+            "Found": ListReviewQueuesFound,
+            "IntegrityFailure": ListReviewQueuesIntegrityFailure,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    def list_review_queues_after_commit(self, parameters: ListReviewQueuesParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[ListReviewQueuesResult]:
+        return self.list_review_queues(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    def list_review_queues_pages(self, parameters: ListReviewQueuesParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[ListReviewQueuesResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[ListReviewQueuesResult]] = []
+        for _ in range(max_pages):
+            page_parameters = ListReviewQueuesParams(scope=parameters.scope, limit=parameters.limit, after=None)
+            page = self.list_review_queues(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
             pages.append(page)
             if not page.next_cursor:
                 break
@@ -9061,6 +10227,92 @@ class RiffDBMLflowClient:
             cursor = page.next_cursor
         return pages
 
+    def search_runs_by_datum_digest(self, parameters: SearchRunsByDatumDigestParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchRunsByDatumDigestResult]:
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 2):
+            raise ValueError("limit must be an integer from 1 through 2")
+        encoded_parameters = encode_record(parameters)
+        generated_cursor = parameters.after
+        if generated_cursor is not None:
+            if options.cursor is not None:
+                raise ValueError("generated cursor conflicts with query options")
+            options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
+        encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="SearchRunsByDatumDigest", plan_hash=SEARCH_RUNS_BY_DATUM_DIGEST_QUERY_PLAN_HASH,
+            parameters=encoded_parameters, options=options,
+        )
+        outcomes = {
+            "Found": SearchRunsByDatumDigestFound,
+            "IntegrityFailure": SearchRunsByDatumDigestIntegrityFailure,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    def search_runs_by_datum_digest_after_commit(self, parameters: SearchRunsByDatumDigestParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchRunsByDatumDigestResult]:
+        return self.search_runs_by_datum_digest(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    def search_runs_by_datum_digest_pages(self, parameters: SearchRunsByDatumDigestParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[SearchRunsByDatumDigestResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[SearchRunsByDatumDigestResult]] = []
+        for _ in range(max_pages):
+            page_parameters = SearchRunsByDatumDigestParams(experiment_id=parameters.experiment_id, kind=parameters.kind, item_key=parameters.item_key, value_digest=parameters.value_digest, lifecycle_stages=parameters.lifecycle_stages, limit=parameters.limit, after=None)
+            page = self.search_runs_by_datum_digest(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
+
+    def search_runs_by_ids(self, parameters: SearchRunsByIdsParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchRunsByIdsResult]:
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 2):
+            raise ValueError("limit must be an integer from 1 through 2")
+        encoded_parameters = encode_record(parameters)
+        generated_cursor = parameters.after
+        if generated_cursor is not None:
+            if options.cursor is not None:
+                raise ValueError("generated cursor conflicts with query options")
+            options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
+        encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="SearchRunsByIds", plan_hash=SEARCH_RUNS_BY_IDS_QUERY_PLAN_HASH,
+            parameters=encoded_parameters, options=options,
+        )
+        outcomes = {
+            "Found": SearchRunsByIdsFound,
+            "IntegrityFailure": SearchRunsByIdsIntegrityFailure,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    def search_runs_by_ids_after_commit(self, parameters: SearchRunsByIdsParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchRunsByIdsResult]:
+        return self.search_runs_by_ids(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    def search_runs_by_ids_pages(self, parameters: SearchRunsByIdsParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[SearchRunsByIdsResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[SearchRunsByIdsResult]] = []
+        for _ in range(max_pages):
+            page_parameters = SearchRunsByIdsParams(experiment_id=parameters.experiment_id, run_ids=parameters.run_ids, lifecycle_stages=parameters.lifecycle_stages, limit=parameters.limit, after=None)
+            page = self.search_runs_by_ids(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
+
     def search_runs_by_lifecycle(self, parameters: SearchRunsByLifecycleParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchRunsByLifecycleResult]:
         if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 2):
             raise ValueError("limit must be an integer from 1 through 2")
@@ -9098,6 +10350,92 @@ class RiffDBMLflowClient:
         for _ in range(max_pages):
             page_parameters = SearchRunsByLifecycleParams(experiment_ids=parameters.experiment_ids, lifecycle_stage=parameters.lifecycle_stage, limit=parameters.limit, after=None)
             page = self.search_runs_by_lifecycle(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
+
+    def search_runs_by_name(self, parameters: SearchRunsByNameParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchRunsByNameResult]:
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 2):
+            raise ValueError("limit must be an integer from 1 through 2")
+        encoded_parameters = encode_record(parameters)
+        generated_cursor = parameters.after
+        if generated_cursor is not None:
+            if options.cursor is not None:
+                raise ValueError("generated cursor conflicts with query options")
+            options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
+        encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="SearchRunsByName", plan_hash=SEARCH_RUNS_BY_NAME_QUERY_PLAN_HASH,
+            parameters=encoded_parameters, options=options,
+        )
+        outcomes = {
+            "Found": SearchRunsByNameFound,
+            "IntegrityFailure": SearchRunsByNameIntegrityFailure,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    def search_runs_by_name_after_commit(self, parameters: SearchRunsByNameParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchRunsByNameResult]:
+        return self.search_runs_by_name(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    def search_runs_by_name_pages(self, parameters: SearchRunsByNameParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[SearchRunsByNameResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[SearchRunsByNameResult]] = []
+        for _ in range(max_pages):
+            page_parameters = SearchRunsByNameParams(experiment_id=parameters.experiment_id, run_name=parameters.run_name, lifecycle_stages=parameters.lifecycle_stages, limit=parameters.limit, after=None)
+            page = self.search_runs_by_name(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
+
+    def search_runs_by_status(self, parameters: SearchRunsByStatusParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchRunsByStatusResult]:
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 2):
+            raise ValueError("limit must be an integer from 1 through 2")
+        encoded_parameters = encode_record(parameters)
+        generated_cursor = parameters.after
+        if generated_cursor is not None:
+            if options.cursor is not None:
+                raise ValueError("generated cursor conflicts with query options")
+            options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
+        encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="SearchRunsByStatus", plan_hash=SEARCH_RUNS_BY_STATUS_QUERY_PLAN_HASH,
+            parameters=encoded_parameters, options=options,
+        )
+        outcomes = {
+            "Found": SearchRunsByStatusFound,
+            "IntegrityFailure": SearchRunsByStatusIntegrityFailure,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    def search_runs_by_status_after_commit(self, parameters: SearchRunsByStatusParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchRunsByStatusResult]:
+        return self.search_runs_by_status(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    def search_runs_by_status_pages(self, parameters: SearchRunsByStatusParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[SearchRunsByStatusResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[SearchRunsByStatusResult]] = []
+        for _ in range(max_pages):
+            page_parameters = SearchRunsByStatusParams(experiment_id=parameters.experiment_id, status=parameters.status, lifecycle_stages=parameters.lifecycle_stages, limit=parameters.limit, after=None)
+            page = self.search_runs_by_status(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
             pages.append(page)
             if not page.next_cursor:
                 break
@@ -9376,6 +10714,27 @@ class RiffDBMLflowClient:
                 raise InputBudgetError(AGGREGATE_CANONICAL_ELEMENT_BYTES, "tags")
         return self._transport._command_batch(inputs, options, self.create_run_with_tags, progress)
 
+    def delete_evaluation_dataset_entity(self, input: DeleteEvaluationDatasetEntityInput) -> TypedCommandResult[DeleteEvaluationDatasetEntityOutcome]:
+        raw = self._transport._execute_command(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            command_name="DeleteEvaluationDatasetEntity", plan_hash=DELETE_EVALUATION_DATASET_ENTITY_PLAN_HASH,
+            input=encode_record(input), attempts=self._command_attempts,
+        )
+        outcomes = {
+            "EvaluationDatasetDeleted": DeleteEvaluationDatasetEntityEvaluationDatasetDeleted,
+            "EvaluationDatasetMissing": DeleteEvaluationDatasetEntityEvaluationDatasetMissing,
+        }
+        result: TypedCommandResult[DeleteEvaluationDatasetEntityOutcome] = raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        if self._track_causal_writes and result.commit_sequence is not None and result.commit_sequence > 0:
+            self._read_after_commit = result.commit_sequence if self._read_after_commit is None or result.commit_sequence > self._read_after_commit else self._read_after_commit
+        return result
+
+    def delete_evaluation_dataset_entity_batch(
+        self, inputs: Sequence[DeleteEvaluationDatasetEntityInput], options: CommandBatchOptions,
+        progress: Callable[[CommandBatchProgress], None] | None = None,
+    ) -> CommandBatchResult[DeleteEvaluationDatasetEntityOutcome]:
+        return self._transport._command_batch(inputs, options, self.delete_evaluation_dataset_entity, progress)
+
     def delete_experiment(self, input: DeleteExperimentInput) -> TypedCommandResult[DeleteExperimentOutcome]:
         raw = self._transport._execute_command(
             contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
@@ -9526,6 +10885,48 @@ class RiffDBMLflowClient:
     ) -> CommandBatchResult[DeleteGatewaySecretEntityOutcome]:
         return self._transport._command_batch(inputs, options, self.delete_gateway_secret_entity, progress)
 
+    def delete_issue_entity(self, input: DeleteIssueEntityInput) -> TypedCommandResult[DeleteIssueEntityOutcome]:
+        raw = self._transport._execute_command(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            command_name="DeleteIssueEntity", plan_hash=DELETE_ISSUE_ENTITY_PLAN_HASH,
+            input=encode_record(input), attempts=self._command_attempts,
+        )
+        outcomes = {
+            "IssueDeleted": DeleteIssueEntityIssueDeleted,
+            "IssueMissing": DeleteIssueEntityIssueMissing,
+        }
+        result: TypedCommandResult[DeleteIssueEntityOutcome] = raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        if self._track_causal_writes and result.commit_sequence is not None and result.commit_sequence > 0:
+            self._read_after_commit = result.commit_sequence if self._read_after_commit is None or result.commit_sequence > self._read_after_commit else self._read_after_commit
+        return result
+
+    def delete_issue_entity_batch(
+        self, inputs: Sequence[DeleteIssueEntityInput], options: CommandBatchOptions,
+        progress: Callable[[CommandBatchProgress], None] | None = None,
+    ) -> CommandBatchResult[DeleteIssueEntityOutcome]:
+        return self._transport._command_batch(inputs, options, self.delete_issue_entity, progress)
+
+    def delete_label_schema_entity(self, input: DeleteLabelSchemaEntityInput) -> TypedCommandResult[DeleteLabelSchemaEntityOutcome]:
+        raw = self._transport._execute_command(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            command_name="DeleteLabelSchemaEntity", plan_hash=DELETE_LABEL_SCHEMA_ENTITY_PLAN_HASH,
+            input=encode_record(input), attempts=self._command_attempts,
+        )
+        outcomes = {
+            "LabelSchemaDeleted": DeleteLabelSchemaEntityLabelSchemaDeleted,
+            "LabelSchemaMissing": DeleteLabelSchemaEntityLabelSchemaMissing,
+        }
+        result: TypedCommandResult[DeleteLabelSchemaEntityOutcome] = raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        if self._track_causal_writes and result.commit_sequence is not None and result.commit_sequence > 0:
+            self._read_after_commit = result.commit_sequence if self._read_after_commit is None or result.commit_sequence > self._read_after_commit else self._read_after_commit
+        return result
+
+    def delete_label_schema_entity_batch(
+        self, inputs: Sequence[DeleteLabelSchemaEntityInput], options: CommandBatchOptions,
+        progress: Callable[[CommandBatchProgress], None] | None = None,
+    ) -> CommandBatchResult[DeleteLabelSchemaEntityOutcome]:
+        return self._transport._command_batch(inputs, options, self.delete_label_schema_entity, progress)
+
     def delete_logged_model_entity(self, input: DeleteLoggedModelEntityInput) -> TypedCommandResult[DeleteLoggedModelEntityOutcome]:
         raw = self._transport._execute_command(
             contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
@@ -9630,6 +11031,27 @@ class RiffDBMLflowClient:
         progress: Callable[[CommandBatchProgress], None] | None = None,
     ) -> CommandBatchResult[DeleteRegisteredModelEntityOutcome]:
         return self._transport._command_batch(inputs, options, self.delete_registered_model_entity, progress)
+
+    def delete_review_queue_entity(self, input: DeleteReviewQueueEntityInput) -> TypedCommandResult[DeleteReviewQueueEntityOutcome]:
+        raw = self._transport._execute_command(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            command_name="DeleteReviewQueueEntity", plan_hash=DELETE_REVIEW_QUEUE_ENTITY_PLAN_HASH,
+            input=encode_record(input), attempts=self._command_attempts,
+        )
+        outcomes = {
+            "ReviewQueueDeleted": DeleteReviewQueueEntityReviewQueueDeleted,
+            "ReviewQueueMissing": DeleteReviewQueueEntityReviewQueueMissing,
+        }
+        result: TypedCommandResult[DeleteReviewQueueEntityOutcome] = raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        if self._track_causal_writes and result.commit_sequence is not None and result.commit_sequence > 0:
+            self._read_after_commit = result.commit_sequence if self._read_after_commit is None or result.commit_sequence > self._read_after_commit else self._read_after_commit
+        return result
+
+    def delete_review_queue_entity_batch(
+        self, inputs: Sequence[DeleteReviewQueueEntityInput], options: CommandBatchOptions,
+        progress: Callable[[CommandBatchProgress], None] | None = None,
+    ) -> CommandBatchResult[DeleteReviewQueueEntityOutcome]:
+        return self._transport._command_batch(inputs, options, self.delete_review_queue_entity, progress)
 
     def delete_run(self, input: DeleteRunInput) -> TypedCommandResult[DeleteRunOutcome]:
         raw = self._transport._execute_command(
@@ -9777,7 +11199,7 @@ class RiffDBMLflowClient:
                 raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "spans", index, "model_name")
             if len(item.model_provider.encode("utf-8")) > 64:
                 raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "spans", index, "model_provider")
-            if len(item.packed_span_json.encode("utf-8")) > 7000:
+            if len(item.packed_span_json.encode("utf-8")) > 32768:
                 raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "spans", index, "packed_span_json")
         aggregate_element_bytes = sum(canonical_value_encoded_length(encode_value(item, TraceSpan)) for item in input.spans)
         if aggregate_element_bytes > 1000000:
@@ -9820,7 +11242,7 @@ class RiffDBMLflowClient:
                     raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "spans", index, "model_name")
                 if len(item.model_provider.encode("utf-8")) > 64:
                     raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "spans", index, "model_provider")
-                if len(item.packed_span_json.encode("utf-8")) > 7000:
+                if len(item.packed_span_json.encode("utf-8")) > 32768:
                     raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "spans", index, "packed_span_json")
             aggregate_element_bytes = sum(canonical_value_encoded_length(encode_value(item, TraceSpan)) for item in input.spans)
             if aggregate_element_bytes > 1000000:
@@ -10010,6 +11432,26 @@ class RiffDBMLflowClient:
     ) -> CommandBatchResult[UpdateRunInfoOutcome]:
         return self._transport._command_batch(inputs, options, self.update_run_info, progress)
 
+    def upsert_evaluation_dataset_entity(self, input: UpsertEvaluationDatasetEntityInput) -> TypedCommandResult[UpsertEvaluationDatasetEntityOutcome]:
+        raw = self._transport._execute_command(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            command_name="UpsertEvaluationDatasetEntity", plan_hash=UPSERT_EVALUATION_DATASET_ENTITY_PLAN_HASH,
+            input=encode_record(input), attempts=self._command_attempts,
+        )
+        outcomes = {
+            "EvaluationDatasetUpserted": UpsertEvaluationDatasetEntityEvaluationDatasetUpserted,
+        }
+        result: TypedCommandResult[UpsertEvaluationDatasetEntityOutcome] = raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        if self._track_causal_writes and result.commit_sequence is not None and result.commit_sequence > 0:
+            self._read_after_commit = result.commit_sequence if self._read_after_commit is None or result.commit_sequence > self._read_after_commit else self._read_after_commit
+        return result
+
+    def upsert_evaluation_dataset_entity_batch(
+        self, inputs: Sequence[UpsertEvaluationDatasetEntityInput], options: CommandBatchOptions,
+        progress: Callable[[CommandBatchProgress], None] | None = None,
+    ) -> CommandBatchResult[UpsertEvaluationDatasetEntityOutcome]:
+        return self._transport._command_batch(inputs, options, self.upsert_evaluation_dataset_entity, progress)
+
     def upsert_gateway_budget_policy_entity(self, input: UpsertGatewayBudgetPolicyEntityInput) -> TypedCommandResult[UpsertGatewayBudgetPolicyEntityOutcome]:
         raw = self._transport._execute_command(
             contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
@@ -10109,6 +11551,46 @@ class RiffDBMLflowClient:
         progress: Callable[[CommandBatchProgress], None] | None = None,
     ) -> CommandBatchResult[UpsertGatewaySecretEntityOutcome]:
         return self._transport._command_batch(inputs, options, self.upsert_gateway_secret_entity, progress)
+
+    def upsert_issue_entity(self, input: UpsertIssueEntityInput) -> TypedCommandResult[UpsertIssueEntityOutcome]:
+        raw = self._transport._execute_command(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            command_name="UpsertIssueEntity", plan_hash=UPSERT_ISSUE_ENTITY_PLAN_HASH,
+            input=encode_record(input), attempts=self._command_attempts,
+        )
+        outcomes = {
+            "IssueUpserted": UpsertIssueEntityIssueUpserted,
+        }
+        result: TypedCommandResult[UpsertIssueEntityOutcome] = raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        if self._track_causal_writes and result.commit_sequence is not None and result.commit_sequence > 0:
+            self._read_after_commit = result.commit_sequence if self._read_after_commit is None or result.commit_sequence > self._read_after_commit else self._read_after_commit
+        return result
+
+    def upsert_issue_entity_batch(
+        self, inputs: Sequence[UpsertIssueEntityInput], options: CommandBatchOptions,
+        progress: Callable[[CommandBatchProgress], None] | None = None,
+    ) -> CommandBatchResult[UpsertIssueEntityOutcome]:
+        return self._transport._command_batch(inputs, options, self.upsert_issue_entity, progress)
+
+    def upsert_label_schema_entity(self, input: UpsertLabelSchemaEntityInput) -> TypedCommandResult[UpsertLabelSchemaEntityOutcome]:
+        raw = self._transport._execute_command(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            command_name="UpsertLabelSchemaEntity", plan_hash=UPSERT_LABEL_SCHEMA_ENTITY_PLAN_HASH,
+            input=encode_record(input), attempts=self._command_attempts,
+        )
+        outcomes = {
+            "LabelSchemaUpserted": UpsertLabelSchemaEntityLabelSchemaUpserted,
+        }
+        result: TypedCommandResult[UpsertLabelSchemaEntityOutcome] = raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        if self._track_causal_writes and result.commit_sequence is not None and result.commit_sequence > 0:
+            self._read_after_commit = result.commit_sequence if self._read_after_commit is None or result.commit_sequence > self._read_after_commit else self._read_after_commit
+        return result
+
+    def upsert_label_schema_entity_batch(
+        self, inputs: Sequence[UpsertLabelSchemaEntityInput], options: CommandBatchOptions,
+        progress: Callable[[CommandBatchProgress], None] | None = None,
+    ) -> CommandBatchResult[UpsertLabelSchemaEntityOutcome]:
+        return self._transport._command_batch(inputs, options, self.upsert_label_schema_entity, progress)
 
     def upsert_logged_model(self, input: UpsertLoggedModelInput) -> TypedCommandResult[UpsertLoggedModelOutcome]:
         raw = self._transport._execute_command(
@@ -10249,6 +11731,26 @@ class RiffDBMLflowClient:
         progress: Callable[[CommandBatchProgress], None] | None = None,
     ) -> CommandBatchResult[UpsertRegistryWebhookEntityOutcome]:
         return self._transport._command_batch(inputs, options, self.upsert_registry_webhook_entity, progress)
+
+    def upsert_review_queue_entity(self, input: UpsertReviewQueueEntityInput) -> TypedCommandResult[UpsertReviewQueueEntityOutcome]:
+        raw = self._transport._execute_command(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            command_name="UpsertReviewQueueEntity", plan_hash=UPSERT_REVIEW_QUEUE_ENTITY_PLAN_HASH,
+            input=encode_record(input), attempts=self._command_attempts,
+        )
+        outcomes = {
+            "ReviewQueueUpserted": UpsertReviewQueueEntityReviewQueueUpserted,
+        }
+        result: TypedCommandResult[UpsertReviewQueueEntityOutcome] = raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        if self._track_causal_writes and result.commit_sequence is not None and result.commit_sequence > 0:
+            self._read_after_commit = result.commit_sequence if self._read_after_commit is None or result.commit_sequence > self._read_after_commit else self._read_after_commit
+        return result
+
+    def upsert_review_queue_entity_batch(
+        self, inputs: Sequence[UpsertReviewQueueEntityInput], options: CommandBatchOptions,
+        progress: Callable[[CommandBatchProgress], None] | None = None,
+    ) -> CommandBatchResult[UpsertReviewQueueEntityOutcome]:
+        return self._transport._command_batch(inputs, options, self.upsert_review_queue_entity, progress)
 
     def upsert_run_lineage(self, input: UpsertRunLineageInput) -> TypedCommandResult[UpsertRunLineageOutcome]:
         raw = self._transport._execute_command(
@@ -10546,8 +12048,8 @@ class AsyncRiffDBMLflowClient:
         return TypedQueryResult(identity=latest_page.identity, value=BatchGetTraceAssessmentsFound(assessments=tuple(merged)), application_head=highest_head, next_cursor=None)
 
     async def batch_get_trace_spans(self, parameters: BatchGetTraceSpansParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[BatchGetTraceSpansResult]:
-        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 500):
-            raise ValueError("limit must be an integer from 1 through 500")
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 100):
+            raise ValueError("limit must be an integer from 1 through 100")
         encoded_parameters = encode_record(parameters)
         generated_cursor = parameters.after
         if generated_cursor is not None:
@@ -10668,6 +12170,24 @@ class AsyncRiffDBMLflowClient:
                 break
             cursor = page.next_cursor
         return pages
+
+    async def get_evaluation_dataset(self, parameters: GetEvaluationDatasetParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetEvaluationDatasetResult]:
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = await self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="GetEvaluationDataset", plan_hash=GET_EVALUATION_DATASET_QUERY_PLAN_HASH,
+            parameters=encode_record(parameters), options=options,
+        )
+        outcomes = {
+            "Found": GetEvaluationDatasetFound,
+            "Missing": GetEvaluationDatasetMissing,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    async def get_evaluation_dataset_after_commit(self, parameters: GetEvaluationDatasetParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetEvaluationDatasetResult]:
+        return await self.get_evaluation_dataset(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
 
     async def get_experiment(self, parameters: GetExperimentParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetExperimentResult]:
         if options.read_after_commit is None and self._read_after_commit is not None:
@@ -10794,6 +12314,42 @@ class AsyncRiffDBMLflowClient:
 
     async def get_gateway_secret_after_commit(self, parameters: GetGatewaySecretParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetGatewaySecretResult]:
         return await self.get_gateway_secret(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    async def get_issue(self, parameters: GetIssueParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetIssueResult]:
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = await self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="GetIssue", plan_hash=GET_ISSUE_QUERY_PLAN_HASH,
+            parameters=encode_record(parameters), options=options,
+        )
+        outcomes = {
+            "Found": GetIssueFound,
+            "Missing": GetIssueMissing,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    async def get_issue_after_commit(self, parameters: GetIssueParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetIssueResult]:
+        return await self.get_issue(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    async def get_label_schema(self, parameters: GetLabelSchemaParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetLabelSchemaResult]:
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = await self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="GetLabelSchema", plan_hash=GET_LABEL_SCHEMA_QUERY_PLAN_HASH,
+            parameters=encode_record(parameters), options=options,
+        )
+        outcomes = {
+            "Found": GetLabelSchemaFound,
+            "Missing": GetLabelSchemaMissing,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    async def get_label_schema_after_commit(self, parameters: GetLabelSchemaParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetLabelSchemaResult]:
+        return await self.get_label_schema(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
 
     async def get_logged_model(self, parameters: GetLoggedModelParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetLoggedModelResult]:
         if options.read_after_commit is None and self._read_after_commit is not None:
@@ -10964,6 +12520,24 @@ class AsyncRiffDBMLflowClient:
     async def get_registry_webhook_after_commit(self, parameters: GetRegistryWebhookParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetRegistryWebhookResult]:
         return await self.get_registry_webhook(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
 
+    async def get_review_queue(self, parameters: GetReviewQueueParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetReviewQueueResult]:
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = await self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="GetReviewQueue", plan_hash=GET_REVIEW_QUEUE_QUERY_PLAN_HASH,
+            parameters=encode_record(parameters), options=options,
+        )
+        outcomes = {
+            "Found": GetReviewQueueFound,
+            "Missing": GetReviewQueueMissing,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    async def get_review_queue_after_commit(self, parameters: GetReviewQueueParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetReviewQueueResult]:
+        return await self.get_review_queue(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
     async def get_run(self, parameters: GetRunParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetRunResult]:
         if options.read_after_commit is None and self._read_after_commit is not None:
             options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
@@ -11053,6 +12627,49 @@ class AsyncRiffDBMLflowClient:
 
     async def get_trace_after_commit(self, parameters: GetTraceParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[GetTraceResult]:
         return await self.get_trace(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    async def list_evaluation_datasets(self, parameters: ListEvaluationDatasetsParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[ListEvaluationDatasetsResult]:
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 5):
+            raise ValueError("limit must be an integer from 1 through 5")
+        encoded_parameters = encode_record(parameters)
+        generated_cursor = parameters.after
+        if generated_cursor is not None:
+            if options.cursor is not None:
+                raise ValueError("generated cursor conflicts with query options")
+            options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
+        encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = await self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="ListEvaluationDatasets", plan_hash=LIST_EVALUATION_DATASETS_QUERY_PLAN_HASH,
+            parameters=encoded_parameters, options=options,
+        )
+        outcomes = {
+            "Found": ListEvaluationDatasetsFound,
+            "IntegrityFailure": ListEvaluationDatasetsIntegrityFailure,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    async def list_evaluation_datasets_after_commit(self, parameters: ListEvaluationDatasetsParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[ListEvaluationDatasetsResult]:
+        return await self.list_evaluation_datasets(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    async def list_evaluation_datasets_pages(self, parameters: ListEvaluationDatasetsParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[ListEvaluationDatasetsResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[ListEvaluationDatasetsResult]] = []
+        for _ in range(max_pages):
+            page_parameters = ListEvaluationDatasetsParams(scope=parameters.scope, limit=parameters.limit, after=None)
+            page = await self.list_evaluation_datasets(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
 
     async def list_gateway_budget_policies(self, parameters: ListGatewayBudgetPoliciesParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[ListGatewayBudgetPoliciesResult]:
         if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 50):
@@ -11269,6 +12886,92 @@ class AsyncRiffDBMLflowClient:
             cursor = page.next_cursor
         return pages
 
+    async def list_issues(self, parameters: ListIssuesParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[ListIssuesResult]:
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 25):
+            raise ValueError("limit must be an integer from 1 through 25")
+        encoded_parameters = encode_record(parameters)
+        generated_cursor = parameters.after
+        if generated_cursor is not None:
+            if options.cursor is not None:
+                raise ValueError("generated cursor conflicts with query options")
+            options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
+        encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = await self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="ListIssues", plan_hash=LIST_ISSUES_QUERY_PLAN_HASH,
+            parameters=encoded_parameters, options=options,
+        )
+        outcomes = {
+            "Found": ListIssuesFound,
+            "IntegrityFailure": ListIssuesIntegrityFailure,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    async def list_issues_after_commit(self, parameters: ListIssuesParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[ListIssuesResult]:
+        return await self.list_issues(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    async def list_issues_pages(self, parameters: ListIssuesParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[ListIssuesResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[ListIssuesResult]] = []
+        for _ in range(max_pages):
+            page_parameters = ListIssuesParams(scope=parameters.scope, limit=parameters.limit, after=None)
+            page = await self.list_issues(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
+
+    async def list_label_schemas(self, parameters: ListLabelSchemasParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[ListLabelSchemasResult]:
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 25):
+            raise ValueError("limit must be an integer from 1 through 25")
+        encoded_parameters = encode_record(parameters)
+        generated_cursor = parameters.after
+        if generated_cursor is not None:
+            if options.cursor is not None:
+                raise ValueError("generated cursor conflicts with query options")
+            options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
+        encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = await self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="ListLabelSchemas", plan_hash=LIST_LABEL_SCHEMAS_QUERY_PLAN_HASH,
+            parameters=encoded_parameters, options=options,
+        )
+        outcomes = {
+            "Found": ListLabelSchemasFound,
+            "IntegrityFailure": ListLabelSchemasIntegrityFailure,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    async def list_label_schemas_after_commit(self, parameters: ListLabelSchemasParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[ListLabelSchemasResult]:
+        return await self.list_label_schemas(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    async def list_label_schemas_pages(self, parameters: ListLabelSchemasParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[ListLabelSchemasResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[ListLabelSchemasResult]] = []
+        for _ in range(max_pages):
+            page_parameters = ListLabelSchemasParams(scope=parameters.scope, limit=parameters.limit, after=None)
+            page = await self.list_label_schemas(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
+
     async def list_mcpaccess_endpoints_by_server(self, parameters: ListMCPAccessEndpointsByServerParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[ListMCPAccessEndpointsByServerResult]:
         if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 50):
             raise ValueError("limit must be an integer from 1 through 50")
@@ -11435,6 +13138,49 @@ class AsyncRiffDBMLflowClient:
         for _ in range(max_pages):
             page_parameters = ListRegistryWebhooksParams(scope=parameters.scope, limit=parameters.limit, after=None)
             page = await self.list_registry_webhooks(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
+
+    async def list_review_queues(self, parameters: ListReviewQueuesParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[ListReviewQueuesResult]:
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 10):
+            raise ValueError("limit must be an integer from 1 through 10")
+        encoded_parameters = encode_record(parameters)
+        generated_cursor = parameters.after
+        if generated_cursor is not None:
+            if options.cursor is not None:
+                raise ValueError("generated cursor conflicts with query options")
+            options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
+        encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = await self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="ListReviewQueues", plan_hash=LIST_REVIEW_QUEUES_QUERY_PLAN_HASH,
+            parameters=encoded_parameters, options=options,
+        )
+        outcomes = {
+            "Found": ListReviewQueuesFound,
+            "IntegrityFailure": ListReviewQueuesIntegrityFailure,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    async def list_review_queues_after_commit(self, parameters: ListReviewQueuesParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[ListReviewQueuesResult]:
+        return await self.list_review_queues(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    async def list_review_queues_pages(self, parameters: ListReviewQueuesParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[ListReviewQueuesResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[ListReviewQueuesResult]] = []
+        for _ in range(max_pages):
+            page_parameters = ListReviewQueuesParams(scope=parameters.scope, limit=parameters.limit, after=None)
+            page = await self.list_review_queues(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
             pages.append(page)
             if not page.next_cursor:
                 break
@@ -13136,6 +14882,92 @@ class AsyncRiffDBMLflowClient:
             cursor = page.next_cursor
         return pages
 
+    async def search_runs_by_datum_digest(self, parameters: SearchRunsByDatumDigestParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchRunsByDatumDigestResult]:
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 2):
+            raise ValueError("limit must be an integer from 1 through 2")
+        encoded_parameters = encode_record(parameters)
+        generated_cursor = parameters.after
+        if generated_cursor is not None:
+            if options.cursor is not None:
+                raise ValueError("generated cursor conflicts with query options")
+            options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
+        encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = await self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="SearchRunsByDatumDigest", plan_hash=SEARCH_RUNS_BY_DATUM_DIGEST_QUERY_PLAN_HASH,
+            parameters=encoded_parameters, options=options,
+        )
+        outcomes = {
+            "Found": SearchRunsByDatumDigestFound,
+            "IntegrityFailure": SearchRunsByDatumDigestIntegrityFailure,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    async def search_runs_by_datum_digest_after_commit(self, parameters: SearchRunsByDatumDigestParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchRunsByDatumDigestResult]:
+        return await self.search_runs_by_datum_digest(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    async def search_runs_by_datum_digest_pages(self, parameters: SearchRunsByDatumDigestParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[SearchRunsByDatumDigestResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[SearchRunsByDatumDigestResult]] = []
+        for _ in range(max_pages):
+            page_parameters = SearchRunsByDatumDigestParams(experiment_id=parameters.experiment_id, kind=parameters.kind, item_key=parameters.item_key, value_digest=parameters.value_digest, lifecycle_stages=parameters.lifecycle_stages, limit=parameters.limit, after=None)
+            page = await self.search_runs_by_datum_digest(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
+
+    async def search_runs_by_ids(self, parameters: SearchRunsByIdsParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchRunsByIdsResult]:
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 2):
+            raise ValueError("limit must be an integer from 1 through 2")
+        encoded_parameters = encode_record(parameters)
+        generated_cursor = parameters.after
+        if generated_cursor is not None:
+            if options.cursor is not None:
+                raise ValueError("generated cursor conflicts with query options")
+            options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
+        encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = await self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="SearchRunsByIds", plan_hash=SEARCH_RUNS_BY_IDS_QUERY_PLAN_HASH,
+            parameters=encoded_parameters, options=options,
+        )
+        outcomes = {
+            "Found": SearchRunsByIdsFound,
+            "IntegrityFailure": SearchRunsByIdsIntegrityFailure,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    async def search_runs_by_ids_after_commit(self, parameters: SearchRunsByIdsParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchRunsByIdsResult]:
+        return await self.search_runs_by_ids(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    async def search_runs_by_ids_pages(self, parameters: SearchRunsByIdsParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[SearchRunsByIdsResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[SearchRunsByIdsResult]] = []
+        for _ in range(max_pages):
+            page_parameters = SearchRunsByIdsParams(experiment_id=parameters.experiment_id, run_ids=parameters.run_ids, lifecycle_stages=parameters.lifecycle_stages, limit=parameters.limit, after=None)
+            page = await self.search_runs_by_ids(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
+
     async def search_runs_by_lifecycle(self, parameters: SearchRunsByLifecycleParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchRunsByLifecycleResult]:
         if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 2):
             raise ValueError("limit must be an integer from 1 through 2")
@@ -13173,6 +15005,92 @@ class AsyncRiffDBMLflowClient:
         for _ in range(max_pages):
             page_parameters = SearchRunsByLifecycleParams(experiment_ids=parameters.experiment_ids, lifecycle_stage=parameters.lifecycle_stage, limit=parameters.limit, after=None)
             page = await self.search_runs_by_lifecycle(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
+
+    async def search_runs_by_name(self, parameters: SearchRunsByNameParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchRunsByNameResult]:
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 2):
+            raise ValueError("limit must be an integer from 1 through 2")
+        encoded_parameters = encode_record(parameters)
+        generated_cursor = parameters.after
+        if generated_cursor is not None:
+            if options.cursor is not None:
+                raise ValueError("generated cursor conflicts with query options")
+            options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
+        encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = await self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="SearchRunsByName", plan_hash=SEARCH_RUNS_BY_NAME_QUERY_PLAN_HASH,
+            parameters=encoded_parameters, options=options,
+        )
+        outcomes = {
+            "Found": SearchRunsByNameFound,
+            "IntegrityFailure": SearchRunsByNameIntegrityFailure,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    async def search_runs_by_name_after_commit(self, parameters: SearchRunsByNameParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchRunsByNameResult]:
+        return await self.search_runs_by_name(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    async def search_runs_by_name_pages(self, parameters: SearchRunsByNameParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[SearchRunsByNameResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[SearchRunsByNameResult]] = []
+        for _ in range(max_pages):
+            page_parameters = SearchRunsByNameParams(experiment_id=parameters.experiment_id, run_name=parameters.run_name, lifecycle_stages=parameters.lifecycle_stages, limit=parameters.limit, after=None)
+            page = await self.search_runs_by_name(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
+            pages.append(page)
+            if not page.next_cursor:
+                break
+            cursor = page.next_cursor
+        return pages
+
+    async def search_runs_by_status(self, parameters: SearchRunsByStatusParams, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchRunsByStatusResult]:
+        if parameters.limit is not None and (isinstance(parameters.limit, bool) or not isinstance(parameters.limit, int) or parameters.limit < 1 or parameters.limit > 2):
+            raise ValueError("limit must be an integer from 1 through 2")
+        encoded_parameters = encode_record(parameters)
+        generated_cursor = parameters.after
+        if generated_cursor is not None:
+            if options.cursor is not None:
+                raise ValueError("generated cursor conflicts with query options")
+            options = QueryOptions(cursor=generated_cursor, read_after_commit=options.read_after_commit, consistency=options.consistency)
+        encoded_parameters.pop("after", None)
+        if options.read_after_commit is None and self._read_after_commit is not None:
+            options = QueryOptions(cursor=options.cursor, read_after_commit=self._read_after_commit, consistency=options.consistency)
+        raw = await self._transport._execute_named_query(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            contract_bundle_hash=CONTRACT_BUNDLE_HASH, module_hash=QUERY_MODULE_HASH,
+            query_name="SearchRunsByStatus", plan_hash=SEARCH_RUNS_BY_STATUS_QUERY_PLAN_HASH,
+            parameters=encoded_parameters, options=options,
+        )
+        outcomes = {
+            "Found": SearchRunsByStatusFound,
+            "IntegrityFailure": SearchRunsByStatusIntegrityFailure,
+        }
+        return raw._map_value(lambda value: decode_variant(outcomes, value))
+
+    async def search_runs_by_status_after_commit(self, parameters: SearchRunsByStatusParams, commit_sequence: int, options: QueryOptions = QueryOptions()) -> TypedQueryResult[SearchRunsByStatusResult]:
+        return await self.search_runs_by_status(parameters, QueryOptions(cursor=options.cursor, read_after_commit=commit_sequence, consistency=options.consistency))
+
+    async def search_runs_by_status_pages(self, parameters: SearchRunsByStatusParams, max_pages: int = 64, options: QueryOptions = QueryOptions()) -> list[TypedQueryResult[SearchRunsByStatusResult]]:
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages < 1 or max_pages > 1024:
+            raise ValueError("max_pages must be an integer from 1 through 1024")
+        if parameters.after is not None and options.cursor is not None:
+            raise ValueError("generated cursor conflicts with query options")
+        cursor = options.cursor if options.cursor is not None else parameters.after
+        pages: list[TypedQueryResult[SearchRunsByStatusResult]] = []
+        for _ in range(max_pages):
+            page_parameters = SearchRunsByStatusParams(experiment_id=parameters.experiment_id, status=parameters.status, lifecycle_stages=parameters.lifecycle_stages, limit=parameters.limit, after=None)
+            page = await self.search_runs_by_status(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
             pages.append(page)
             if not page.next_cursor:
                 break
@@ -13451,6 +15369,27 @@ class AsyncRiffDBMLflowClient:
                 raise InputBudgetError(AGGREGATE_CANONICAL_ELEMENT_BYTES, "tags")
         return await self._transport._command_batch(inputs, options, self.create_run_with_tags, progress)
 
+    async def delete_evaluation_dataset_entity(self, input: DeleteEvaluationDatasetEntityInput) -> TypedCommandResult[DeleteEvaluationDatasetEntityOutcome]:
+        raw = await self._transport._execute_command(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            command_name="DeleteEvaluationDatasetEntity", plan_hash=DELETE_EVALUATION_DATASET_ENTITY_PLAN_HASH,
+            input=encode_record(input), attempts=self._command_attempts,
+        )
+        outcomes = {
+            "EvaluationDatasetDeleted": DeleteEvaluationDatasetEntityEvaluationDatasetDeleted,
+            "EvaluationDatasetMissing": DeleteEvaluationDatasetEntityEvaluationDatasetMissing,
+        }
+        result: TypedCommandResult[DeleteEvaluationDatasetEntityOutcome] = raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        if self._track_causal_writes and result.commit_sequence is not None and result.commit_sequence > 0:
+            self._read_after_commit = result.commit_sequence if self._read_after_commit is None or result.commit_sequence > self._read_after_commit else self._read_after_commit
+        return result
+
+    async def delete_evaluation_dataset_entity_batch(
+        self, inputs: Sequence[DeleteEvaluationDatasetEntityInput], options: CommandBatchOptions,
+        progress: Callable[[CommandBatchProgress], None] | None = None,
+    ) -> CommandBatchResult[DeleteEvaluationDatasetEntityOutcome]:
+        return await self._transport._command_batch(inputs, options, self.delete_evaluation_dataset_entity, progress)
+
     async def delete_experiment(self, input: DeleteExperimentInput) -> TypedCommandResult[DeleteExperimentOutcome]:
         raw = await self._transport._execute_command(
             contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
@@ -13601,6 +15540,48 @@ class AsyncRiffDBMLflowClient:
     ) -> CommandBatchResult[DeleteGatewaySecretEntityOutcome]:
         return await self._transport._command_batch(inputs, options, self.delete_gateway_secret_entity, progress)
 
+    async def delete_issue_entity(self, input: DeleteIssueEntityInput) -> TypedCommandResult[DeleteIssueEntityOutcome]:
+        raw = await self._transport._execute_command(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            command_name="DeleteIssueEntity", plan_hash=DELETE_ISSUE_ENTITY_PLAN_HASH,
+            input=encode_record(input), attempts=self._command_attempts,
+        )
+        outcomes = {
+            "IssueDeleted": DeleteIssueEntityIssueDeleted,
+            "IssueMissing": DeleteIssueEntityIssueMissing,
+        }
+        result: TypedCommandResult[DeleteIssueEntityOutcome] = raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        if self._track_causal_writes and result.commit_sequence is not None and result.commit_sequence > 0:
+            self._read_after_commit = result.commit_sequence if self._read_after_commit is None or result.commit_sequence > self._read_after_commit else self._read_after_commit
+        return result
+
+    async def delete_issue_entity_batch(
+        self, inputs: Sequence[DeleteIssueEntityInput], options: CommandBatchOptions,
+        progress: Callable[[CommandBatchProgress], None] | None = None,
+    ) -> CommandBatchResult[DeleteIssueEntityOutcome]:
+        return await self._transport._command_batch(inputs, options, self.delete_issue_entity, progress)
+
+    async def delete_label_schema_entity(self, input: DeleteLabelSchemaEntityInput) -> TypedCommandResult[DeleteLabelSchemaEntityOutcome]:
+        raw = await self._transport._execute_command(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            command_name="DeleteLabelSchemaEntity", plan_hash=DELETE_LABEL_SCHEMA_ENTITY_PLAN_HASH,
+            input=encode_record(input), attempts=self._command_attempts,
+        )
+        outcomes = {
+            "LabelSchemaDeleted": DeleteLabelSchemaEntityLabelSchemaDeleted,
+            "LabelSchemaMissing": DeleteLabelSchemaEntityLabelSchemaMissing,
+        }
+        result: TypedCommandResult[DeleteLabelSchemaEntityOutcome] = raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        if self._track_causal_writes and result.commit_sequence is not None and result.commit_sequence > 0:
+            self._read_after_commit = result.commit_sequence if self._read_after_commit is None or result.commit_sequence > self._read_after_commit else self._read_after_commit
+        return result
+
+    async def delete_label_schema_entity_batch(
+        self, inputs: Sequence[DeleteLabelSchemaEntityInput], options: CommandBatchOptions,
+        progress: Callable[[CommandBatchProgress], None] | None = None,
+    ) -> CommandBatchResult[DeleteLabelSchemaEntityOutcome]:
+        return await self._transport._command_batch(inputs, options, self.delete_label_schema_entity, progress)
+
     async def delete_logged_model_entity(self, input: DeleteLoggedModelEntityInput) -> TypedCommandResult[DeleteLoggedModelEntityOutcome]:
         raw = await self._transport._execute_command(
             contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
@@ -13705,6 +15686,27 @@ class AsyncRiffDBMLflowClient:
         progress: Callable[[CommandBatchProgress], None] | None = None,
     ) -> CommandBatchResult[DeleteRegisteredModelEntityOutcome]:
         return await self._transport._command_batch(inputs, options, self.delete_registered_model_entity, progress)
+
+    async def delete_review_queue_entity(self, input: DeleteReviewQueueEntityInput) -> TypedCommandResult[DeleteReviewQueueEntityOutcome]:
+        raw = await self._transport._execute_command(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            command_name="DeleteReviewQueueEntity", plan_hash=DELETE_REVIEW_QUEUE_ENTITY_PLAN_HASH,
+            input=encode_record(input), attempts=self._command_attempts,
+        )
+        outcomes = {
+            "ReviewQueueDeleted": DeleteReviewQueueEntityReviewQueueDeleted,
+            "ReviewQueueMissing": DeleteReviewQueueEntityReviewQueueMissing,
+        }
+        result: TypedCommandResult[DeleteReviewQueueEntityOutcome] = raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        if self._track_causal_writes and result.commit_sequence is not None and result.commit_sequence > 0:
+            self._read_after_commit = result.commit_sequence if self._read_after_commit is None or result.commit_sequence > self._read_after_commit else self._read_after_commit
+        return result
+
+    async def delete_review_queue_entity_batch(
+        self, inputs: Sequence[DeleteReviewQueueEntityInput], options: CommandBatchOptions,
+        progress: Callable[[CommandBatchProgress], None] | None = None,
+    ) -> CommandBatchResult[DeleteReviewQueueEntityOutcome]:
+        return await self._transport._command_batch(inputs, options, self.delete_review_queue_entity, progress)
 
     async def delete_run(self, input: DeleteRunInput) -> TypedCommandResult[DeleteRunOutcome]:
         raw = await self._transport._execute_command(
@@ -13852,7 +15854,7 @@ class AsyncRiffDBMLflowClient:
                 raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "spans", index, "model_name")
             if len(item.model_provider.encode("utf-8")) > 64:
                 raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "spans", index, "model_provider")
-            if len(item.packed_span_json.encode("utf-8")) > 7000:
+            if len(item.packed_span_json.encode("utf-8")) > 32768:
                 raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "spans", index, "packed_span_json")
         aggregate_element_bytes = sum(canonical_value_encoded_length(encode_value(item, TraceSpan)) for item in input.spans)
         if aggregate_element_bytes > 1000000:
@@ -13895,7 +15897,7 @@ class AsyncRiffDBMLflowClient:
                     raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "spans", index, "model_name")
                 if len(item.model_provider.encode("utf-8")) > 64:
                     raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "spans", index, "model_provider")
-                if len(item.packed_span_json.encode("utf-8")) > 7000:
+                if len(item.packed_span_json.encode("utf-8")) > 32768:
                     raise InputBudgetError(INDIVIDUAL_VALUE_BYTES, "spans", index, "packed_span_json")
             aggregate_element_bytes = sum(canonical_value_encoded_length(encode_value(item, TraceSpan)) for item in input.spans)
             if aggregate_element_bytes > 1000000:
@@ -14085,6 +16087,26 @@ class AsyncRiffDBMLflowClient:
     ) -> CommandBatchResult[UpdateRunInfoOutcome]:
         return await self._transport._command_batch(inputs, options, self.update_run_info, progress)
 
+    async def upsert_evaluation_dataset_entity(self, input: UpsertEvaluationDatasetEntityInput) -> TypedCommandResult[UpsertEvaluationDatasetEntityOutcome]:
+        raw = await self._transport._execute_command(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            command_name="UpsertEvaluationDatasetEntity", plan_hash=UPSERT_EVALUATION_DATASET_ENTITY_PLAN_HASH,
+            input=encode_record(input), attempts=self._command_attempts,
+        )
+        outcomes = {
+            "EvaluationDatasetUpserted": UpsertEvaluationDatasetEntityEvaluationDatasetUpserted,
+        }
+        result: TypedCommandResult[UpsertEvaluationDatasetEntityOutcome] = raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        if self._track_causal_writes and result.commit_sequence is not None and result.commit_sequence > 0:
+            self._read_after_commit = result.commit_sequence if self._read_after_commit is None or result.commit_sequence > self._read_after_commit else self._read_after_commit
+        return result
+
+    async def upsert_evaluation_dataset_entity_batch(
+        self, inputs: Sequence[UpsertEvaluationDatasetEntityInput], options: CommandBatchOptions,
+        progress: Callable[[CommandBatchProgress], None] | None = None,
+    ) -> CommandBatchResult[UpsertEvaluationDatasetEntityOutcome]:
+        return await self._transport._command_batch(inputs, options, self.upsert_evaluation_dataset_entity, progress)
+
     async def upsert_gateway_budget_policy_entity(self, input: UpsertGatewayBudgetPolicyEntityInput) -> TypedCommandResult[UpsertGatewayBudgetPolicyEntityOutcome]:
         raw = await self._transport._execute_command(
             contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
@@ -14184,6 +16206,46 @@ class AsyncRiffDBMLflowClient:
         progress: Callable[[CommandBatchProgress], None] | None = None,
     ) -> CommandBatchResult[UpsertGatewaySecretEntityOutcome]:
         return await self._transport._command_batch(inputs, options, self.upsert_gateway_secret_entity, progress)
+
+    async def upsert_issue_entity(self, input: UpsertIssueEntityInput) -> TypedCommandResult[UpsertIssueEntityOutcome]:
+        raw = await self._transport._execute_command(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            command_name="UpsertIssueEntity", plan_hash=UPSERT_ISSUE_ENTITY_PLAN_HASH,
+            input=encode_record(input), attempts=self._command_attempts,
+        )
+        outcomes = {
+            "IssueUpserted": UpsertIssueEntityIssueUpserted,
+        }
+        result: TypedCommandResult[UpsertIssueEntityOutcome] = raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        if self._track_causal_writes and result.commit_sequence is not None and result.commit_sequence > 0:
+            self._read_after_commit = result.commit_sequence if self._read_after_commit is None or result.commit_sequence > self._read_after_commit else self._read_after_commit
+        return result
+
+    async def upsert_issue_entity_batch(
+        self, inputs: Sequence[UpsertIssueEntityInput], options: CommandBatchOptions,
+        progress: Callable[[CommandBatchProgress], None] | None = None,
+    ) -> CommandBatchResult[UpsertIssueEntityOutcome]:
+        return await self._transport._command_batch(inputs, options, self.upsert_issue_entity, progress)
+
+    async def upsert_label_schema_entity(self, input: UpsertLabelSchemaEntityInput) -> TypedCommandResult[UpsertLabelSchemaEntityOutcome]:
+        raw = await self._transport._execute_command(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            command_name="UpsertLabelSchemaEntity", plan_hash=UPSERT_LABEL_SCHEMA_ENTITY_PLAN_HASH,
+            input=encode_record(input), attempts=self._command_attempts,
+        )
+        outcomes = {
+            "LabelSchemaUpserted": UpsertLabelSchemaEntityLabelSchemaUpserted,
+        }
+        result: TypedCommandResult[UpsertLabelSchemaEntityOutcome] = raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        if self._track_causal_writes and result.commit_sequence is not None and result.commit_sequence > 0:
+            self._read_after_commit = result.commit_sequence if self._read_after_commit is None or result.commit_sequence > self._read_after_commit else self._read_after_commit
+        return result
+
+    async def upsert_label_schema_entity_batch(
+        self, inputs: Sequence[UpsertLabelSchemaEntityInput], options: CommandBatchOptions,
+        progress: Callable[[CommandBatchProgress], None] | None = None,
+    ) -> CommandBatchResult[UpsertLabelSchemaEntityOutcome]:
+        return await self._transport._command_batch(inputs, options, self.upsert_label_schema_entity, progress)
 
     async def upsert_logged_model(self, input: UpsertLoggedModelInput) -> TypedCommandResult[UpsertLoggedModelOutcome]:
         raw = await self._transport._execute_command(
@@ -14324,6 +16386,26 @@ class AsyncRiffDBMLflowClient:
         progress: Callable[[CommandBatchProgress], None] | None = None,
     ) -> CommandBatchResult[UpsertRegistryWebhookEntityOutcome]:
         return await self._transport._command_batch(inputs, options, self.upsert_registry_webhook_entity, progress)
+
+    async def upsert_review_queue_entity(self, input: UpsertReviewQueueEntityInput) -> TypedCommandResult[UpsertReviewQueueEntityOutcome]:
+        raw = await self._transport._execute_command(
+            contract_lineage=CONTRACT_LINEAGE, contract_version=CONTRACT_VERSION,
+            command_name="UpsertReviewQueueEntity", plan_hash=UPSERT_REVIEW_QUEUE_ENTITY_PLAN_HASH,
+            input=encode_record(input), attempts=self._command_attempts,
+        )
+        outcomes = {
+            "ReviewQueueUpserted": UpsertReviewQueueEntityReviewQueueUpserted,
+        }
+        result: TypedCommandResult[UpsertReviewQueueEntityOutcome] = raw._map_outcome(lambda value: decode_variant(outcomes, value))
+        if self._track_causal_writes and result.commit_sequence is not None and result.commit_sequence > 0:
+            self._read_after_commit = result.commit_sequence if self._read_after_commit is None or result.commit_sequence > self._read_after_commit else self._read_after_commit
+        return result
+
+    async def upsert_review_queue_entity_batch(
+        self, inputs: Sequence[UpsertReviewQueueEntityInput], options: CommandBatchOptions,
+        progress: Callable[[CommandBatchProgress], None] | None = None,
+    ) -> CommandBatchResult[UpsertReviewQueueEntityOutcome]:
+        return await self._transport._command_batch(inputs, options, self.upsert_review_queue_entity, progress)
 
     async def upsert_run_lineage(self, input: UpsertRunLineageInput) -> TypedCommandResult[UpsertRunLineageOutcome]:
         raw = await self._transport._execute_command(

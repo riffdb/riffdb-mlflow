@@ -156,6 +156,7 @@ contract RiffDBMLflow version 1 {
     field packed_latest_metrics: bytes<400000>
     field revision: u64
     field initialized: bool
+    index by_id (experiment_id, run_id)
     index by_start (experiment_id, start_time, run_id)
     index by_lifecycle_start (experiment_id, lifecycle_stage, start_time, run_id)
     index by_name (experiment_id, run_name, run_id)
@@ -249,8 +250,8 @@ contract RiffDBMLflow version 1 {
     field output_cost_micros: i64
     field total_cost_micros: i64
     field started_at: timestamp
-    field packed_span_json: string<7000>
-    index by_trace_start (experiment_id, trace_id, start_time_ns, span_id) cover (packed_span_json)
+    field packed_span_json: string<32768>
+    index by_trace_start (experiment_id, trace_id, start_time_ns, span_id)
     index by_exp_start (experiment_id, start_time_ns, trace_id, span_id)
     delete_policy no_inbound
   }
@@ -500,6 +501,76 @@ contract RiffDBMLflow version 1 {
     delete_policy no_inbound
   }
 
+  entity EvaluationDatasetEntity {
+    key (scope: string<32>, dataset_id: string<64>)
+    field name: string<256>
+    field digest: string<32>
+    field created_time_ms: i64
+    field last_update_time_ms: i64
+    field schema_json: optional<string<65536>>
+    field profile_json: optional<string<16384>>
+    field created_by: optional<string<256>>
+    field last_updated_by: optional<string<256>>
+    field packed_tags: bytes<16384>
+    field packed_experiment_ids: bytes<16384>
+    field packed_records: bytes<262144>
+    index by_id (scope, dataset_id)
+    delete_policy no_inbound
+  }
+
+  entity LabelSchemaEntity {
+    key (scope: string<32>, schema_id: string<64>)
+    field experiment_id: u64
+    field name: string<256>
+    field schema_type: string<32>
+    field instruction: optional<string<2000>>
+    field enable_comment: bool
+    field input_type: string<32>
+    field input_config_json: string<16384>
+    field created_by: optional<string<256>>
+    field created_time_ms: i64
+    field last_update_time_ms: i64
+    field is_default: bool
+    index by_id (scope, schema_id)
+    index by_experiment (scope, experiment_id, schema_id)
+    delete_policy no_inbound
+  }
+
+  entity ReviewQueueEntity {
+    key (scope: string<32>, queue_id: string<64>)
+    field experiment_id: u64
+    field name: string<256>
+    field name_key: string<256>
+    field queue_type: string<32>
+    field created_by: optional<string<256>>
+    field creation_time_ms: i64
+    field last_update_time_ms: i64
+    field packed_users: bytes<16384>
+    field packed_schema_ids: bytes<16384>
+    field packed_items: bytes<131072>
+    index by_id (scope, queue_id)
+    index by_experiment (scope, experiment_id, queue_id)
+    delete_policy no_inbound
+  }
+
+  entity IssueEntity {
+    key (scope: string<32>, issue_id: string<64>)
+    field experiment_id: u64
+    field name: string<256>
+    field description: string<10000>
+    field status: string<32>
+    field severity: optional<string<32>>
+    field root_causes_json: optional<string<16384>>
+    field source_run_id: optional<string<64>>
+    field categories_json: optional<string<16384>>
+    field created_timestamp_ms: i64
+    field last_updated_timestamp_ms: i64
+    field created_by: optional<string<256>>
+    index by_id (scope, issue_id)
+    index by_experiment (scope, experiment_id, issue_id)
+    delete_policy no_inbound
+  }
+
   event SpanObserved {
     experiment_id: u64
     span_type: string<64>
@@ -676,6 +747,30 @@ contract RiffDBMLflow version 1 {
     root ServerJobEntity
     partition_by scope
     conflict_key (scope, job_id)
+  }
+
+  aggregate EvaluationDatasets {
+    root EvaluationDatasetEntity
+    partition_by scope
+    conflict_key (scope, dataset_id)
+  }
+
+  aggregate LabelSchemas {
+    root LabelSchemaEntity
+    partition_by scope
+    conflict_key (scope, schema_id)
+  }
+
+  aggregate ReviewQueues {
+    root ReviewQueueEntity
+    partition_by scope
+    conflict_key (scope, queue_id)
+  }
+
+  aggregate Issues {
+    root IssueEntity
+    partition_by scope
+    conflict_key (scope, issue_id)
   }
 
   command CreateExperiment {
@@ -2135,5 +2230,202 @@ contract RiffDBMLflow version 1 {
     idempotency_key request_id
     delete ServerJobEntity("global", job_id) as job else ServerJobMissing {}
     return ServerJobDeleted { job: job }
+  }
+
+  command UpsertEvaluationDatasetEntity {
+    input request_id: string<128>
+    input dataset_id: string<64>
+    input name: string<256>
+    input digest: string<32>
+    input created_time_ms: i64
+    input last_update_time_ms: i64
+    input schema_json: optional<string<65536>>
+    input profile_json: optional<string<16384>>
+    input created_by: optional<string<256>>
+    input last_updated_by: optional<string<256>>
+    input packed_tags: bytes<16384>
+    input packed_experiment_ids: bytes<16384>
+    input packed_records: bytes<262144>
+    idempotency_key request_id
+    init_or_mutate EvaluationDatasetEntity("global", dataset_id) as dataset initialize {
+      name: name,
+      digest: digest,
+      created_time_ms: created_time_ms,
+      last_update_time_ms: last_update_time_ms,
+      schema_json: schema_json,
+      profile_json: profile_json,
+      created_by: created_by,
+      last_updated_by: last_updated_by,
+      packed_tags: packed_tags,
+      packed_experiment_ids: packed_experiment_ids,
+      packed_records: packed_records,
+    }
+    overwrite dataset.name = name
+    overwrite dataset.digest = digest
+    overwrite dataset.created_time_ms = created_time_ms
+    overwrite dataset.last_update_time_ms = last_update_time_ms
+    overwrite dataset.schema_json = schema_json
+    overwrite dataset.profile_json = profile_json
+    overwrite dataset.created_by = created_by
+    overwrite dataset.last_updated_by = last_updated_by
+    overwrite dataset.packed_tags = packed_tags
+    overwrite dataset.packed_experiment_ids = packed_experiment_ids
+    overwrite dataset.packed_records = packed_records
+    return EvaluationDatasetUpserted { dataset: dataset }
+  }
+
+  command DeleteEvaluationDatasetEntity {
+    input request_id: string<128>
+    input dataset_id: string<64>
+    idempotency_key request_id
+    delete EvaluationDatasetEntity("global", dataset_id) as dataset else EvaluationDatasetMissing {}
+    return EvaluationDatasetDeleted { dataset: dataset }
+  }
+
+  command UpsertLabelSchemaEntity {
+    input request_id: string<128>
+    input schema_id: string<64>
+    input experiment_id: u64
+    input name: string<256>
+    input schema_type: string<32>
+    input instruction: optional<string<2000>>
+    input enable_comment: bool
+    input input_type: string<32>
+    input input_config_json: string<16384>
+    input created_by: optional<string<256>>
+    input created_time_ms: i64
+    input last_update_time_ms: i64
+    input is_default: bool
+    idempotency_key request_id
+    init_or_mutate LabelSchemaEntity("global", schema_id) as label_schema initialize {
+      experiment_id: experiment_id,
+      name: name,
+      schema_type: schema_type,
+      instruction: instruction,
+      enable_comment: enable_comment,
+      input_type: input_type,
+      input_config_json: input_config_json,
+      created_by: created_by,
+      created_time_ms: created_time_ms,
+      last_update_time_ms: last_update_time_ms,
+      is_default: is_default,
+    }
+    overwrite label_schema.experiment_id = experiment_id
+    overwrite label_schema.name = name
+    overwrite label_schema.schema_type = schema_type
+    overwrite label_schema.instruction = instruction
+    overwrite label_schema.enable_comment = enable_comment
+    overwrite label_schema.input_type = input_type
+    overwrite label_schema.input_config_json = input_config_json
+    overwrite label_schema.created_by = created_by
+    overwrite label_schema.created_time_ms = created_time_ms
+    overwrite label_schema.last_update_time_ms = last_update_time_ms
+    overwrite label_schema.is_default = is_default
+    return LabelSchemaUpserted { label_schema: label_schema }
+  }
+
+  command DeleteLabelSchemaEntity {
+    input request_id: string<128>
+    input schema_id: string<64>
+    idempotency_key request_id
+    delete LabelSchemaEntity("global", schema_id) as label_schema else LabelSchemaMissing {}
+    return LabelSchemaDeleted { label_schema: label_schema }
+  }
+
+  command UpsertReviewQueueEntity {
+    input request_id: string<128>
+    input queue_id: string<64>
+    input experiment_id: u64
+    input name: string<256>
+    input name_key: string<256>
+    input queue_type: string<32>
+    input created_by: optional<string<256>>
+    input creation_time_ms: i64
+    input last_update_time_ms: i64
+    input packed_users: bytes<16384>
+    input packed_schema_ids: bytes<16384>
+    input packed_items: bytes<131072>
+    idempotency_key request_id
+    init_or_mutate ReviewQueueEntity("global", queue_id) as review_queue initialize {
+      experiment_id: experiment_id,
+      name: name,
+      name_key: name_key,
+      queue_type: queue_type,
+      created_by: created_by,
+      creation_time_ms: creation_time_ms,
+      last_update_time_ms: last_update_time_ms,
+      packed_users: packed_users,
+      packed_schema_ids: packed_schema_ids,
+      packed_items: packed_items,
+    }
+    overwrite review_queue.experiment_id = experiment_id
+    overwrite review_queue.name = name
+    overwrite review_queue.name_key = name_key
+    overwrite review_queue.queue_type = queue_type
+    overwrite review_queue.created_by = created_by
+    overwrite review_queue.creation_time_ms = creation_time_ms
+    overwrite review_queue.last_update_time_ms = last_update_time_ms
+    overwrite review_queue.packed_users = packed_users
+    overwrite review_queue.packed_schema_ids = packed_schema_ids
+    overwrite review_queue.packed_items = packed_items
+    return ReviewQueueUpserted { review_queue: review_queue }
+  }
+
+  command DeleteReviewQueueEntity {
+    input request_id: string<128>
+    input queue_id: string<64>
+    idempotency_key request_id
+    delete ReviewQueueEntity("global", queue_id) as review_queue else ReviewQueueMissing {}
+    return ReviewQueueDeleted { review_queue: review_queue }
+  }
+
+  command UpsertIssueEntity {
+    input request_id: string<128>
+    input issue_id: string<64>
+    input experiment_id: u64
+    input name: string<256>
+    input description: string<10000>
+    input status: string<32>
+    input severity: optional<string<32>>
+    input root_causes_json: optional<string<16384>>
+    input source_run_id: optional<string<64>>
+    input categories_json: optional<string<16384>>
+    input created_timestamp_ms: i64
+    input last_updated_timestamp_ms: i64
+    input created_by: optional<string<256>>
+    idempotency_key request_id
+    init_or_mutate IssueEntity("global", issue_id) as issue initialize {
+      experiment_id: experiment_id,
+      name: name,
+      description: description,
+      status: status,
+      severity: severity,
+      root_causes_json: root_causes_json,
+      source_run_id: source_run_id,
+      categories_json: categories_json,
+      created_timestamp_ms: created_timestamp_ms,
+      last_updated_timestamp_ms: last_updated_timestamp_ms,
+      created_by: created_by,
+    }
+    overwrite issue.experiment_id = experiment_id
+    overwrite issue.name = name
+    overwrite issue.description = description
+    overwrite issue.status = status
+    overwrite issue.severity = severity
+    overwrite issue.root_causes_json = root_causes_json
+    overwrite issue.source_run_id = source_run_id
+    overwrite issue.categories_json = categories_json
+    overwrite issue.created_timestamp_ms = created_timestamp_ms
+    overwrite issue.last_updated_timestamp_ms = last_updated_timestamp_ms
+    overwrite issue.created_by = created_by
+    return IssueUpserted { issue: issue }
+  }
+
+  command DeleteIssueEntity {
+    input request_id: string<128>
+    input issue_id: string<64>
+    idempotency_key request_id
+    delete IssueEntity("global", issue_id) as issue else IssueMissing {}
+    return IssueDeleted { issue: issue }
   }
 }

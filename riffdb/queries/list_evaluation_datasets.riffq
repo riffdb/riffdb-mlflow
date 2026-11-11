@@ -1,0 +1,20 @@
+query ListEvaluationDatasets(
+    $scope: EvaluationDatasetEntity.scope,
+    $limit: Limit<5> = 5,
+    $after: Cursor?,
+) {
+    many datasets from EvaluationDatasetEntity
+        where scope == $scope
+        order by dataset_id asc
+        take $limit after $after
+        else IntegrityFailure
+
+    return Found {
+        datasets: datasets {
+            dataset_id name digest created_time_ms last_update_time_ms
+            schema_json profile_json created_by last_updated_by
+            packed_tags packed_experiment_ids packed_records
+        }
+    }
+    outcomes Found | IntegrityFailure
+}

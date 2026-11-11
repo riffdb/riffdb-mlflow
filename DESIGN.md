@@ -49,8 +49,9 @@ to `mlflow server` over REST are unaffected and support Python 3.10–3.13.
 | Parameters | Immutable per-run key/value binding and duplicate-conflict behavior |
 | Tags | Last-write-wins set and exact deletion semantics |
 | Inputs & Outputs | Atomic dataset/model input and output associations with deterministic bounded encoding |
-| Traces & Spans | Out-of-order span ingestion (`init_or_mutate`), trace tags, run/prompt links, search, and assessments |
-| Trace Analytics | Contract-declared scalar columnar projections (`TraceAnalytics`, `SpanAnalytics`, `AssessmentAnalytics`) and event-driven rollups (`SpanModelRollup`). Cold projections report ready prior to first demand in RiffDB `0.2.2+` |
+| Traces & Spans | Single-trace retrieval (`get_trace`, `get_trace_info`, `batch_get_traces`, `batch_get_trace_infos`), out-of-order span ingestion (`init_or_mutate`), trace tags, run/prompt links, search, filter correlation, and assessments |
+| Evaluation Datasets, Label Schemas, Review Queues & Issues | Managed evaluation dataset CRUD and record upserts (`create_dataset`, `upsert_dataset_records`, `search_datasets`), run dataset summaries (`_search_datasets`), label schemas with default `"feedback"` question seeding, human review queues (`get_or_create_user_queue`, item status transitions), and automated issue discovery (`create_issue`, `search_issues`, `update_issue`) |
+| Trace Analytics | Contract-declared scalar columnar projections (`TraceAnalytics`, `SpanAnalytics`, `AssessmentAnalytics`) and event-driven rollups (`SpanModelRollup`). Cold projections report ready prior to first demand and return empty series when zero rows match in RiffDB `0.2.2+` |
 | Logged Models | Full `LoggedModel` lifecycle, params, tags, and search |
 | Model & Prompt Registry | Registered models, versions, stage transitions, aliases, tags, prompt registry (`create_prompt`, `create_prompt_version`, `search_prompts`), and registry webhooks |
 | MCP Server Registry | MCP servers, versions, aliases, tags, and access endpoints via `RiffDBMCPServerRegistryMixin` |
@@ -61,7 +62,7 @@ to `mlflow server` over REST are unaffected and support Python 3.10–3.13.
 
 The SQL store is the behavioral reference. RiffDB is not treated as SQL and
 the adapter does not emulate SQL transactions; it exposes equivalent MLflow
-semantics through 50 compiled RiffDB commands and 78 named RiffQL queries.
+semantics through 58 compiled RiffDB commands and 86 named RiffQL queries.
 
 ## Configuration
 
@@ -88,7 +89,8 @@ setting.
 MLflow-facing experiment and run IDs remain strings with the behavior required
 by upstream tests. MLflow's FileStore establishes that experiment IDs may be
 random fixed-width integers rather than SQL sequences, so the adapter generates
-an 18-digit numeric ID and submits it to one atomic create command. Run IDs use
+a 9-digit numeric ID (fitting within MLflow's 32-bit `ProtoScorer.experiment_id`
+field) and submits it to one atomic create command. Run IDs use
 MLflow's UUID-shaped convention. Millisecond values supplied by MLflow remain
 exact signed integers. Adapter wall-clock time never establishes durable
 ordering, state transitions, or lease validity.

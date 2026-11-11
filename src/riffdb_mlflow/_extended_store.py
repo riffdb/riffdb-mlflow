@@ -4,12 +4,16 @@ import json
 import math
 import re
 import secrets
+import threading
 import time
 from collections import defaultdict
 from collections.abc import Sequence
 from datetime import datetime, timezone
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
 from uuid import uuid4
+
+if TYPE_CHECKING:
+    from mlflow.tracing.analysis import TraceFilterCorrelationResult
 
 from mlflow.entities import (
     Assessment,
@@ -34,6 +38,9 @@ from mlflow.entities import (
     TraceInfo,
     ViewType,
 )
+from mlflow.entities.dataset_summary import _DatasetSummary
+from mlflow.entities.metric import MetricWithRunId
+from mlflow.entities.trace_info_v2 import TraceInfoV2
 from mlflow.entities.trace_location import TraceLocation
 from mlflow.entities.trace_metrics import (
     AggregationType,
@@ -42,6 +49,7 @@ from mlflow.entities.trace_metrics import (
     MetricViewType,
 )
 from mlflow.entities.trace_state import TraceState
+from mlflow.entities.trace_status import TraceStatus
 from mlflow.exceptions import MlflowException
 from mlflow.protos.databricks_pb2 import (
     INVALID_PARAMETER_VALUE,
@@ -58,7 +66,7 @@ from mlflow.tracing.constant import (
     TraceMetricKey,
 )
 from mlflow.tracing.utils import TraceJSONEncoder
-from mlflow.utils.mlflow_tags import MLFLOW_LOGGED_MODELS
+from mlflow.utils.mlflow_tags import MLFLOW_DATASET_CONTEXT, MLFLOW_LOGGED_MODELS
 from mlflow.utils.uri import append_to_uri_path
 from riffdb_application import Timestamp
 
@@ -356,12 +364,15 @@ def _linear_percentile(sorted_values: list[float], percentile: float) -> float |
 class RiffDBExtendedStoreMixin(RiffDBMCPServerRegistryMixin):
     _trace_experiment_map: dict[str, int]
     _model_experiment_map: dict[str, int]
+    _trace_write_lock: threading.RLock
 
     def _ensure_extended_indexes(self) -> None:
         if not hasattr(self, "_trace_experiment_map"):
             self._trace_experiment_map = {}
         if not hasattr(self, "_model_experiment_map"):
             self._model_experiment_map = {}
+        if not hasattr(self, "_trace_write_lock"):
+            self._trace_write_lock = threading.RLock()
 
     def _causal_commit_seq(self, client: Any) -> int:
         seq = getattr(client, "_read_after_commit", None)
@@ -564,6 +575,118 @@ class RiffDBExtendedStoreMixin(RiffDBMCPServerRegistryMixin):
             RunTag(MLFLOW_LOGGED_MODELS, json.dumps(history)),  # type: ignore[no-untyped-call]
         )
 
+    def _search_datasets(self, experiment_ids: Sequence[str]) -> list[_DatasetSummary]:
+        """Return all dataset summaries associated with runs in the given experiments."""
+        summaries: list[_DatasetSummary] = []
+        seen: set[tuple[str, str, str, str | None]] = set()
+        for exp_id_str in experiment_ids or []:
+            try:
+                exp = self.get_experiment(str(exp_id_str))  # type: ignore[no-untyped-call]
+            except MlflowException:
+                continue
+            if exp is None or str(exp.lifecycle_stage).lower() != "active":
+                continue
+            exp_str = str(exp.experiment_id)
+            page_token: str | None = None
+            while True:
+                runs = self.search_runs(  # type: ignore[no-untyped-call]
+                    experiment_ids=[exp_str],
+                    filter_string="",
+                    run_view_type=ViewType.ALL,
+                    max_results=500,
+                    order_by=None,
+                    page_token=page_token,
+                )
+                for run in runs:
+                    dataset_inputs = getattr(run.inputs, "dataset_inputs", None) or []
+                    for ds_input in dataset_inputs:
+                        ds = ds_input.dataset
+                        ctx: str | None = None
+                        for tag in ds_input.tags or []:
+                            if tag.key == MLFLOW_DATASET_CONTEXT:
+                                ctx = tag.value
+                                break
+                        key = (exp_str, ds.name, ds.digest, ctx)
+                        if key not in seen:
+                            seen.add(key)
+                            summaries.append(
+                                _DatasetSummary(  # type: ignore[no-untyped-call]
+                                    experiment_id=exp_str,
+                                    name=ds.name,
+                                    digest=ds.digest,
+                                    context=ctx,
+                                )
+                            )
+                            if len(summaries) >= 1000:
+                                return summaries
+                page_token = getattr(runs, "token", None)
+                if not page_token:
+                    break
+        return summaries
+
+    def get_metric_history_bulk(
+        self, run_ids: Sequence[str], metric_key: str, max_results: int = 25000
+    ) -> list[MetricWithRunId]:
+        rows: list[MetricWithRunId] = []
+        for run_id in sorted(set(run_ids or [])):
+            try:
+                hist = self.get_metric_history(run_id, metric_key)  # type: ignore[no-untyped-call]
+            except MlflowException:
+                continue
+            ordered = sorted(hist, key=lambda m: (int(m.timestamp), int(m.step), float(m.value)))
+            for m in ordered:
+                rows.append(MetricWithRunId(run_id=run_id, metric=m))
+                if len(rows) >= max_results:
+                    return rows
+        return rows
+
+    def get_metric_history_bulk_interval(
+        self,
+        run_ids: list[str],
+        metric_key: str,
+        max_results: int,
+        start_step: int | None,
+        end_step: int | None,
+    ) -> list[MetricWithRunId]:
+        if (start_step is None) != (end_step is None):
+            raise MlflowException.invalid_parameter_value(
+                "Both start_step and end_step must be specified together, "
+                "or neither may be specified."
+            )
+        max_results = max(1, int(max_results))
+        out: list[MetricWithRunId] = []
+        for run_id in run_ids or []:
+            hist = list(self.get_metric_history(run_id, metric_key))  # type: ignore[no-untyped-call]
+            if start_step is not None and end_step is not None:
+                hist = [m for m in hist if int(start_step) <= int(m.step) <= int(end_step)]
+            hist.sort(key=lambda m: (int(m.step), int(m.timestamp), float(m.value)))
+            if not hist:
+                continue
+            if max_results == 1:
+                sampled = [hist[-1]]
+            elif len(hist) <= max_results:
+                sampled = hist
+            else:
+                indices = {
+                    round(i * (len(hist) - 1) / (max_results - 1)) for i in range(max_results)
+                }
+                sampled = [hist[idx] for idx in sorted(indices)]
+            for m in sampled:
+                out.append(MetricWithRunId(run_id=run_id, metric=m))
+        return out
+
+    def get_metric_history_bulk_interval_from_steps(
+        self, run_id: str, metric_key: str, steps: Sequence[int], max_results: int
+    ) -> list[MetricWithRunId]:
+        step_set = {int(s) for s in (steps or [])}
+        hist = [
+            m
+            for m in self.get_metric_history(run_id, metric_key)  # type: ignore[no-untyped-call]
+            if int(m.step) in step_set
+        ]
+        hist.sort(key=lambda m: (int(m.step), int(m.timestamp), float(m.value)))
+        return [MetricWithRunId(run_id=run_id, metric=m) for m in hist[: int(max_results)]]
+
     # ------------------------------------------------------------------
     # Traces & Spans (including Out-of-Order Span Ingestion)
     # ------------------------------------------------------------------
@@ -591,12 +714,17 @@ class RiffDBExtendedStoreMixin(RiffDBMCPServerRegistryMixin):
         cached = self._trace_experiment_map.get(trace_id)
         if cached is not None:
             return cached
+        client = self._application()  # type: ignore[attr-defined]
         matched = _TRACE_ID_EXPERIMENT_RE.match(trace_id)
         if matched is not None:
-            exp_id = int(matched.group(1), 16)
-            self._trace_experiment_map[trace_id] = exp_id
-            return exp_id
-        client = self._application()  # type: ignore[attr-defined]
+            candidate_exp_id = int(matched.group(1), 16)
+            if 0 <= candidate_exp_id < (1 << 63):
+                probe = client.get_trace(
+                    GetTraceParams(experiment_id=candidate_exp_id, trace_id=trace_id)
+                )
+                if isinstance(probe.value, GetTraceFound):
+                    self._trace_experiment_map[trace_id] = candidate_exp_id
+                    return candidate_exp_id
         for exp in self.search_experiments(ViewType.ALL):  # type: ignore[no-untyped-call]
             exp_id = int(exp.experiment_id)
             res = client.get_trace(GetTraceParams(experiment_id=exp_id, trace_id=trace_id))
@@ -655,6 +783,7 @@ class RiffDBExtendedStoreMixin(RiffDBMCPServerRegistryMixin):
     ) -> TraceInfo:
         metadata = cls._decode_json_dict(row.packed_trace_metadata)
         tags = cls._decode_json_dict(row.packed_tags)
+        tags.setdefault("mlflow.trace.spansLocation", "TRACKING_STORE")
         if row.trace_name and "mlflow.traceName" not in tags:
             tags["mlflow.traceName"] = row.trace_name
         if row.source_run_id and "mlflow.sourceRun" not in metadata:
@@ -715,135 +844,147 @@ class RiffDBExtendedStoreMixin(RiffDBMCPServerRegistryMixin):
         trace_id = trace_info.trace_id or self._new_trace_id(experiment_id)
         self._trace_experiment_map[trace_id] = experiment_id
 
-        client = self._application()  # type: ignore[attr-defined]
-        existing_res = client.get_trace(
-            GetTraceParams(experiment_id=experiment_id, trace_id=trace_id)
-        )
-        existing_row = (
-            existing_res.value.trace if isinstance(existing_res.value, GetTraceFound) else None
-        )
-        existing_assessments = (
-            existing_res.value.assessments if isinstance(existing_res.value, GetTraceFound) else ()
-        )
+        with self._trace_write_lock:
+            client = self._application()  # type: ignore[attr-defined]
+            existing_res = client.get_trace(
+                GetTraceParams(experiment_id=experiment_id, trace_id=trace_id)
+            )
+            existing_row = (
+                existing_res.value.trace if isinstance(existing_res.value, GetTraceFound) else None
+            )
+            existing_assessments = (
+                existing_res.value.assessments
+                if isinstance(existing_res.value, GetTraceFound)
+                else ()
+            )
 
-        metadata = dict(trace_info.trace_metadata or {})
-        tags = dict(trace_info.tags or {})
-        if "mlflow.artifactLocation" not in tags and experiment.artifact_location:
-            tags["mlflow.artifactLocation"] = str(
-                append_to_uri_path(  # type: ignore[no-untyped-call]
-                    experiment.artifact_location, "traces", trace_id, "artifacts"
+            metadata = dict(trace_info.trace_metadata or {})
+            tags = dict(trace_info.tags or {})
+            if "mlflow.artifactLocation" not in tags and experiment.artifact_location:
+                tags["mlflow.artifactLocation"] = str(
+                    append_to_uri_path(  # type: ignore[no-untyped-call]
+                        experiment.artifact_location, "traces", trace_id, "artifacts"
+                    )
+                )
+            tags.setdefault("mlflow.trace.spansLocation", "TRACKING_STORE")
+
+            request_time_ms = int(trace_info.request_time or _now_ms())
+            execution_duration_ms = (
+                int(trace_info.execution_duration)
+                if trace_info.execution_duration is not None
+                else 0
+            )
+            state_val = (
+                trace_info.state.value
+                if isinstance(trace_info.state, TraceState)
+                else str(trace_info.state or TraceState.IN_PROGRESS.value)
+            )
+            trace_name = tags.get("mlflow.traceName", "")
+            source_run_id = metadata.get("mlflow.sourceRun")
+            session_id = metadata.get("mlflow.trace.session")
+
+            usage_raw = metadata.get("mlflow.trace.tokenUsage")
+            usage_dict = _try_parse_json(usage_raw) if usage_raw else {}
+            if not isinstance(usage_dict, dict):
+                usage_dict = {}
+            input_tokens = int(usage_dict.get("input_tokens", 0))
+            output_tokens = int(usage_dict.get("output_tokens", 0))
+            total_tokens = int(usage_dict.get("total_tokens", input_tokens + output_tokens))
+            cache_read_tokens = int(usage_dict.get("cache_read_input_tokens", 0))
+            cache_creation_tokens = int(usage_dict.get("cache_creation_input_tokens", 0))
+
+            cost_raw = metadata.get("mlflow.trace.cost")
+            cost_dict = _try_parse_json(cost_raw) if cost_raw else {}
+            if not isinstance(cost_dict, dict):
+                cost_dict = {}
+            total_cost_micros = round(float(cost_dict.get("total_cost", 0.0)) * 1_000_000)
+
+            span_count = 0
+            error_span_count = 0
+            run_ids: list[str] = [source_run_id] if source_run_id else []
+            prompt_versions: list[dict[str, Any]] = []
+
+            if existing_row is not None:
+                existing_meta = self._decode_json_dict(existing_row.packed_trace_metadata)
+                existing_tags = self._decode_json_dict(existing_row.packed_tags)
+                metadata = {**existing_meta, **metadata}
+                tags = {**existing_tags, **tags}
+                tags.setdefault("mlflow.trace.spansLocation", "TRACKING_STORE")
+                existing_spans_len = (
+                    len(existing_res.value.spans)
+                    if isinstance(existing_res.value, GetTraceFound)
+                    else 0
+                )
+                span_count = max(int(existing_row.span_count), existing_spans_len)
+                error_span_count = int(existing_row.error_span_count)
+                if execution_duration_ms == 0 and existing_row.execution_duration_ms > 0:
+                    execution_duration_ms = int(existing_row.execution_duration_ms)
+                if state_val in (
+                    TraceState.IN_PROGRESS.value,
+                    TraceState.STATE_UNSPECIFIED.value,
+                ) and existing_row.state in (TraceState.OK.value, TraceState.ERROR.value):
+                    state_val = existing_row.state
+                if not trace_name and existing_row.trace_name:
+                    trace_name = existing_row.trace_name
+                    tags["mlflow.traceName"] = trace_name
+                if total_tokens == 0 and existing_row.total_tokens > 0:
+                    input_tokens = int(existing_row.total_input_tokens)
+                    output_tokens = int(existing_row.total_output_tokens)
+                    total_tokens = int(existing_row.total_tokens)
+                    cache_read_tokens = int(existing_row.cache_read_input_tokens)
+                    cache_creation_tokens = int(existing_row.cache_creation_input_tokens)
+                if total_cost_micros == 0 and existing_row.total_cost_micros > 0:
+                    total_cost_micros = int(existing_row.total_cost_micros)
+                if not session_id and existing_row.session_id:
+                    session_id = existing_row.session_id
+                run_ids = list(
+                    dict.fromkeys(self._decode_json_list(existing_row.packed_run_ids) + run_ids)
+                )
+                prompt_versions = self._decode_json_list(existing_row.packed_prompt_versions)
+
+            result = client.upsert_trace(
+                UpsertTraceInput(
+                    request_id=str(uuid4()),
+                    experiment_id=experiment_id,
+                    trace_id=trace_id,
+                    request_time_ms=request_time_ms,
+                    execution_duration_ms=execution_duration_ms,
+                    state=state_val,
+                    status_code=state_val,
+                    trace_name=trace_name[:256],
+                    client_request_id=trace_info.client_request_id,
+                    request_preview=(
+                        trace_info.request_preview[:2000]
+                        if trace_info.request_preview
+                        else (existing_row.request_preview if existing_row else None)
+                    ),
+                    response_preview=(
+                        trace_info.response_preview[:2000]
+                        if trace_info.response_preview
+                        else (existing_row.response_preview if existing_row else None)
+                    ),
+                    source_run_id=source_run_id
+                    or (existing_row.source_run_id if existing_row else None),
+                    span_count=span_count,
+                    error_span_count=error_span_count,
+                    total_input_tokens=input_tokens,
+                    total_output_tokens=output_tokens,
+                    total_tokens=total_tokens,
+                    cache_read_input_tokens=cache_read_tokens,
+                    cache_creation_input_tokens=cache_creation_tokens,
+                    total_cost_micros=total_cost_micros,
+                    session_id=session_id,
+                    packed_trace_metadata=self._encode_json_dict(metadata),
+                    packed_tags=self._encode_json_dict(tags),
+                    packed_run_ids=self._encode_json_list(run_ids),
+                    packed_prompt_versions=self._encode_json_list(prompt_versions),
+                    requested_at=_ts_from_ms(request_time_ms),
+                    initialized=True,
                 )
             )
-
-        request_time_ms = int(trace_info.request_time or _now_ms())
-        execution_duration_ms = (
-            int(trace_info.execution_duration) if trace_info.execution_duration is not None else 0
-        )
-        state_val = (
-            trace_info.state.value
-            if isinstance(trace_info.state, TraceState)
-            else str(trace_info.state or TraceState.IN_PROGRESS.value)
-        )
-        trace_name = tags.get("mlflow.traceName", "")
-        source_run_id = metadata.get("mlflow.sourceRun")
-        session_id = metadata.get("mlflow.trace.session")
-
-        usage_raw = metadata.get("mlflow.trace.tokenUsage")
-        usage_dict = _try_parse_json(usage_raw) if usage_raw else {}
-        if not isinstance(usage_dict, dict):
-            usage_dict = {}
-        input_tokens = int(usage_dict.get("input_tokens", 0))
-        output_tokens = int(usage_dict.get("output_tokens", 0))
-        total_tokens = int(usage_dict.get("total_tokens", input_tokens + output_tokens))
-        cache_read_tokens = int(usage_dict.get("cache_read_input_tokens", 0))
-        cache_creation_tokens = int(usage_dict.get("cache_creation_input_tokens", 0))
-
-        cost_raw = metadata.get("mlflow.trace.cost")
-        cost_dict = _try_parse_json(cost_raw) if cost_raw else {}
-        if not isinstance(cost_dict, dict):
-            cost_dict = {}
-        total_cost_micros = round(float(cost_dict.get("total_cost", 0.0)) * 1_000_000)
-
-        span_count = 0
-        error_span_count = 0
-        run_ids: list[str] = [source_run_id] if source_run_id else []
-        prompt_versions: list[dict[str, Any]] = []
-
-        if existing_row is not None:
-            existing_meta = self._decode_json_dict(existing_row.packed_trace_metadata)
-            existing_tags = self._decode_json_dict(existing_row.packed_tags)
-            metadata = {**existing_meta, **metadata}
-            tags = {**existing_tags, **tags}
-            span_count = int(existing_row.span_count)
-            error_span_count = int(existing_row.error_span_count)
-            if execution_duration_ms == 0 and existing_row.execution_duration_ms > 0:
-                execution_duration_ms = int(existing_row.execution_duration_ms)
-            if state_val in (
-                TraceState.IN_PROGRESS.value,
-                TraceState.STATE_UNSPECIFIED.value,
-            ) and existing_row.state in (TraceState.OK.value, TraceState.ERROR.value):
-                state_val = existing_row.state
-            if not trace_name and existing_row.trace_name:
-                trace_name = existing_row.trace_name
-                tags["mlflow.traceName"] = trace_name
-            if total_tokens == 0 and existing_row.total_tokens > 0:
-                input_tokens = int(existing_row.total_input_tokens)
-                output_tokens = int(existing_row.total_output_tokens)
-                total_tokens = int(existing_row.total_tokens)
-                cache_read_tokens = int(existing_row.cache_read_input_tokens)
-                cache_creation_tokens = int(existing_row.cache_creation_input_tokens)
-            if total_cost_micros == 0 and existing_row.total_cost_micros > 0:
-                total_cost_micros = int(existing_row.total_cost_micros)
-            if not session_id and existing_row.session_id:
-                session_id = existing_row.session_id
-            run_ids = list(
-                dict.fromkeys(self._decode_json_list(existing_row.packed_run_ids) + run_ids)
-            )
-            prompt_versions = self._decode_json_list(existing_row.packed_prompt_versions)
-
-        result = client.upsert_trace(
-            UpsertTraceInput(
-                request_id=str(uuid4()),
-                experiment_id=experiment_id,
-                trace_id=trace_id,
-                request_time_ms=request_time_ms,
-                execution_duration_ms=execution_duration_ms,
-                state=state_val,
-                status_code=state_val,
-                trace_name=trace_name[:256],
-                client_request_id=trace_info.client_request_id,
-                request_preview=(
-                    trace_info.request_preview[:2000]
-                    if trace_info.request_preview
-                    else (existing_row.request_preview if existing_row else None)
-                ),
-                response_preview=(
-                    trace_info.response_preview[:2000]
-                    if trace_info.response_preview
-                    else (existing_row.response_preview if existing_row else None)
-                ),
-                source_run_id=source_run_id
-                or (existing_row.source_run_id if existing_row else None),
-                span_count=span_count,
-                error_span_count=error_span_count,
-                total_input_tokens=input_tokens,
-                total_output_tokens=output_tokens,
-                total_tokens=total_tokens,
-                cache_read_input_tokens=cache_read_tokens,
-                cache_creation_input_tokens=cache_creation_tokens,
-                total_cost_micros=total_cost_micros,
-                session_id=session_id,
-                packed_trace_metadata=self._encode_json_dict(metadata),
-                packed_tags=self._encode_json_dict(tags),
-                packed_run_ids=self._encode_json_list(run_ids),
-                packed_prompt_versions=self._encode_json_list(prompt_versions),
-                requested_at=_ts_from_ms(request_time_ms),
-                initialized=True,
-            )
-        )
-        if not isinstance(result.outcome, UpsertTraceTraceUpserted):
-            raise MlflowException("Invalid UpsertTrace response from RiffDB")
-        return self._to_mlflow_trace_info(result.outcome.trace, existing_assessments)
+            if not isinstance(result.outcome, UpsertTraceTraceUpserted):
+                raise MlflowException("Invalid UpsertTrace response from RiffDB")
+            return self._to_mlflow_trace_info(result.outcome.trace, existing_assessments)
 
     def get_trace_info(self, trace_id: str) -> TraceInfo:
         experiment_id = self._resolve_trace_experiment_id(trace_id)
@@ -857,6 +998,84 @@ class RiffDBExtendedStoreMixin(RiffDBMCPServerRegistryMixin):
         if not isinstance(res.value, GetTraceFound):
             raise MlflowException("Invalid GetTrace response from RiffDB")
         return self._to_mlflow_trace_info(res.value.trace, res.value.assessments)
+
+    def get_trace(self, trace_id: str, *, allow_partial: bool = False) -> Trace:
+        traces = self.batch_get_traces([trace_id])
+        if not traces:
+            raise MlflowException(
+                f"Trace with ID '{trace_id}' does not exist.",
+                error_code=RESOURCE_DOES_NOT_EXIST,
+            )
+        return traces[0]
+
+    def batch_get_trace_infos(
+        self, trace_ids: list[str], location: str | None = None
+    ) -> list[TraceInfo]:
+        if not trace_ids:
+            return []
+        infos: list[TraceInfo] = []
+        for tid in trace_ids:
+            try:
+                exp_id = self._resolve_trace_experiment_id(tid, location=location)
+            except MlflowException:
+                continue
+            client = self._application()  # type: ignore[attr-defined]
+            res = client.get_trace(GetTraceParams(experiment_id=exp_id, trace_id=tid))
+            if isinstance(res.value, GetTraceFound):
+                infos.append(self._to_mlflow_trace_info(res.value.trace, res.value.assessments))
+        return infos
+
+    def deprecated_start_trace_v2(
+        self,
+        experiment_id: str,
+        timestamp_ms: int,
+        request_metadata: dict[str, str],
+        tags: dict[str, str],
+    ) -> TraceInfoV2:
+        exp_id = int(self._numeric_experiment_id(experiment_id))  # type: ignore[attr-defined]
+        trace_id = self._new_trace_id(exp_id)
+        info = self.start_trace(
+            TraceInfo(
+                trace_id=trace_id,
+                trace_location=TraceLocation.from_experiment_id(str(exp_id)),
+                request_time=int(timestamp_ms),
+                execution_duration=None,
+                state=TraceState.IN_PROGRESS,
+                trace_metadata=dict(request_metadata or {}),
+                tags=dict(tags or {}),
+            )
+        )
+        return TraceInfoV2.from_v3(info)
+
+    def deprecated_end_trace_v2(
+        self,
+        request_id: str,
+        timestamp_ms: int,
+        status: TraceStatus,
+        request_metadata: dict[str, str],
+        tags: dict[str, str],
+    ) -> TraceInfoV2:
+        existing = self.get_trace_info(request_id)
+        duration = max(0, int(timestamp_ms) - int(existing.request_time))
+        merged_meta = {**(existing.trace_metadata or {}), **(request_metadata or {})}
+        merged_tags = {**(existing.tags or {}), **(tags or {})}
+        status_val = status.value if hasattr(status, "value") else str(status)
+        try:
+            state = TraceState(status_val)
+        except ValueError:
+            state = TraceState.OK
+        updated = self.start_trace(
+            TraceInfo(
+                trace_id=request_id,
+                trace_location=existing.trace_location,
+                request_time=int(existing.request_time),
+                execution_duration=duration,
+                state=state,
+                trace_metadata=merged_meta,
+                tags=merged_tags,
+            )
+        )
+        return TraceInfoV2.from_v3(updated)
 
     def batch_get_traces(self, trace_ids: list[str], location: str | None = None) -> list[Trace]:
         if not trace_ids:
@@ -898,7 +1117,7 @@ class RiffDBExtendedStoreMixin(RiffDBMCPServerRegistryMixin):
                             BatchGetTraceSpansParams(
                                 experiment_id=exp_id,
                                 trace_ids=chunk_ids,
-                                limit=500,
+                                limit=100,
                                 after=s_cursor,
                             )
                         )
@@ -1061,6 +1280,26 @@ class RiffDBExtendedStoreMixin(RiffDBMCPServerRegistryMixin):
         outputs_preview = _attr("mlflow.spanOutputs")
 
         packed_json = json.dumps(span_dict, cls=TraceJSONEncoder, separators=(",", ":"))
+        if len(packed_json.encode("utf-8")) > 32000:
+            compact_dict = dict(span_dict)
+            if isinstance(compact_dict.get("events"), list):
+                new_events = []
+                for ev in compact_dict["events"]:
+                    if isinstance(ev, dict) and isinstance(ev.get("attributes"), dict):
+                        ev_attrs = {
+                            k: (v[:1000] if isinstance(v, str) and len(v) > 1000 else v)
+                            for k, v in ev["attributes"].items()
+                        }
+                        new_events.append({**ev, "attributes": ev_attrs})
+                    else:
+                        new_events.append(ev)
+                compact_dict["events"] = new_events
+            if isinstance(compact_dict.get("attributes"), dict):
+                compact_dict["attributes"] = {
+                    k: (json.dumps(str(v)[:2000]) if isinstance(v, str) and len(v) > 2000 else v)
+                    for k, v in compact_dict["attributes"].items()
+                }
+            packed_json = json.dumps(compact_dict, cls=TraceJSONEncoder, separators=(",", ":"))
         return {
             "span_id": str(span.span_id),
             "trace_id": str(span.trace_id),
@@ -1102,235 +1341,257 @@ class RiffDBExtendedStoreMixin(RiffDBMCPServerRegistryMixin):
             return []
         experiment_id = int(self._numeric_experiment_id(location))  # type: ignore[attr-defined]
         experiment = self._require_active_experiment(experiment_id)
-        client = self._application()  # type: ignore[attr-defined]
+        with self._trace_write_lock:
+            client = self._application()  # type: ignore[attr-defined]
 
-        spans_by_trace: dict[str, list[Span]] = defaultdict(list)
-        for span in spans:
-            spans_by_trace[span.trace_id].append(span)
-            self._trace_experiment_map[span.trace_id] = experiment_id
+            spans_by_trace: dict[str, list[Span]] = defaultdict(list)
+            for span in spans:
+                spans_by_trace[span.trace_id].append(span)
+                self._trace_experiment_map[span.trace_id] = experiment_id
 
-        for trace_id, trace_spans in spans_by_trace.items():
-            existing_res = client.get_trace(
-                GetTraceParams(experiment_id=experiment_id, trace_id=trace_id)
-            )
-            existing_trace = (
-                existing_res.value.trace if isinstance(existing_res.value, GetTraceFound) else None
-            )
-            existing_spans_by_id: dict[str, Any] = {}
-            if isinstance(existing_res.value, GetTraceFound):
-                for s_row in existing_res.value.spans:
-                    existing_spans_by_id[s_row.span_id] = {
-                        "span_id": s_row.span_id,
-                        "parent_id": s_row.parent_id,
-                        "name": s_row.name,
-                        "span_type": s_row.span_type,
-                        "status": s_row.status,
-                        "start_time_ns": int(s_row.start_time_ns),
-                        "end_time_ns": int(s_row.end_time_ns),
-                        "duration_ms": int(s_row.duration_ms),
-                        "model_name": s_row.model_name,
-                        "model_provider": s_row.model_provider,
-                        "input_tokens": int(s_row.input_tokens),
-                        "output_tokens": int(s_row.output_tokens),
-                        "total_tokens": int(s_row.total_tokens),
-                        "cache_read_input_tokens": 0,
-                        "cache_creation_input_tokens": 0,
-                        "input_cost_micros": int(s_row.input_cost_micros),
-                        "output_cost_micros": int(s_row.output_cost_micros),
-                        "total_cost_micros": int(s_row.total_cost_micros),
-                        "session_id": None,
-                        "inputs_preview": None,
-                        "outputs_preview": None,
-                    }
-
-            batch_telemetry = [self._extract_span_telemetry(s) for s in trace_spans]
-            for item in batch_telemetry:
-                existing_spans_by_id[item["span_id"]] = item
-
-            all_spans = list(existing_spans_by_id.values())
-            min_start_ns = min(s["start_time_ns"] for s in all_spans)
-            max_end_ns = max(s["end_time_ns"] for s in all_spans)
-            inferred_request_ms = min_start_ns // 1_000_000
-            inferred_duration_ms = max(0, (max_end_ns - min_start_ns) // 1_000_000)
-
-            root_span = next((s for s in all_spans if s["parent_id"] is None), None)
-            span_count = len(all_spans)
-            error_span_count = sum(1 for s in all_spans if s["status"] == "ERROR")
-            sum_input_tokens = sum(s["input_tokens"] for s in all_spans)
-            sum_output_tokens = sum(s["output_tokens"] for s in all_spans)
-            sum_total_tokens = sum(s["total_tokens"] for s in all_spans)
-            sum_cache_read = sum(s.get("cache_read_input_tokens", 0) for s in all_spans)
-            sum_cache_creation = sum(s.get("cache_creation_input_tokens", 0) for s in all_spans)
-            sum_cost_micros = sum(s["total_cost_micros"] for s in all_spans)
-
-            metadata: dict[str, str] = (
-                self._decode_json_dict(existing_trace.packed_trace_metadata)
-                if existing_trace is not None
-                else {}
-            )
-            tags: dict[str, str] = (
-                self._decode_json_dict(existing_trace.packed_tags)
-                if existing_trace is not None
-                else {}
-            )
-            if "mlflow.artifactLocation" not in tags and experiment.artifact_location:
-                tags["mlflow.artifactLocation"] = str(
-                    append_to_uri_path(  # type: ignore[no-untyped-call]
-                        experiment.artifact_location, "traces", trace_id, "artifacts"
-                    )
+            for trace_id, trace_spans in spans_by_trace.items():
+                existing_res = client.get_trace(
+                    GetTraceParams(experiment_id=experiment_id, trace_id=trace_id)
                 )
-            tags["mlflow.trace.spansLocation"] = "TRACKING_STORE"
+                existing_trace = (
+                    existing_res.value.trace
+                    if isinstance(existing_res.value, GetTraceFound)
+                    else None
+                )
+                existing_spans_by_id: dict[str, Any] = {}
+                if isinstance(existing_res.value, GetTraceFound):
+                    for s_row in existing_res.value.spans:
+                        existing_spans_by_id[s_row.span_id] = {
+                            "span_id": s_row.span_id,
+                            "parent_id": s_row.parent_id,
+                            "name": s_row.name,
+                            "span_type": s_row.span_type,
+                            "status": s_row.status,
+                            "start_time_ns": int(s_row.start_time_ns),
+                            "end_time_ns": int(s_row.end_time_ns),
+                            "duration_ms": int(s_row.duration_ms),
+                            "model_name": s_row.model_name,
+                            "model_provider": s_row.model_provider,
+                            "input_tokens": int(s_row.input_tokens),
+                            "output_tokens": int(s_row.output_tokens),
+                            "total_tokens": int(s_row.total_tokens),
+                            "cache_read_input_tokens": 0,
+                            "cache_creation_input_tokens": 0,
+                            "input_cost_micros": int(s_row.input_cost_micros),
+                            "output_cost_micros": int(s_row.output_cost_micros),
+                            "total_cost_micros": int(s_row.total_cost_micros),
+                            "session_id": None,
+                            "inputs_preview": None,
+                            "outputs_preview": None,
+                        }
 
-            trace_name = (
-                existing_trace.trace_name
-                if existing_trace is not None and existing_trace.trace_name
-                else (root_span["name"] if root_span is not None else trace_spans[0].name)
-            )
-            if trace_name and "mlflow.traceName" not in tags:
-                tags["mlflow.traceName"] = trace_name
+                batch_telemetry = [self._extract_span_telemetry(s) for s in trace_spans]
+                for item in batch_telemetry:
+                    existing_spans_by_id[item["span_id"]] = item
 
-            if root_span is not None:
-                root_status = root_span["status"]
-                if root_status == "ERROR":
-                    state_val = TraceState.ERROR.value
-                elif root_status in ("OK", "UNSET"):
-                    state_val = TraceState.OK.value
+                all_spans = list(existing_spans_by_id.values())
+                min_start_ns = min(s["start_time_ns"] for s in all_spans)
+                max_end_ns = max(s["end_time_ns"] for s in all_spans)
+                inferred_request_ms = min_start_ns // 1_000_000
+                inferred_duration_ms = max(0, (max_end_ns - min_start_ns) // 1_000_000)
+
+                root_span = next((s for s in all_spans if s["parent_id"] is None), None)
+                span_count = len(all_spans)
+                error_span_count = sum(1 for s in all_spans if s["status"] == "ERROR")
+                sum_input_tokens = sum(s["input_tokens"] for s in all_spans)
+                sum_output_tokens = sum(s["output_tokens"] for s in all_spans)
+                sum_total_tokens = sum(s["total_tokens"] for s in all_spans)
+                sum_cache_read = sum(s.get("cache_read_input_tokens", 0) for s in all_spans)
+                sum_cache_creation = sum(s.get("cache_creation_input_tokens", 0) for s in all_spans)
+                sum_cost_micros = sum(s["total_cost_micros"] for s in all_spans)
+
+                metadata: dict[str, str] = (
+                    self._decode_json_dict(existing_trace.packed_trace_metadata)
+                    if existing_trace is not None
+                    else {}
+                )
+                tags: dict[str, str] = (
+                    self._decode_json_dict(existing_trace.packed_tags)
+                    if existing_trace is not None
+                    else {}
+                )
+                if "mlflow.artifactLocation" not in tags and experiment.artifact_location:
+                    tags["mlflow.artifactLocation"] = str(
+                        append_to_uri_path(  # type: ignore[no-untyped-call]
+                            experiment.artifact_location, "traces", trace_id, "artifacts"
+                        )
+                    )
+                tags["mlflow.trace.spansLocation"] = "TRACKING_STORE"
+
+                trace_name = (
+                    existing_trace.trace_name
+                    if existing_trace is not None and existing_trace.trace_name
+                    else (root_span["name"] if root_span is not None else trace_spans[0].name)
+                )
+                if trace_name and "mlflow.traceName" not in tags:
+                    tags["mlflow.traceName"] = trace_name
+
+                if root_span is not None:
+                    root_status = root_span["status"]
+                    if root_status == "ERROR":
+                        state_val = TraceState.ERROR.value
+                    elif root_status in ("OK", "UNSET"):
+                        state_val = TraceState.OK.value
+                    else:
+                        state_val = TraceState.IN_PROGRESS.value
+                elif existing_trace is not None and existing_trace.initialized:
+                    state_val = existing_trace.state
                 else:
-                    state_val = TraceState.IN_PROGRESS.value
-            elif existing_trace is not None and existing_trace.initialized:
-                state_val = existing_trace.state
-            else:
-                state_val = (
-                    TraceState.ERROR.value if error_span_count > 0 else TraceState.IN_PROGRESS.value
+                    state_val = (
+                        TraceState.ERROR.value
+                        if error_span_count > 0
+                        else TraceState.IN_PROGRESS.value
+                    )
+
+                request_time_ms = (
+                    int(existing_trace.request_time_ms)
+                    if existing_trace is not None and existing_trace.initialized
+                    else inferred_request_ms
+                )
+                execution_duration_ms = (
+                    int(existing_trace.execution_duration_ms)
+                    if existing_trace is not None
+                    and existing_trace.initialized
+                    and existing_trace.execution_duration_ms > 0
+                    else inferred_duration_ms
                 )
 
-            request_time_ms = (
-                int(existing_trace.request_time_ms)
-                if existing_trace is not None and existing_trace.initialized
-                else inferred_request_ms
-            )
-            execution_duration_ms = (
-                int(existing_trace.execution_duration_ms)
-                if existing_trace is not None
-                and existing_trace.initialized
-                and existing_trace.execution_duration_ms > 0
-                else inferred_duration_ms
-            )
+                session_id = next(
+                    (s["session_id"] for s in batch_telemetry if s.get("session_id")),
+                    existing_trace.session_id if existing_trace is not None else None,
+                )
+                if session_id:
+                    metadata["mlflow.trace.session"] = session_id
 
-            session_id = next(
-                (s["session_id"] for s in batch_telemetry if s.get("session_id")),
-                existing_trace.session_id if existing_trace is not None else None,
-            )
-            if session_id:
-                metadata["mlflow.trace.session"] = session_id
-
-            if sum_total_tokens > 0 or sum_input_tokens > 0 or sum_output_tokens > 0:
-                usage_obj: dict[str, int] = {
-                    "input_tokens": sum_input_tokens,
-                    "output_tokens": sum_output_tokens,
-                    "total_tokens": sum_total_tokens,
-                }
-                if sum_cache_read > 0:
-                    usage_obj["cache_read_input_tokens"] = sum_cache_read
-                if sum_cache_creation > 0:
-                    usage_obj["cache_creation_input_tokens"] = sum_cache_creation
-                metadata["mlflow.trace.tokenUsage"] = json.dumps(usage_obj)
-
-            if sum_cost_micros > 0:
-                sum_in_cost = sum(s["input_cost_micros"] for s in all_spans) / 1_000_000.0
-                sum_out_cost = sum(s["output_cost_micros"] for s in all_spans) / 1_000_000.0
-                metadata["mlflow.trace.cost"] = json.dumps(
-                    {
-                        "input_cost": sum_in_cost,
-                        "output_cost": sum_out_cost,
-                        "total_cost": sum_cost_micros / 1_000_000.0,
+                if sum_total_tokens > 0 or sum_input_tokens > 0 or sum_output_tokens > 0:
+                    usage_obj: dict[str, int] = {
+                        "input_tokens": sum_input_tokens,
+                        "output_tokens": sum_output_tokens,
+                        "total_tokens": sum_total_tokens,
                     }
+                    if sum_cache_read > 0:
+                        usage_obj["cache_read_input_tokens"] = sum_cache_read
+                    if sum_cache_creation > 0:
+                        usage_obj["cache_creation_input_tokens"] = sum_cache_creation
+                    metadata["mlflow.trace.tokenUsage"] = json.dumps(usage_obj)
+
+                if sum_cost_micros > 0:
+                    sum_in_cost = sum(s["input_cost_micros"] for s in all_spans) / 1_000_000.0
+                    sum_out_cost = sum(s["output_cost_micros"] for s in all_spans) / 1_000_000.0
+                    metadata["mlflow.trace.cost"] = json.dumps(
+                        {
+                            "input_cost": sum_in_cost,
+                            "output_cost": sum_out_cost,
+                            "total_cost": sum_cost_micros / 1_000_000.0,
+                        }
+                    )
+
+                request_preview = (
+                    existing_trace.request_preview
+                    if existing_trace is not None and existing_trace.request_preview
+                    else (root_span.get("inputs_preview") if root_span else None)
+                )
+                response_preview = (
+                    existing_trace.response_preview
+                    if existing_trace is not None and existing_trace.response_preview
+                    else (root_span.get("outputs_preview") if root_span else None)
                 )
 
-            request_preview = (
-                existing_trace.request_preview
-                if existing_trace is not None and existing_trace.request_preview
-                else (root_span.get("inputs_preview") if root_span else None)
-            )
-            response_preview = (
-                existing_trace.response_preview
-                if existing_trace is not None and existing_trace.response_preview
-                else (root_span.get("outputs_preview") if root_span else None)
-            )
+                chunks: list[list[dict[str, Any]]] = []
+                cur_chunk: list[dict[str, Any]] = []
+                cur_bytes = 0
+                for item in batch_telemetry:
+                    item_bytes = len(item["packed_span_json"].encode("utf-8")) + 1024
+                    if cur_chunk and (len(cur_chunk) >= 64 or cur_bytes + item_bytes > 750_000):
+                        chunks.append(cur_chunk)
+                        cur_chunk = []
+                        cur_bytes = 0
+                    cur_chunk.append(item)
+                    cur_bytes += item_bytes
+                if cur_chunk:
+                    chunks.append(cur_chunk)
 
-            for chunk_start in range(0, len(batch_telemetry), 64):
-                chunk = batch_telemetry[chunk_start : chunk_start + 64]
-                span_records = tuple(
-                    TraceSpan(
-                        experiment_id=experiment_id,
-                        trace_id=trace_id,
-                        span_id=item["span_id"],
-                        parent_id=item["parent_id"],
-                        name=item["name"],
-                        span_type=item["span_type"],
-                        status=item["status"],
-                        start_time_ns=item["start_time_ns"],
-                        end_time_ns=item["end_time_ns"],
-                        duration_ms=item["duration_ms"],
-                        model_name=item["model_name"],
-                        model_provider=item["model_provider"],
-                        input_tokens=item["input_tokens"],
-                        output_tokens=item["output_tokens"],
-                        total_tokens=item["total_tokens"],
-                        input_cost_micros=item["input_cost_micros"],
-                        output_cost_micros=item["output_cost_micros"],
-                        total_cost_micros=item["total_cost_micros"],
-                        started_at=_ts_from_ns(item["start_time_ns"]),
-                        packed_span_json=item["packed_span_json"],
+                for chunk in chunks:
+                    span_records = tuple(
+                        TraceSpan(
+                            experiment_id=experiment_id,
+                            trace_id=trace_id,
+                            span_id=item["span_id"],
+                            parent_id=item["parent_id"],
+                            name=item["name"],
+                            span_type=item["span_type"],
+                            status=item["status"],
+                            start_time_ns=item["start_time_ns"],
+                            end_time_ns=item["end_time_ns"],
+                            duration_ms=item["duration_ms"],
+                            model_name=item["model_name"],
+                            model_provider=item["model_provider"],
+                            input_tokens=item["input_tokens"],
+                            output_tokens=item["output_tokens"],
+                            total_tokens=item["total_tokens"],
+                            input_cost_micros=item["input_cost_micros"],
+                            output_cost_micros=item["output_cost_micros"],
+                            total_cost_micros=item["total_cost_micros"],
+                            started_at=_ts_from_ns(item["start_time_ns"]),
+                            packed_span_json=item["packed_span_json"],
+                        )
+                        for item in chunk
                     )
-                    for item in chunk
-                )
-                res = client.ingest_trace_spans(
-                    IngestTraceSpansInput(
-                        request_id=str(uuid4()),
-                        experiment_id=experiment_id,
-                        trace_id=trace_id,
-                        request_time_ms=request_time_ms,
-                        execution_duration_ms=execution_duration_ms,
-                        state=state_val,
-                        status_code=state_val,
-                        trace_name=trace_name[:256],
-                        client_request_id=(
-                            existing_trace.client_request_id if existing_trace else None
-                        ),
-                        request_preview=request_preview,
-                        response_preview=response_preview,
-                        source_run_id=(existing_trace.source_run_id if existing_trace else None),
-                        span_count=span_count,
-                        error_span_count=error_span_count,
-                        total_input_tokens=sum_input_tokens,
-                        total_output_tokens=sum_output_tokens,
-                        total_tokens=sum_total_tokens,
-                        cache_read_input_tokens=sum_cache_read,
-                        cache_creation_input_tokens=sum_cache_creation,
-                        total_cost_micros=sum_cost_micros,
-                        session_id=session_id,
-                        packed_trace_metadata=self._encode_json_dict(metadata),
-                        packed_tags=self._encode_json_dict(tags),
-                        packed_run_ids=(
-                            existing_trace.packed_run_ids if existing_trace is not None else b"[]"
-                        ),
-                        packed_prompt_versions=(
-                            existing_trace.packed_prompt_versions
-                            if existing_trace is not None
-                            else b"[]"
-                        ),
-                        requested_at=_ts_from_ms(request_time_ms),
-                        initialized=bool(
-                            existing_trace.initialized
-                            if existing_trace is not None
-                            else (root_span is not None)
-                        ),
-                        spans=span_records,
+                    res = client.ingest_trace_spans(
+                        IngestTraceSpansInput(
+                            request_id=str(uuid4()),
+                            experiment_id=experiment_id,
+                            trace_id=trace_id,
+                            request_time_ms=request_time_ms,
+                            execution_duration_ms=execution_duration_ms,
+                            state=state_val,
+                            status_code=state_val,
+                            trace_name=trace_name[:256],
+                            client_request_id=(
+                                existing_trace.client_request_id if existing_trace else None
+                            ),
+                            request_preview=request_preview,
+                            response_preview=response_preview,
+                            source_run_id=(
+                                existing_trace.source_run_id if existing_trace else None
+                            ),
+                            span_count=span_count,
+                            error_span_count=error_span_count,
+                            total_input_tokens=sum_input_tokens,
+                            total_output_tokens=sum_output_tokens,
+                            total_tokens=sum_total_tokens,
+                            cache_read_input_tokens=sum_cache_read,
+                            cache_creation_input_tokens=sum_cache_creation,
+                            total_cost_micros=sum_cost_micros,
+                            session_id=session_id,
+                            packed_trace_metadata=self._encode_json_dict(metadata),
+                            packed_tags=self._encode_json_dict(tags),
+                            packed_run_ids=(
+                                existing_trace.packed_run_ids
+                                if existing_trace is not None
+                                else b"[]"
+                            ),
+                            packed_prompt_versions=(
+                                existing_trace.packed_prompt_versions
+                                if existing_trace is not None
+                                else b"[]"
+                            ),
+                            requested_at=_ts_from_ms(request_time_ms),
+                            initialized=bool(
+                                existing_trace.initialized
+                                if existing_trace is not None
+                                else (root_span is not None)
+                            ),
+                            spans=span_records,
+                        )
                     )
-                )
-                if not isinstance(res.outcome, IngestTraceSpansTraceSpansIngested):
-                    raise MlflowException("Invalid IngestTraceSpans response from RiffDB")
+                    if not isinstance(res.outcome, IngestTraceSpansTraceSpansIngested):
+                        raise MlflowException("Invalid IngestTraceSpans response from RiffDB")
         return list(spans)
 
     async def log_spans_async(self, location: str, spans: list[Span]) -> list[Span]:
@@ -1592,7 +1853,71 @@ class RiffDBExtendedStoreMixin(RiffDBMCPServerRegistryMixin):
                 self._trace_experiment_map.pop(tid, None)
             elif not isinstance(del_res.outcome, DeleteTraceTraceMissing):
                 raise MlflowException("Invalid DeleteTrace response from RiffDB")
+        if target_ids and hasattr(self, "_delete_review_queue_items_for_traces"):
+            self._delete_review_queue_items_for_traces(target_ids)
         return deleted_count
+
+    def _delete_traces(
+        self,
+        experiment_id: str,
+        max_timestamp_millis: int | None = None,
+        max_traces: int | None = None,
+        trace_ids: list[str] | None = None,
+    ) -> int:
+        return self.delete_traces(
+            experiment_id=experiment_id,
+            max_timestamp_millis=max_timestamp_millis,
+            max_traces=max_traces,
+            trace_ids=trace_ids,
+        )
+
+    def calculate_trace_filter_correlation(
+        self,
+        experiment_ids: list[str],
+        filter_string1: str,
+        filter_string2: str,
+        base_filter: str | None = None,
+    ) -> TraceFilterCorrelationResult:
+        from mlflow.store.analytics import trace_correlation
+        from mlflow.tracing.analysis import TraceFilterCorrelationResult
+
+        base_traces, _ = self.search_traces(
+            experiment_ids=experiment_ids,
+            filter_string=base_filter,
+            max_results=10000,
+        )
+        f1_combined = f"{base_filter} AND {filter_string1}" if base_filter else filter_string1
+        f2_combined = f"{base_filter} AND {filter_string2}" if base_filter else filter_string2
+        f1_traces, _ = self.search_traces(
+            experiment_ids=experiment_ids,
+            filter_string=f1_combined,
+            max_results=10000,
+        )
+        f2_traces, _ = self.search_traces(
+            experiment_ids=experiment_ids,
+            filter_string=f2_combined,
+            max_results=10000,
+        )
+        f1_ids = {t.trace_id for t in f1_traces}
+        f2_ids = {t.trace_id for t in f2_traces}
+        total_count = len(base_traces)
+        filter1_count = len(f1_ids)
+        filter2_count = len(f2_ids)
+        joint_count = len(f1_ids & f2_ids)
+        npmi_result = trace_correlation.calculate_npmi_from_counts(
+            joint_count,
+            filter1_count,
+            filter2_count,
+            total_count,
+        )
+        return TraceFilterCorrelationResult(
+            npmi=npmi_result.npmi,
+            npmi_smoothed=npmi_result.npmi_smoothed,
+            filter1_count=filter1_count,
+            filter2_count=filter2_count,
+            joint_count=joint_count,
+            total_count=total_count,
+        )
 
     def _mutate_trace_row(
         self,
@@ -2020,7 +2345,7 @@ class RiffDBExtendedStoreMixin(RiffDBMCPServerRegistryMixin):
                         commit_seq,
                     )
                     if not isinstance(t_res.value, QueryTraceAnalyticsFound):
-                        raise MlflowException("Invalid QueryTraceAnalytics response from RiffDB")
+                        break
                     for trow in t_res.value.traces:
                         if start_time_ms is not None and int(trow.request_time_ms) < int(
                             start_time_ms
@@ -2067,7 +2392,7 @@ class RiffDBExtendedStoreMixin(RiffDBMCPServerRegistryMixin):
                         commit_seq,
                     )
                     if not isinstance(s_res.value, QuerySpanAnalyticsFound):
-                        raise MlflowException("Invalid QuerySpanAnalytics response from RiffDB")
+                        break
                     for srow in s_res.value.spans:
                         parent_trace = trace_rows_by_id.get(srow.trace_id)
                         if need_trace_rows and parent_trace is None:
@@ -2116,9 +2441,7 @@ class RiffDBExtendedStoreMixin(RiffDBMCPServerRegistryMixin):
                         commit_seq,
                     )
                     if not isinstance(a_res.value, QueryAssessmentAnalyticsFound):
-                        raise MlflowException(
-                            "Invalid QueryAssessmentAnalytics response from RiffDB"
-                        )
+                        break
                     for arow in a_res.value.assessments:
                         parent_trace = trace_rows_by_id.get(arow.trace_id)
                         if need_trace_rows and parent_trace is None:
@@ -2631,7 +2954,7 @@ class RiffDBExtendedStoreMixin(RiffDBMCPServerRegistryMixin):
             commit_seq,
         )
         if not isinstance(res.value, QuerySpanModelRollupFound):
-            raise MlflowException("Invalid QuerySpanModelRollup response from RiffDB")
+            return []
         return [
             {
                 "experiment_id": int(r.experiment_id),
@@ -2671,7 +2994,7 @@ class RiffDBExtendedStoreMixin(RiffDBMCPServerRegistryMixin):
             commit_seq,
         )
         if not isinstance(res.value, AggregateSpanAnalyticsByModelFound):
-            raise MlflowException("Invalid AggregateSpanAnalyticsByModel response from RiffDB")
+            return []
         return [
             {
                 "model_name": r.model_name,
@@ -2708,12 +3031,17 @@ class RiffDBExtendedStoreMixin(RiffDBMCPServerRegistryMixin):
         cached = self._model_experiment_map.get(model_id)
         if cached is not None:
             return cached
+        client = self._application()  # type: ignore[attr-defined]
         matched = _MODEL_ID_EXPERIMENT_RE.match(model_id)
         if matched is not None:
-            exp_id = int(matched.group(1), 16)
-            self._model_experiment_map[model_id] = exp_id
-            return exp_id
-        client = self._application()  # type: ignore[attr-defined]
+            candidate_exp_id = int(matched.group(1), 16)
+            if 0 <= candidate_exp_id < (1 << 63):
+                probe = client.get_logged_model(
+                    GetLoggedModelParams(experiment_id=candidate_exp_id, model_id=model_id)
+                )
+                if isinstance(probe.value, GetLoggedModelFound):
+                    self._model_experiment_map[model_id] = candidate_exp_id
+                    return candidate_exp_id
         for exp in self.search_experiments(ViewType.ALL):  # type: ignore[no-untyped-call]
             exp_id = int(exp.experiment_id)
             res = client.get_logged_model(

@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "riffdb-mlflow"
-version = "0.2.2"
+version = "0.2.3"
 description = "Compiled RiffDB tracking, model-registry, AI gateway, and job store adapter for MLflow"
 readme = "README.md"
 requires-python = ">=3.11"

@@ -49,15 +49,27 @@ from riffdb_mlflow.generated.client import (
     BatchGetTraceSpansFound,
     CreateExperimentExperimentCreated,
     CreateRunWithTagsRunCreated,
+    DeleteEvaluationDatasetEntityEvaluationDatasetDeleted,
+    DeleteIssueEntityIssueDeleted,
+    DeleteLabelSchemaEntityLabelSchemaDeleted,
     DeleteLoggedModelEntityLoggedModelDeleted,
+    DeleteReviewQueueEntityReviewQueueDeleted,
     DeleteTraceAssessmentTraceAssessmentDeleted,
     DeleteTraceSpanTraceSpanDeleted,
     DeleteTraceTraceDeleted,
     Experiment,
+    GetEvaluationDatasetFound,
+    GetEvaluationDatasetMissing,
     GetExperimentFound,
     GetExperimentFoundExperiment,
+    GetIssueFound,
+    GetIssueMissing,
+    GetLabelSchemaFound,
+    GetLabelSchemaMissing,
     GetLoggedModelFound,
     GetLoggedModelMissing,
+    GetReviewQueueFound,
+    GetReviewQueueMissing,
     GetRunFound,
     GetRunFoundRun,
     GetRunLineageFound,
@@ -66,17 +78,31 @@ from riffdb_mlflow.generated.client import (
     GetTraceMissing,
     IngestTraceSpansTraceSpansIngested,
     LifecycleStage,
+    ListEvaluationDatasetsFound,
+    ListIssuesFound,
+    ListLabelSchemasFound,
+    ListReviewQueuesFound,
     LogBatchBatchLogged,
     QueryAssessmentAnalyticsFound,
+    QueryAssessmentAnalyticsIntegrityFailure,
     QuerySpanAnalyticsFound,
+    QuerySpanAnalyticsIntegrityFailure,
     QuerySpanModelRollupFound,
+    QuerySpanModelRollupIntegrityFailure,
     QueryTraceAnalyticsFound,
+    QueryTraceAnalyticsIntegrityFailure,
     Run,
     RunDataKind,
     RunDatum,
+    SearchExperimentsFound,
     SearchLoggedModelsFound,
+    SearchRunsFound,
     SearchTracesFound,
+    UpsertEvaluationDatasetEntityEvaluationDatasetUpserted,
+    UpsertIssueEntityIssueUpserted,
+    UpsertLabelSchemaEntityLabelSchemaUpserted,
     UpsertLoggedModelLoggedModelUpserted,
+    UpsertReviewQueueEntityReviewQueueUpserted,
     UpsertRunLineageRunLineageUpserted,
     UpsertTraceAssessmentTraceAssessmentUpserted,
     UpsertTraceTraceUpserted,
@@ -125,6 +151,10 @@ class FakeExtendedRiffDBClient:
         self.assessments: dict[tuple[int, str, str], SimpleNamespace] = {}
         self.models: dict[tuple[int, str], SimpleNamespace] = {}
         self.span_events: list[dict[str, Any]] = []
+        self.evaluation_datasets: dict[str, Any] = {}
+        self.label_schemas: dict[str, Any] = {}
+        self.review_queues: dict[str, Any] = {}
+        self.issues: dict[str, Any] = {}
 
     def _next_commit(self) -> int:
         self.commit_seq += 1
@@ -466,6 +496,8 @@ class FakeExtendedRiffDBClient:
 
     def query_trace_analytics_after_commit(self, params: Any, _commit: int) -> _FakeResult:
         rows = [t for (exp_id, _), t in self.traces.items() if exp_id == int(params.experiment_id)]
+        if not rows:
+            return _FakeResult(value=QueryTraceAnalyticsIntegrityFailure())
         return _FakeResult(
             value=QueryTraceAnalyticsFound(traces=tuple(rows)),  # type: ignore[arg-type]
         )
@@ -474,6 +506,8 @@ class FakeExtendedRiffDBClient:
         rows = [
             s for (exp_id, _, _), s in self.spans.items() if exp_id == int(params.experiment_id)
         ]
+        if not rows:
+            return _FakeResult(value=QuerySpanAnalyticsIntegrityFailure())
         return _FakeResult(
             value=QuerySpanAnalyticsFound(spans=tuple(rows)),  # type: ignore[arg-type]
         )
@@ -484,6 +518,8 @@ class FakeExtendedRiffDBClient:
             for (exp_id, _, _), a in self.assessments.items()
             if exp_id == int(params.experiment_id)
         ]
+        if not rows:
+            return _FakeResult(value=QueryAssessmentAnalyticsIntegrityFailure())
         return _FakeResult(
             value=QueryAssessmentAnalyticsFound(assessments=tuple(rows)),  # type: ignore[arg-type]
         )
@@ -527,6 +563,8 @@ class FakeExtendedRiffDBClient:
                     sum_cost_micros=sum(x["total_cost_micros"] for x in items),
                 )
             )
+        if not rollups:
+            return _FakeResult(value=QuerySpanModelRollupIntegrityFailure())
         return _FakeResult(
             value=QuerySpanModelRollupFound(rollups=tuple(rollups)),  # type: ignore[arg-type]
         )
@@ -607,6 +645,182 @@ class FakeExtendedRiffDBClient:
         removed = self.models.pop((int(cmd.experiment_id), cmd.model_id), SimpleNamespace())
         return _FakeResult(
             outcome=DeleteLoggedModelEntityLoggedModelDeleted(model=removed),  # type: ignore[arg-type]
+            commit_sequence=seq,
+        )
+
+    def search_experiments(self, params: Any) -> _FakeResult:
+        rows = list(self.experiments.values())
+        return _FakeResult(
+            value=SearchExperimentsFound(experiments=tuple(rows)),  # type: ignore[arg-type]
+        )
+
+    def search_runs(self, params: Any) -> _FakeResult:
+        want = {int(e) for e in params.experiment_ids}
+        rows = [r for (exp_id, _), r in self.runs.items() if exp_id in want]
+        return _FakeResult(
+            value=SearchRunsFound(runs=tuple(rows)),  # type: ignore[arg-type]
+        )
+
+    def get_evaluation_dataset(self, params: Any) -> _FakeResult:
+        ds = self.evaluation_datasets.get(params.dataset_id)
+        if ds is None:
+            return _FakeResult(value=GetEvaluationDatasetMissing())
+        return _FakeResult(value=GetEvaluationDatasetFound(dataset=ds))  # type: ignore[arg-type]
+
+    def list_evaluation_datasets(self, params: Any) -> _FakeResult:
+        rows = list(self.evaluation_datasets.values())
+        return _FakeResult(value=ListEvaluationDatasetsFound(datasets=tuple(rows)))  # type: ignore[arg-type]
+
+    def upsert_evaluation_dataset_entity(self, cmd: Any) -> _FakeResult:
+        seq = self._next_commit()
+        ds = SimpleNamespace(
+            scope="global",
+            dataset_id=cmd.dataset_id,
+            name=cmd.name,
+            digest=cmd.digest,
+            created_time_ms=cmd.created_time_ms,
+            last_update_time_ms=cmd.last_update_time_ms,
+            schema_json=cmd.schema_json,
+            profile_json=cmd.profile_json,
+            created_by=cmd.created_by,
+            last_updated_by=cmd.last_updated_by,
+            packed_tags=cmd.packed_tags,
+            packed_experiment_ids=cmd.packed_experiment_ids,
+            packed_records=cmd.packed_records,
+        )
+        self.evaluation_datasets[cmd.dataset_id] = ds
+        return _FakeResult(
+            outcome=UpsertEvaluationDatasetEntityEvaluationDatasetUpserted(dataset=ds),  # type: ignore[arg-type]
+            commit_sequence=seq,
+        )
+
+    def delete_evaluation_dataset_entity(self, cmd: Any) -> _FakeResult:
+        seq = self._next_commit()
+        removed = self.evaluation_datasets.pop(cmd.dataset_id, SimpleNamespace())
+        return _FakeResult(
+            outcome=DeleteEvaluationDatasetEntityEvaluationDatasetDeleted(dataset=removed),  # type: ignore[arg-type]
+            commit_sequence=seq,
+        )
+
+    def get_label_schema(self, params: Any) -> _FakeResult:
+        ls = self.label_schemas.get(params.schema_id)
+        if ls is None:
+            return _FakeResult(value=GetLabelSchemaMissing())
+        return _FakeResult(value=GetLabelSchemaFound(label_schema=ls))  # type: ignore[arg-type]
+
+    def list_label_schemas(self, params: Any) -> _FakeResult:
+        rows = list(self.label_schemas.values())
+        return _FakeResult(value=ListLabelSchemasFound(label_schemas=tuple(rows)))  # type: ignore[arg-type]
+
+    def upsert_label_schema_entity(self, cmd: Any) -> _FakeResult:
+        seq = self._next_commit()
+        ls = SimpleNamespace(
+            scope="global",
+            schema_id=cmd.schema_id,
+            experiment_id=cmd.experiment_id,
+            name=cmd.name,
+            schema_type=cmd.schema_type,
+            instruction=cmd.instruction,
+            enable_comment=cmd.enable_comment,
+            input_type=cmd.input_type,
+            input_config_json=cmd.input_config_json,
+            created_by=cmd.created_by,
+            created_time_ms=cmd.created_time_ms,
+            last_update_time_ms=cmd.last_update_time_ms,
+            is_default=cmd.is_default,
+        )
+        self.label_schemas[cmd.schema_id] = ls
+        return _FakeResult(
+            outcome=UpsertLabelSchemaEntityLabelSchemaUpserted(label_schema=ls),  # type: ignore[arg-type]
+            commit_sequence=seq,
+        )
+
+    def delete_label_schema_entity(self, cmd: Any) -> _FakeResult:
+        seq = self._next_commit()
+        removed = self.label_schemas.pop(cmd.schema_id, SimpleNamespace())
+        return _FakeResult(
+            outcome=DeleteLabelSchemaEntityLabelSchemaDeleted(label_schema=removed),  # type: ignore[arg-type]
+            commit_sequence=seq,
+        )
+
+    def get_review_queue(self, params: Any) -> _FakeResult:
+        rq = self.review_queues.get(params.queue_id)
+        if rq is None:
+            return _FakeResult(value=GetReviewQueueMissing())
+        return _FakeResult(value=GetReviewQueueFound(review_queue=rq))  # type: ignore[arg-type]
+
+    def list_review_queues(self, params: Any) -> _FakeResult:
+        rows = list(self.review_queues.values())
+        return _FakeResult(value=ListReviewQueuesFound(review_queues=tuple(rows)))  # type: ignore[arg-type]
+
+    def upsert_review_queue_entity(self, cmd: Any) -> _FakeResult:
+        seq = self._next_commit()
+        rq = SimpleNamespace(
+            scope="global",
+            queue_id=cmd.queue_id,
+            experiment_id=cmd.experiment_id,
+            name=cmd.name,
+            name_key=cmd.name_key,
+            queue_type=cmd.queue_type,
+            created_by=cmd.created_by,
+            creation_time_ms=cmd.creation_time_ms,
+            last_update_time_ms=cmd.last_update_time_ms,
+            packed_users=cmd.packed_users,
+            packed_schema_ids=cmd.packed_schema_ids,
+            packed_items=cmd.packed_items,
+        )
+        self.review_queues[cmd.queue_id] = rq
+        return _FakeResult(
+            outcome=UpsertReviewQueueEntityReviewQueueUpserted(review_queue=rq),  # type: ignore[arg-type]
+            commit_sequence=seq,
+        )
+
+    def delete_review_queue_entity(self, cmd: Any) -> _FakeResult:
+        seq = self._next_commit()
+        removed = self.review_queues.pop(cmd.queue_id, SimpleNamespace())
+        return _FakeResult(
+            outcome=DeleteReviewQueueEntityReviewQueueDeleted(review_queue=removed),  # type: ignore[arg-type]
+            commit_sequence=seq,
+        )
+
+    def get_issue(self, params: Any) -> _FakeResult:
+        iss = self.issues.get(params.issue_id)
+        if iss is None:
+            return _FakeResult(value=GetIssueMissing())
+        return _FakeResult(value=GetIssueFound(issue=iss))  # type: ignore[arg-type]
+
+    def list_issues(self, params: Any) -> _FakeResult:
+        rows = list(self.issues.values())
+        return _FakeResult(value=ListIssuesFound(issues=tuple(rows)))  # type: ignore[arg-type]
+
+    def upsert_issue_entity(self, cmd: Any) -> _FakeResult:
+        seq = self._next_commit()
+        iss = SimpleNamespace(
+            scope="global",
+            issue_id=cmd.issue_id,
+            experiment_id=cmd.experiment_id,
+            name=cmd.name,
+            description=cmd.description,
+            status=cmd.status,
+            severity=cmd.severity,
+            root_causes_json=cmd.root_causes_json,
+            source_run_id=cmd.source_run_id,
+            categories_json=cmd.categories_json,
+            created_timestamp_ms=cmd.created_timestamp_ms,
+            last_updated_timestamp_ms=cmd.last_updated_timestamp_ms,
+            created_by=cmd.created_by,
+        )
+        self.issues[cmd.issue_id] = iss
+        return _FakeResult(
+            outcome=UpsertIssueEntityIssueUpserted(issue=iss),  # type: ignore[arg-type]
+            commit_sequence=seq,
+        )
+
+    def delete_issue_entity(self, cmd: Any) -> _FakeResult:
+        seq = self._next_commit()
+        removed = self.issues.pop(cmd.issue_id, SimpleNamespace())
+        return _FakeResult(
+            outcome=DeleteIssueEntityIssueDeleted(issue=removed),  # type: ignore[arg-type]
             commit_sequence=seq,
         )
 
@@ -916,6 +1130,39 @@ def test_assessments_crud_and_trace_hydration() -> None:
 
 def test_query_trace_metrics_and_adr_0315_rollups() -> None:
     store, _ = _make_store(experiment_id=1)
+
+    # Cold projection queries (before any traces, spans, or assessments exist)
+    cold_traces = store.query_trace_metrics(
+        experiment_ids=["1"],
+        view_type=MetricViewType.TRACES,
+        metric_name=TraceMetricKey.TRACE_COUNT,
+        aggregations=[MetricAggregation(AggregationType.COUNT)],
+    )
+    assert len(cold_traces) == 1
+    assert cold_traces[0].values["COUNT"] == 0.0
+
+    cold_spans = store.query_trace_metrics(
+        experiment_ids=["1"],
+        view_type=MetricViewType.SPANS,
+        metric_name=SpanMetricKey.SPAN_COUNT,
+        aggregations=[MetricAggregation(AggregationType.COUNT)],
+    )
+    assert len(cold_spans) == 1
+    assert cold_spans[0].values["COUNT"] == 0.0
+
+    cold_assessments = store.query_trace_metrics(
+        experiment_ids=["1"],
+        view_type=MetricViewType.ASSESSMENTS,
+        metric_name=AssessmentMetricKey.ASSESSMENT_COUNT,
+        aggregations=[MetricAggregation(AggregationType.COUNT)],
+        dimensions=["assessment_name"],
+        time_interval_seconds=3600,
+        start_time_ms=1_699_999_000_000,
+        end_time_ms=1_700_001_000_000,
+    )
+    assert len(cold_assessments) == 0
+    assert store.get_span_model_rollups("1") == []
+
     t_id = "tr-00000000000000010000000000000301"
     s1 = _build_mock_otel_span(
         trace_id=t_id,
@@ -1077,6 +1324,186 @@ def test_logged_models_and_run_lineage() -> None:
     store.delete_logged_model(m.model_id)
     with pytest.raises(MlflowException):
         store.get_logged_model(m.model_id)
+
+
+def test_get_trace_with_otel_random_hex_and_cold_cache() -> None:
+    store, _ = _make_store(experiment_id=1)
+    otel_trace_id = "tr-f123456789abcdef0123456789abcdef"
+    span = _build_mock_otel_span(
+        trace_id=otel_trace_id,
+        span_id="00000000000000a1",
+        parent_span_id=None,
+        name="predict",
+        span_type=SpanType.CHAIN,
+        start_time_ns=1_700_000_000_000_000_000,
+        end_time_ns=1_700_000_000_100_000_000,
+    )
+    store.log_spans("1", [span])
+    # Simulate another worker with a cold _trace_experiment_map
+    store._trace_experiment_map.clear()
+    trace = store.get_trace(otel_trace_id, allow_partial=True)
+    assert trace.info.trace_id == otel_trace_id
+    assert len(trace.data.spans) == 1
+    assert trace.data.spans[0].name == "predict"
+    infos = store.batch_get_trace_infos([otel_trace_id])
+    assert [i.trace_id for i in infos] == [otel_trace_id]
+
+
+def test_evaluation_datasets_label_schemas_review_queues_and_issues() -> None:
+    from mlflow.entities import IssueSeverity, IssueStatus
+    from mlflow.genai.label_schemas.label_schemas import InputPassFail
+
+    store, _ = _make_store(experiment_id=1)
+
+    # 1. Evaluation Datasets
+    ds = store.create_dataset(
+        name="qa-golden-v1",
+        tags={"env": "staging", "mlflow.user": "alice"},
+        experiment_ids=["1"],
+    )
+    assert ds.name == "qa-golden-v1"
+    assert ds.tags["env"] == "staging"
+    assert ds.experiment_ids == ["1"]
+
+    res = store.upsert_dataset_records(
+        ds.dataset_id,
+        [
+            {
+                "inputs": {"question": "What is RiffDB?"},
+                "outputs": {"answer": "A transactional database"},
+                "expectations": {"ground_truth": "transactional database"},
+            },
+            {
+                "inputs": {"question": "What is MLflow?"},
+                "outputs": {"answer": "ML lifecycle platform"},
+            },
+        ],
+    )
+    assert res == {"inserted": 2, "updated": 0}
+    res2 = store.upsert_dataset_records(
+        ds.dataset_id,
+        [
+            {
+                "inputs": {"question": "What is RiffDB?"},
+                "outputs": {"answer": "A compiled transactional database"},
+            }
+        ],
+    )
+    assert res2 == {"inserted": 0, "updated": 1}
+
+    fetched_ds = store.get_dataset(ds.dataset_id)
+    assert len(fetched_ds.records) == 2
+    found_ds = store.search_datasets(
+        experiment_ids=["1"],
+        filter_string="name LIKE 'qa-golden%' AND tags.env = 'staging'",
+    )
+    assert [d.dataset_id for d in found_ds] == [ds.dataset_id]
+
+    store.set_dataset_tags(ds.dataset_id, {"owner": "eval-team"})
+    assert store.get_dataset(ds.dataset_id).tags["owner"] == "eval-team"
+    store.delete_dataset_tag(ds.dataset_id, "owner")
+    assert "owner" not in store.get_dataset(ds.dataset_id).tags
+
+    deleted_recs = store.delete_dataset_records(
+        ds.dataset_id, [fetched_ds.records[0].dataset_record_id]
+    )
+    assert deleted_recs == 1
+    assert len(store.get_dataset(ds.dataset_id).records) == 1
+    store.delete_dataset(ds.dataset_id)
+    with pytest.raises(MlflowException):
+        store.get_dataset(ds.dataset_id)
+
+    # 2. Label Schemas (including lazy default 'Feedback' schema)
+    schemas = store.list_label_schemas("1")
+    assert len(schemas) == 1
+    assert schemas[0].name == "Feedback"
+    assert schemas[0].is_default is True
+
+    custom_ls = store.create_label_schema(
+        "1",
+        name="accuracy_check",
+        type="feedback",
+        input=InputPassFail(positive_label="pass", negative_label="fail"),
+        instruction="Does the answer match?",
+        enable_comment=True,
+    )
+    assert custom_ls.name == "accuracy_check"
+    assert store.get_label_schema(custom_ls.schema_id).name == "accuracy_check"
+    assert store.get_label_schema_by_name("1", "accuracy_check").schema_id == custom_ls.schema_id
+
+    updated_ls = store.update_label_schema(
+        custom_ls.schema_id,
+        name="accuracy_check_v2",
+        instruction="Updated instruction",
+        input=InputPassFail(positive_label="good", negative_label="bad"),
+    )
+    assert updated_ls.name == "accuracy_check_v2"
+    assert len(store.list_label_schemas("1")) == 2
+
+    # 3. Human Review Queues
+    user_rq = store.get_or_create_user_queue("1", user="alice")
+    assert user_rq.name == "alice"
+    assert str(user_rq.queue_type) == "user"
+    assert store.get_or_create_user_queue("1", user="alice").queue_id == user_rq.queue_id
+
+    team_rq = store.create_review_queue(
+        "1",
+        name="Release Review",
+        queue_type="custom",
+        created_by="alice",
+        users=["alice", "bob"],
+        schema_ids=[updated_ls.schema_id],
+    )
+    assert team_rq.name == "Release Review"
+    assert store.get_review_queue(team_rq.queue_id).users == ["alice", "bob"]
+    assert store.get_review_queue_by_name("1", name="release review").queue_id == team_rq.queue_id
+
+    items = store.add_items_to_review_queue(team_rq.queue_id, item_ids=["tr-item-1", "tr-item-2"])
+    assert len(items) == 2
+    listed_items = store.list_review_queue_items(team_rq.queue_id, status="pending")
+    assert len(listed_items) == 2
+
+    done_item = store.set_review_queue_item_status(
+        team_rq.queue_id,
+        item_id="tr-item-1",
+        status="complete",
+        completed_by="alice",
+    )
+    assert str(done_item.status) == "complete"
+    assert done_item.completed_by == "alice"
+
+    queues_with_item = store.list_review_queues("1", item_id="tr-item-1")
+    assert [q.queue_id for q in queues_with_item] == [team_rq.queue_id]
+
+    store.remove_items_from_review_queue(team_rq.queue_id, item_ids=["tr-item-1"])
+    assert len(store.list_review_queue_items(team_rq.queue_id)) == 1
+    store.delete_review_queue(team_rq.queue_id)
+    store.delete_label_schema(custom_ls.schema_id)
+
+    # 4. Issues
+    issue = store.create_issue(
+        experiment_id="1",
+        name="High latency on RAG chain",
+        description="p95 latency exceeded 2s",
+        status=IssueStatus.PENDING,
+        severity=IssueSeverity.HIGH,
+        root_causes=["slow vector search"],
+        categories=["latency"],
+        created_by="alice",
+    )
+    assert issue.name == "High latency on RAG chain"
+    assert store.get_issue(issue.issue_id).severity == IssueSeverity.HIGH
+    updated_issue = store.update_issue(
+        issue.issue_id,
+        status=IssueStatus.RESOLVED,
+        severity=IssueSeverity.LOW,
+    )
+    assert updated_issue.status == IssueStatus.RESOLVED
+    found_issues = store.search_issues(
+        experiment_id="1",
+        filter_string="status = 'resolved'",
+    )
+    assert [i.issue_id for i in found_issues] == [issue.issue_id]
 
 
 def _find_riffdb_binary() -> str | None:

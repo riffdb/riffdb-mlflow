@@ -1,0 +1,20 @@
+query ListLabelSchemas(
+    $scope: LabelSchemaEntity.scope,
+    $limit: Limit<25> = 25,
+    $after: Cursor?,
+) {
+    many label_schemas from LabelSchemaEntity
+        where scope == $scope
+        order by schema_id asc
+        take $limit after $after
+        else IntegrityFailure
+
+    return Found {
+        label_schemas: label_schemas {
+            schema_id experiment_id name schema_type instruction
+            enable_comment input_type input_config_json created_by
+            created_time_ms last_update_time_ms is_default
+        }
+    }
+    outcomes Found | IntegrityFailure
+}

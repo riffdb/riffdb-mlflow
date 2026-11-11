@@ -150,7 +150,11 @@ from riffdb_mlflow.generated.client import (
     SearchExperimentsByTwoTagsNotEqualParams,
     SearchExperimentsByTwoTagsParams,
     SearchExperimentsParams,
+    SearchRunsByDatumDigestParams,
+    SearchRunsByIdsParams,
     SearchRunsByLifecycleParams,
+    SearchRunsByNameParams,
+    SearchRunsByStatusParams,
     SearchRunsParams,
     SetExperimentTagExperimentInactive,
     SetExperimentTagExperimentMissing,
@@ -186,8 +190,8 @@ _MAX_RUN_SEARCH_EXPERIMENTS = 1_000
 _MAX_RUN_TAGS = 100
 _MAX_RUN_NAME_LENGTH = 250
 _MAX_USER_ID_LENGTH = 256
-_MIN_RANDOM_EXPERIMENT_ID = 100_000_000_000_000_000
-_RANDOM_EXPERIMENT_ID_SPAN = 900_000_000_000_000_000
+_MIN_RANDOM_EXPERIMENT_ID = 100_000_000
+_RANDOM_EXPERIMENT_ID_SPAN = 900_000_000
 
 
 class RiffDBTrackingStore(RiffDBExtendedStoreMixin):
@@ -1411,6 +1415,65 @@ class RiffDBTrackingStore(RiffDBExtendedStoreMixin):
             "Experiment tag deletion conflicted with another write", error_code=ABORTED
         )
 
+    def delete_tag(self, run_id: Any, key: Any) -> None:
+        normalized_id, experiment_id = self._run_experiment_id(run_id)
+        if not isinstance(key, str) or not key:
+            raise MlflowException.invalid_parameter_value("Tag key must be a non-empty string")
+        client = self._application()
+        for _ in range(3):
+            current = client.get_run(
+                GetRunParams(experiment_id=experiment_id, run_id=normalized_id)
+            )
+            if isinstance(current.value, GetRunMissing):
+                self._missing_run(run_id)
+            if not isinstance(current.value, GetRunFound):
+                raise MlflowException("Invalid GetRun response from RiffDB")
+            row = current.value.run
+            if row.lifecycle_stage != LifecycleStage.ACTIVE:
+                raise MlflowException(
+                    f"The run {run_id} must be in the active state.",
+                    error_code=INVALID_STATE,
+                )
+            tags = self._decode_tags(row.packed_tags)
+            if key not in tags:
+                raise MlflowException(
+                    f"No tag with name: {key} in run with id {run_id}",
+                    error_code=RESOURCE_DOES_NOT_EXIST,
+                )
+            tags.pop(key, None)
+            run_name_val = tags.get(MLFLOW_RUN_NAME, row.run_name)
+            packed_tags = self._encode_run_tags(
+                RunTag(k, v)  # type: ignore[no-untyped-call]
+                for k, v in tags.items()
+            )
+            result = client.update_run_info(
+                UpdateRunInfoInput(
+                    request_id=str(uuid4()),
+                    experiment_id=experiment_id,
+                    run_id=normalized_id,
+                    status=row.status,
+                    end_time=row.end_time,
+                    run_name=row.run_name,
+                    run_name_tag_value=run_name_val,
+                    run_name_digest=self._digest(run_name_val),
+                    packed_tags=packed_tags,
+                    expected_revision=row.revision,
+                )
+            )
+            if isinstance(result.outcome, UpdateRunInfoRunUpdated):
+                return
+            if isinstance(result.outcome, UpdateRunInfoRunStale):
+                continue
+            if isinstance(result.outcome, UpdateRunInfoRunMissing):
+                self._missing_run(run_id)
+            if isinstance(result.outcome, UpdateRunInfoRunInactive):
+                raise MlflowException(
+                    f"The run {run_id} must be in the active state.",
+                    error_code=INVALID_STATE,
+                )
+            raise MlflowException("Invalid UpdateRunInfo response from RiffDB")
+        raise MlflowException("Run tag deletion conflicted with another write", error_code=ABORTED)
+
     def get_run(self, run_id: Any) -> MLflowRun:
         normalized_id, experiment_id = self._run_experiment_id(run_id)
         client = self._application()
@@ -1680,10 +1743,6 @@ class RiffDBTrackingStore(RiffDBExtendedStoreMixin):
         filters = SearchUtils.parse_search_filter(  # type: ignore[no-untyped-call]
             filter_string
         )
-        if filters:
-            raise MlflowException.invalid_parameter_value(
-                "RiffDB run search filters are not implemented yet"
-            )
         parsed_order = [
             SearchUtils.parse_order_by_for_search_runs(  # type: ignore[no-untyped-call]
                 item
@@ -1700,44 +1759,164 @@ class RiffDBTrackingStore(RiffDBExtendedStoreMixin):
             )
         if run_view_type not in (ViewType.ACTIVE_ONLY, ViewType.DELETED_ONLY, ViewType.ALL):
             raise MlflowException.invalid_parameter_value(f"Invalid run view type: {run_view_type}")
+        if filters:
+            self._validate_run_search_filters(numeric_ids, filters)
 
         client = self._application()
         cursor = page_token
         runs: list[MLflowRun] = []
         while len(runs) < requested:
             limit = min(_COMPILED_RUN_SEARCH_PAGE_SIZE, requested - len(runs))
-            if run_view_type == ViewType.ALL:
-                result = client.search_runs(
-                    SearchRunsParams(
-                        experiment_ids=numeric_ids,
-                        limit=limit,
-                        after=cursor,
-                    )
-                )
-            else:
-                lifecycle = (
-                    LifecycleStage.ACTIVE
-                    if run_view_type == ViewType.ACTIVE_ONLY
-                    else LifecycleStage.DELETED
-                )
-                result = client.search_runs_by_lifecycle(
-                    SearchRunsByLifecycleParams(
-                        experiment_ids=numeric_ids,
-                        lifecycle_stage=lifecycle,
-                        limit=limit,
-                        after=cursor,
-                    )
-                )
+            result = self._dispatch_run_search(
+                client,
+                numeric_ids,
+                filters,
+                run_view_type,
+                limit,
+                cursor,
+            )
             rows = getattr(result.value, "runs", None)
             if rows is None:
                 raise MlflowException("RiffDB run search integrity failure")
-            runs.extend(self._to_mlflow_run(row) for row in rows)
+            for row in rows:
+                inputs, outputs = self._load_run_lineage(client, row.experiment_id, row.run_id)
+                runs.append(self._to_mlflow_run(row, inputs=inputs, outputs=outputs))
             cursor = result.next_cursor
             if cursor is None:
                 break
             if not rows:
                 raise MlflowException("RiffDB returned a non-advancing run cursor")
         return runs, cursor
+
+    def _validate_run_search_filters(
+        self, numeric_ids: tuple[int, ...], filters: list[dict[str, Any]]
+    ) -> None:
+        if len(filters) != 1 or len(numeric_ids) != 1:
+            raise MlflowException.invalid_parameter_value(
+                "RiffDB run search filters are not implemented yet"
+            )
+        f = filters[0]
+        ftype = f.get("type")
+        key = str(f.get("key", ""))
+        comp = f.get("comparator")
+        val = f.get("value")
+        if ftype in ("tag", "parameter") and comp == "=" and isinstance(val, str):
+            return
+        if ftype == "attribute" and key in ("run_id", "run_uuid") and comp in ("=", "IN"):
+            return
+        if (
+            ftype == "attribute"
+            and key in ("run_name", "run name")
+            and comp == "="
+            and isinstance(val, str)
+        ):
+            return
+        if ftype == "attribute" and key == "status" and comp == "=" and isinstance(val, str):
+            try:
+                RiffDBRunStatus[val.upper()]
+            except KeyError as error:
+                raise MlflowException.invalid_parameter_value(
+                    f"Invalid run status: {val!r}"
+                ) from error
+            return
+        raise MlflowException.invalid_parameter_value(
+            "RiffDB run search filters are not implemented yet"
+        )
+
+    def _dispatch_run_search(
+        self,
+        client: Any,
+        numeric_ids: tuple[int, ...],
+        filters: list[dict[str, Any]],
+        run_view_type: Any,
+        limit: int,
+        cursor: str | None,
+    ) -> Any:
+        if not filters:
+            if run_view_type == ViewType.ALL:
+                return client.search_runs(
+                    SearchRunsParams(
+                        experiment_ids=numeric_ids,
+                        limit=limit,
+                        after=cursor,
+                    )
+                )
+            lifecycle = (
+                LifecycleStage.ACTIVE
+                if run_view_type == ViewType.ACTIVE_ONLY
+                else LifecycleStage.DELETED
+            )
+            return client.search_runs_by_lifecycle(
+                SearchRunsByLifecycleParams(
+                    experiment_ids=numeric_ids,
+                    lifecycle_stage=lifecycle,
+                    limit=limit,
+                    after=cursor,
+                )
+            )
+        exp_id = numeric_ids[0]
+        lifecycle_stages = self._search_lifecycle_stages(run_view_type)
+        f = filters[0]
+        ftype = f.get("type")
+        key = str(f.get("key", ""))
+        comp = f.get("comparator")
+        val = f.get("value")
+        if ftype in ("tag", "parameter") and comp == "=" and isinstance(val, str):
+            kind = RunDataKind.TAG if ftype == "tag" else RunDataKind.PARAM
+            return client.search_runs_by_datum_digest(
+                SearchRunsByDatumDigestParams(
+                    experiment_id=exp_id,
+                    kind=kind,
+                    item_key=key,
+                    value_digest=self._digest(val),
+                    lifecycle_stages=lifecycle_stages,
+                    limit=limit,
+                    after=cursor,
+                )
+            )
+        if ftype == "attribute" and key in ("run_id", "run_uuid") and comp in ("=", "IN"):
+            run_ids = (
+                (str(val),)
+                if comp == "="
+                else tuple(str(v) for v in (val if isinstance(val, list | tuple | set) else ()))
+            )
+            return client.search_runs_by_ids(
+                SearchRunsByIdsParams(
+                    experiment_id=exp_id,
+                    run_ids=run_ids,
+                    lifecycle_stages=lifecycle_stages,
+                    limit=limit,
+                    after=cursor,
+                )
+            )
+        if (
+            ftype == "attribute"
+            and key in ("run_name", "run name")
+            and comp == "="
+            and isinstance(val, str)
+        ):
+            return client.search_runs_by_name(
+                SearchRunsByNameParams(
+                    experiment_id=exp_id,
+                    run_name=val,
+                    lifecycle_stages=lifecycle_stages,
+                    limit=limit,
+                    after=cursor,
+                )
+            )
+        if ftype == "attribute" and key == "status" and comp == "=" and isinstance(val, str):
+            return client.search_runs_by_status(
+                SearchRunsByStatusParams(
+                    experiment_id=exp_id,
+                    status=RiffDBRunStatus[val.upper()],
+                    lifecycle_stages=lifecycle_stages,
+                    limit=limit,
+                    after=cursor,
+                )
+            )
+        raise MlflowException.invalid_parameter_value(
+            "RiffDB run search filters are not implemented yet"
+        )
 
     def log_batch(self, run_id: Any, metrics: Any, params: Any, tags: Any) -> None:
         normalized_id, experiment_id = self._run_experiment_id(run_id)

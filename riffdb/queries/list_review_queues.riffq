@@ -1,0 +1,20 @@
+query ListReviewQueues(
+    $scope: ReviewQueueEntity.scope,
+    $limit: Limit<10> = 10,
+    $after: Cursor?,
+) {
+    many review_queues from ReviewQueueEntity
+        where scope == $scope
+        order by queue_id asc
+        take $limit after $after
+        else IntegrityFailure
+
+    return Found {
+        review_queues: review_queues {
+            queue_id experiment_id name name_key queue_type created_by
+            creation_time_ms last_update_time_ms
+            packed_users packed_schema_ids packed_items
+        }
+    }
+    outcomes Found | IntegrityFailure
+}

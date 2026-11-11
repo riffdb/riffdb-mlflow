@@ -1,0 +1,18 @@
+query GetReviewQueue(
+    $scope: ReviewQueueEntity.scope,
+    $queue_id: ReviewQueueEntity.queue_id,
+) {
+    one review_queue from ReviewQueueEntity
+        where scope == $scope
+          && queue_id == $queue_id
+        else Missing
+
+    return Found {
+        review_queue: review_queue {
+            queue_id experiment_id name name_key queue_type created_by
+            creation_time_ms last_update_time_ms
+            packed_users packed_schema_ids packed_items
+        }
+    }
+    outcomes Found | Missing
+}

@@ -854,9 +854,17 @@ class RiffDBModelRegistryStore(AbstractStore):
         return self._to_mlflow_model_version(v_row, aliases_map=aliases_map)
 
     def get_model_version_download_uri(self, name: Any, version: Any) -> str:
+        from mlflow.store.artifact.runs_artifact_repo import RunsArtifactRepository
+
         client = self._application()
         v_row, _ = self._get_model_version_row(client, name, version)
-        return str(v_row.storage_location or v_row.source_path)
+        uri = str(v_row.storage_location or v_row.source_path)
+        if RunsArtifactRepository.is_runs_uri(uri):  # type: ignore[no-untyped-call]
+            try:
+                return str(RunsArtifactRepository.get_underlying_uri(uri))
+            except Exception:
+                return uri
+        return uri
 
     def search_model_versions(
         self,

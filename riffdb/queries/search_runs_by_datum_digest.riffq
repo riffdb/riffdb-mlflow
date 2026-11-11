@@ -1,0 +1,35 @@
+query SearchRunsByDatumDigest(
+    $experiment_id: Run.experiment_id,
+    $kind: RunDatum.kind,
+    $item_key: RunDatum.item_key,
+    $value_digest: RunDatum.value_digest,
+    $lifecycle_stages: Set<Run.lifecycle_stage>,
+    $limit: Limit<2> = 2,
+    $after: Cursor?,
+) {
+    candidates matching_runs: Run.run_id
+        from RunDatum.run_id using by_run_data
+            where experiment_id == $experiment_id
+              && kind == $kind
+              && item_key == $item_key
+              && value_digest == $value_digest
+        within 16384
+        else IntegrityFailure
+
+    many runs from Run
+        where experiment_id == $experiment_id
+          && run_id in matching_runs
+          && lifecycle_stage in $lifecycle_stages
+        order by start_time desc, run_id asc
+        take $limit after $after
+        else IntegrityFailure
+
+    return Found {
+        runs: runs {
+            experiment_id run_id user_id status start_time end_time
+            lifecycle_stage artifact_uri run_name packed_tags packed_params
+            packed_latest_metrics revision initialized
+        }
+    }
+    outcomes Found | IntegrityFailure
+}
