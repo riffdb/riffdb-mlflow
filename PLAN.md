@@ -2,9 +2,9 @@
 
 ## WP-001 — Repository and upstream surface
 
-Status: complete (`v0.2.2`).
+Status: complete (`v0.2.4`).
 
-- Pin MLflow `3.15.1` and RiffDB `0.2.2` (`.github/riffdb-revision`).
+- Pin MLflow `3.15.1` and RiffDB `0.2.3` (`.github/riffdb-revision`).
 - Register the `riffdb` URI scheme for both `mlflow.tracking_store` and
   `mlflow.model_registry_store`.
 - Lock the sixteen-method tracking abstract surface, twenty-one-method model
@@ -90,12 +90,12 @@ Status: complete (`v0.2.2`).
   automatically support `riffdb://<database>` for UI AI Gateway and background
   server jobs.
 
-## WP-008 — Live RiffDB 0.2.2 conformance and release verification
+## WP-008 — Live RiffDB 0.2.3 conformance and release verification
 
-Status: complete (`v0.2.2`).
+Status: complete (`v0.2.4`).
 
 - Verify cold columnar projection readiness and full tracking, tracing,
   analytics, logged-model, experiment UI filter, MCP server registry, AI
   Gateway, Scorers, Online Scoring, Guardrails, Server Job Store, model
-  registry, prompt registry, and webhook workflows over real RiffDB `0.2.2`
+  registry, prompt registry, and webhook workflows over real RiffDB `0.2.3`
   loopback via `make check` and `make conformance`.

@@ -1823,9 +1823,7 @@ class RiffDBTrackingStore(RiffDBExtendedStoreMixin):
             "RiffDB run search currently supports start_time ASC/DESC or metric.<key> ASC/DESC"
         )
 
-    def _compile_composable_run_filters(
-        self, filters: list[dict[str, Any]]
-    ) -> dict[str, Any]:
+    def _compile_composable_run_filters(self, filters: list[dict[str, Any]]) -> dict[str, Any]:
         metric_clauses: dict[str, tuple[str | None, str | None]] = {}
         datum_clauses: list[tuple[RunDataKind, str, bytes]] = []
         status_val: RiffDBRunStatus | None = None
@@ -1904,12 +1902,17 @@ class RiffDBTrackingStore(RiffDBExtendedStoreMixin):
                         f"Invalid run status: {val!r}"
                     ) from error
                 continue
-            if ftype == "attribute" and key in ("start_time", "start time") and comp in (
-                "=",
-                ">",
-                ">=",
-                "<",
-                "<=",
+            if (
+                ftype == "attribute"
+                and key in ("start_time", "start time")
+                and comp
+                in (
+                    "=",
+                    ">",
+                    ">=",
+                    "<",
+                    "<=",
+                )
             ):
                 try:
                     st_val = int(val)  # type: ignore[arg-type]
@@ -1918,16 +1921,24 @@ class RiffDBTrackingStore(RiffDBExtendedStoreMixin):
                         f"Invalid start_time filter value: {val!r}"
                     ) from error
                 if comp == "=":
-                    min_start_time = st_val if min_start_time is None else max(min_start_time, st_val)
-                    max_start_time = st_val if max_start_time is None else min(max_start_time, st_val)
+                    min_start_time = (
+                        st_val if min_start_time is None else max(min_start_time, st_val)
+                    )
+                    max_start_time = (
+                        st_val if max_start_time is None else min(max_start_time, st_val)
+                    )
                 elif comp == ">=":
-                    min_start_time = st_val if min_start_time is None else max(min_start_time, st_val)
+                    min_start_time = (
+                        st_val if min_start_time is None else max(min_start_time, st_val)
+                    )
                 elif comp == ">":
                     min_start_time = (
                         st_val + 1 if min_start_time is None else max(min_start_time, st_val + 1)
                     )
                 elif comp == "<=":
-                    max_start_time = st_val if max_start_time is None else min(max_start_time, st_val)
+                    max_start_time = (
+                        st_val if max_start_time is None else min(max_start_time, st_val)
+                    )
                 elif comp == "<":
                     max_start_time = (
                         st_val - 1 if max_start_time is None else min(max_start_time, st_val - 1)
@@ -1939,10 +1950,14 @@ class RiffDBTrackingStore(RiffDBExtendedStoreMixin):
 
         m_items = list(metric_clauses.items())
         return {
+            "m1_kind": RunDataKind.LATEST_METRIC if len(m_items) >= 1 else None,
             "m1_key": m_items[0][0] if len(m_items) >= 1 else None,
+            "m1_digest": bytes(32) if len(m_items) >= 1 else None,
             "m1_min_sort": m_items[0][1][0] if len(m_items) >= 1 else None,
             "m1_max_sort": m_items[0][1][1] if len(m_items) >= 1 else None,
+            "m2_kind": RunDataKind.LATEST_METRIC if len(m_items) >= 2 else None,
             "m2_key": m_items[1][0] if len(m_items) >= 2 else None,
+            "m2_digest": bytes(32) if len(m_items) >= 2 else None,
             "m2_min_sort": m_items[1][1][0] if len(m_items) >= 2 else None,
             "m2_max_sort": m_items[1][1][1] if len(m_items) >= 2 else None,
             "d1_kind": datum_clauses[0][0] if len(datum_clauses) >= 1 else None,
@@ -2037,9 +2052,7 @@ class RiffDBTrackingStore(RiffDBExtendedStoreMixin):
                 run_ids = (
                     (str(val),)
                     if comp == "="
-                    else tuple(
-                        str(v) for v in (val if isinstance(val, list | tuple | set) else ())
-                    )
+                    else tuple(str(v) for v in (val if isinstance(val, list | tuple | set) else ()))
                 )
                 return client.search_runs_by_ids(
                     SearchRunsByIdsParams(
@@ -2081,12 +2094,14 @@ class RiffDBTrackingStore(RiffDBExtendedStoreMixin):
             SearchRunsComposableParams(
                 experiment_id=exp_id,
                 lifecycle_stages=lifecycle_stages,
-                latest_metric_kind=RunDataKind.LATEST_METRIC,
-                zero_digest=bytes(32),
+                m1_kind=compiled["m1_kind"],
                 m1_key=compiled["m1_key"],
+                m1_digest=compiled["m1_digest"],
                 m1_min_sort=compiled["m1_min_sort"],
                 m1_max_sort=compiled["m1_max_sort"],
+                m2_kind=compiled["m2_kind"],
                 m2_key=compiled["m2_key"],
+                m2_digest=compiled["m2_digest"],
                 m2_min_sort=compiled["m2_min_sort"],
                 m2_max_sort=compiled["m2_max_sort"],
                 d1_kind=compiled["d1_kind"],
@@ -2099,7 +2114,11 @@ class RiffDBTrackingStore(RiffDBExtendedStoreMixin):
                 run_name=compiled["run_name"],
                 min_start_time=compiled["min_start_time"],
                 max_start_time=compiled["max_start_time"],
+                order_metric_kind=(
+                    RunDataKind.LATEST_METRIC if order_metric_key is not None else None
+                ),
                 order_metric_key=order_metric_key,
+                order_metric_digest=bytes(32) if order_metric_key is not None else None,
                 order=run_order,
                 limit=limit,
                 after=cursor,

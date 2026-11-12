@@ -313,7 +313,9 @@ class FakeRunClient:
             and (parameters.max_start_time is None or row.start_time <= parameters.max_start_time)
         ]
 
-        def _matches_metric(row: Run, key: str | None, min_s: str | None, max_s: str | None) -> bool:
+        def _matches_metric(
+            row: Run, key: str | None, min_s: str | None, max_s: str | None
+        ) -> bool:
             if key is None:
                 return True
             item = self.data.get((row.run_id, RunDataKind.LATEST_METRIC, key, ""))
@@ -479,9 +481,7 @@ def test_run_search_coalesces_compiled_pages_and_dispatches_lifecycle() -> None:
     assert len(by_status) == 2
     assert client.search_calls[-1][0] == "SearchRunsByStatus"
 
-    composable = store.search_runs(
-        ["7"], "metrics.loss < 0.5", ViewType.ALL, max_results=10
-    )
+    composable = store.search_runs(["7"], "metrics.loss < 0.5", ViewType.ALL, max_results=10)
     assert len(composable) == 0
     assert client.search_calls[-1][0] == "SearchRunsComposable"
 

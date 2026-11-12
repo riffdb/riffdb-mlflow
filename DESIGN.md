@@ -2,7 +2,7 @@
 
 ## Compatibility target
 
-`riffdb-mlflow` (`0.2.2`) pins **MLflow `3.15.1`** and **RiffDB `0.2.2`** and
+`riffdb-mlflow` (`0.2.4`) pins **MLflow `3.15.1`** and **RiffDB `0.2.3`** and
 registers the `riffdb` URI scheme in both official MLflow entry-point groups:
 
 - `mlflow.tracking_store` → `riffdb_mlflow.store:RiffDBTrackingStore`

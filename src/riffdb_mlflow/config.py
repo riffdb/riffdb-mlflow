@@ -53,7 +53,7 @@ class StoreConfig:
 
 @dataclass(frozen=True, slots=True)
 class ConnectionConfig:
-    """Validated RiffDB TLS or driver-socket and bearer-credential settings from environment variables."""
+    """Validated RiffDB TLS or driver-socket and bearer-credential settings from environment."""
 
     endpoint: str
     trust_root: str

@@ -1,12 +1,14 @@
 query SearchRunsComposable(
     $experiment_id: Run.experiment_id,
     $lifecycle_stages: Set<Run.lifecycle_stage>,
-    $latest_metric_kind: RunDatum.kind,
-    $zero_digest: RunDatum.value_digest,
+    $m1_kind: RunDatum.kind?,
     $m1_key: RunDatum.item_key?,
+    $m1_digest: RunDatum.value_digest?,
     $m1_min_sort: RunDatum.sort_key?,
     $m1_max_sort: RunDatum.sort_key?,
+    $m2_kind: RunDatum.kind?,
     $m2_key: RunDatum.item_key?,
+    $m2_digest: RunDatum.value_digest?,
     $m2_min_sort: RunDatum.sort_key?,
     $m2_max_sort: RunDatum.sort_key?,
     $d1_kind: RunDatum.kind?,
@@ -19,25 +21,29 @@ query SearchRunsComposable(
     $run_name: Run.run_name?,
     $min_start_time: Run.start_time?,
     $max_start_time: Run.start_time?,
+    $order_metric_kind: RunDatum.kind?,
     $order_metric_key: RunDatum.item_key?,
+    $order_metric_digest: RunDatum.value_digest?,
     $order: RunOrder,
     $limit: Limit<100> = 100,
     $after: Cursor?,
 ) {
     candidates matched_runs: Run.run_id
         from intersect {
+            Run.run_id using by_id
+                where experiment_id == $experiment_id,
             RunDatum.run_id using by_run_data
                 where experiment_id == $experiment_id
-                  && kind == $latest_metric_kind
+                  && when $m1_kind { kind == $m1_kind }
                   && when $m1_key { item_key == $m1_key }
-                  && value_digest == $zero_digest
+                  && when $m1_digest { value_digest == $m1_digest }
                   && when $m1_min_sort { sort_key >= $m1_min_sort }
                   && when $m1_max_sort { sort_key <= $m1_max_sort },
             RunDatum.run_id using by_run_data
                 where experiment_id == $experiment_id
-                  && kind == $latest_metric_kind
+                  && when $m2_kind { kind == $m2_kind }
                   && when $m2_key { item_key == $m2_key }
-                  && value_digest == $zero_digest
+                  && when $m2_digest { value_digest == $m2_digest }
                   && when $m2_min_sort { sort_key >= $m2_min_sort }
                   && when $m2_max_sort { sort_key <= $m2_max_sort },
             RunDatum.run_id using by_run_data
@@ -50,17 +56,15 @@ query SearchRunsComposable(
                   && when $d2_kind { kind == $d2_kind }
                   && when $d2_key { item_key == $d2_key }
                   && when $d2_digest { value_digest == $d2_digest },
-            Run.run_id using by_id
-                where experiment_id == $experiment_id,
         }
         within 200
         else IntegrityFailure
 
     many metric_ranks from RunDatum
         where experiment_id == $experiment_id
-          && kind == $latest_metric_kind
+          && when $order_metric_kind { kind == $order_metric_kind }
           && when $order_metric_key { item_key == $order_metric_key }
-          && value_digest == $zero_digest
+          && when $order_metric_digest { value_digest == $order_metric_digest }
         order by sort_key asc, run_id asc, entry_id asc
         take 200
 

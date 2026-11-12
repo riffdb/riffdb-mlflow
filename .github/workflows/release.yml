@@ -7,9 +7,9 @@ on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: 'Release tag to verify (for example v0.2.2)'
+        description: 'Release tag to verify (for example v0.2.4)'
         required: false
-        default: 'v0.2.2'
+        default: 'v0.2.4'
 
 permissions:
   contents: read
@@ -26,6 +26,7 @@ jobs:
     outputs:
       release_tag: ${{ steps.meta.outputs.release_tag }}
       version: ${{ steps.meta.outputs.version }}
+      riffdb_version: ${{ steps.meta.outputs.riffdb_version }}
       revision: ${{ steps.meta.outputs.revision }}
     steps:
       - name: Check out adapter
@@ -45,12 +46,13 @@ jobs:
           if [[ "${{ github.event_name }}" == "push" ]]; then
             release_tag="${GITHUB_REF_NAME}"
           else
-            release_tag="${{ inputs.release_tag || 'v0.2.2' }}"
+            release_tag="${{ inputs.release_tag || 'v0.2.4' }}"
           fi
           [[ "$release_tag" =~ ^v([0-9]+\.[0-9]+\.[0-9]+)$ ]]
           version="${BASH_REMATCH[1]}"
-          python3 - "$version" <<'PY'
+          riffdb_version="$(python3 - "$version" <<'PY'
           from pathlib import Path
+          import re
           import sys
           import tomllib
           expected = sys.argv[1]
@@ -58,24 +60,35 @@ jobs:
           assert pyproject["project"]["version"] == expected, pyproject["project"]["version"]
           init_text = Path("src/riffdb_mlflow/__init__.py").read_text(encoding="utf-8")
           assert f'__version__ = "{expected}"' in init_text, init_text
+          deps = pyproject["project"]["dependencies"]
+          match = next(
+              (re.fullmatch(r"riffdb(?:==|~=|>=)([0-9]+\.[0-9]+\.[0-9]+)", d.strip()) for d in deps if d.strip().startswith("riffdb")),
+              None,
+          )
+          assert match is not None, deps
+          print(match.group(1))
           PY
+          )"
+          [[ "$riffdb_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          riffdb_tag="v${riffdb_version}"
           riffdb_rev="$(cat .github/riffdb-revision)"
           [[ "$riffdb_rev" =~ ^[0-9a-f]{40}$ ]]
 
-          bundle="riffdb-${version}-x86_64-unknown-linux-gnu.tar.gz"
-          base_url="https://github.com/riffdb/riffdb/releases/download/${release_tag}"
+          bundle="riffdb-${riffdb_version}-x86_64-unknown-linux-gnu.tar.gz"
+          base_url="https://github.com/riffdb/riffdb/releases/download/${riffdb_tag}"
           mkdir -p "$RUNNER_TEMP/riffdb-release"
           curl -fsSL "$base_url/release-provenance-v1.json" -o "$RUNNER_TEMP/riffdb-release/release-provenance-v1.json"
           curl -fsSL "$base_url/$bundle" -o "$RUNNER_TEMP/riffdb-release/$bundle"
           expected_sha="$(jq -r '.bundle_archive.sha256' "$RUNNER_TEMP/riffdb-release/release-provenance-v1.json")"
           echo "${expected_sha}  $RUNNER_TEMP/riffdb-release/$bundle" | sha256sum -c -
           tar -xzf "$RUNNER_TEMP/riffdb-release/$bundle" -C "$RUNNER_TEMP/riffdb-release"
-          bundle_dir="$RUNNER_TEMP/riffdb-release/riffdb-${version}-x86_64-unknown-linux-gnu"
+          bundle_dir="$RUNNER_TEMP/riffdb-release/riffdb-${riffdb_version}-x86_64-unknown-linux-gnu"
           [[ "$(tr -d '\n' < "$bundle_dir/REVISION")" == "$riffdb_rev" ]]
           "$bundle_dir/bin/riffdb" application check
 
           printf 'release_tag=%s\n' "$release_tag" >>"$GITHUB_OUTPUT"
           printf 'version=%s\n' "$version" >>"$GITHUB_OUTPUT"
+          printf 'riffdb_version=%s\n' "$riffdb_version" >>"$GITHUB_OUTPUT"
           printf 'revision=%s\n' "$riffdb_rev" >>"$GITHUB_OUTPUT"
       - name: Run adapter checks and build wheel and sdist
         run: |
@@ -124,7 +137,8 @@ jobs:
         run: |
           tag="${{ needs.verify-and-build.outputs.release_tag }}"
           version="${{ needs.verify-and-build.outputs.version }}"
-          notes="Compiled RiffDB tracking-store adapter for MLflow v${version} (pinned to RiffDB \`${{ needs.verify-and-build.outputs.revision }}\` and \`riffdb==${version}\`)."
+          riffdb_version="${{ needs.verify-and-build.outputs.riffdb_version }}"
+          notes="Compiled RiffDB tracking-store adapter for MLflow v${version} (pinned to RiffDB \`${{ needs.verify-and-build.outputs.revision }}\` and \`riffdb~=${riffdb_version}\`)."
           if gh release view "$tag" >/dev/null 2>&1; then
             gh release upload "$tag" release-out/* --clobber
           else

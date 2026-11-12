@@ -23,7 +23,7 @@ def _compact_tag(value: object, tag: str, keys: frozenset[str]) -> dict[str, obj
 CONTRACT_LINEAGE: Final[str] = "RiffDBMLflow"
 CONTRACT_VERSION: Final[int] = 1
 CONTRACT_BUNDLE_HASH: Final[str] = "0a87359f8c09b832d156bdef71f4d4fcbdc1c01ae2dea6e37ae46589bdc35b1d"
-QUERY_MODULE_HASH: Final[str] = "c8ca16e4666059941cf3748173760ad8f1b89093a4ffa2c0262c8dca1d9e55b4"
+QUERY_MODULE_HASH: Final[str] = "ed64eabaa42ca444983ba60037a35b2aad8876661aba6a704310dd8686d88c77"
 
 COLLECTION_COUNT: Final[str] = "collection_count"
 INDIVIDUAL_VALUE_BYTES: Final[str] = "individual_value_bytes"
@@ -5083,18 +5083,20 @@ class SearchRunsByStatusIntegrityFailure:
 
 SearchRunsByStatusResult: TypeAlias = SearchRunsByStatusFound | SearchRunsByStatusIntegrityFailure
 
-SEARCH_RUNS_COMPOSABLE_QUERY_PLAN_HASH: Final[str] = "1be1ab57a07c1bc911c805a796abe8ea921a6b3429bf52ab816461cd668c40f3"
+SEARCH_RUNS_COMPOSABLE_QUERY_PLAN_HASH: Final[str] = "7efadafb304540dc5a322531d3dcc7af07eea0511a4a36beac0ed3d196676552"
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SearchRunsComposableParams:
     experiment_id: Annotated[int, "u64"]
     lifecycle_stages: tuple[LifecycleStage, ...]
-    latest_metric_kind: RunDataKind
-    zero_digest: bytes
+    m1_kind: RunDataKind | None = None
     m1_key: str | None = None
+    m1_digest: bytes | None = None
     m1_min_sort: str | None = None
     m1_max_sort: str | None = None
+    m2_kind: RunDataKind | None = None
     m2_key: str | None = None
+    m2_digest: bytes | None = None
     m2_min_sort: str | None = None
     m2_max_sort: str | None = None
     d1_kind: RunDataKind | None = None
@@ -5107,7 +5109,9 @@ class SearchRunsComposableParams:
     run_name: str | None = None
     min_start_time: Annotated[int, "i64"] | None = None
     max_start_time: Annotated[int, "i64"] | None = None
+    order_metric_kind: RunDataKind | None = None
     order_metric_key: str | None = None
+    order_metric_digest: bytes | None = None
     order: RunOrder
     limit: Annotated[int, "u64"] | None = None
     after: str | None = None
@@ -10582,7 +10586,7 @@ class RiffDBMLflowClient:
         cursor = options.cursor if options.cursor is not None else parameters.after
         pages: list[TypedQueryResult[SearchRunsComposableResult]] = []
         for _ in range(max_pages):
-            page_parameters = SearchRunsComposableParams(experiment_id=parameters.experiment_id, lifecycle_stages=parameters.lifecycle_stages, latest_metric_kind=parameters.latest_metric_kind, zero_digest=parameters.zero_digest, m1_key=parameters.m1_key, m1_min_sort=parameters.m1_min_sort, m1_max_sort=parameters.m1_max_sort, m2_key=parameters.m2_key, m2_min_sort=parameters.m2_min_sort, m2_max_sort=parameters.m2_max_sort, d1_kind=parameters.d1_kind, d1_key=parameters.d1_key, d1_digest=parameters.d1_digest, d2_kind=parameters.d2_kind, d2_key=parameters.d2_key, d2_digest=parameters.d2_digest, status=parameters.status, run_name=parameters.run_name, min_start_time=parameters.min_start_time, max_start_time=parameters.max_start_time, order_metric_key=parameters.order_metric_key, order=parameters.order, limit=parameters.limit, after=None)
+            page_parameters = SearchRunsComposableParams(experiment_id=parameters.experiment_id, lifecycle_stages=parameters.lifecycle_stages, m1_kind=parameters.m1_kind, m1_key=parameters.m1_key, m1_digest=parameters.m1_digest, m1_min_sort=parameters.m1_min_sort, m1_max_sort=parameters.m1_max_sort, m2_kind=parameters.m2_kind, m2_key=parameters.m2_key, m2_digest=parameters.m2_digest, m2_min_sort=parameters.m2_min_sort, m2_max_sort=parameters.m2_max_sort, d1_kind=parameters.d1_kind, d1_key=parameters.d1_key, d1_digest=parameters.d1_digest, d2_kind=parameters.d2_kind, d2_key=parameters.d2_key, d2_digest=parameters.d2_digest, status=parameters.status, run_name=parameters.run_name, min_start_time=parameters.min_start_time, max_start_time=parameters.max_start_time, order_metric_kind=parameters.order_metric_kind, order_metric_key=parameters.order_metric_key, order_metric_digest=parameters.order_metric_digest, order=parameters.order, limit=parameters.limit, after=None)
             page = self.search_runs_composable(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
             pages.append(page)
             if not page.next_cursor:
@@ -15303,7 +15307,7 @@ class AsyncRiffDBMLflowClient:
         cursor = options.cursor if options.cursor is not None else parameters.after
         pages: list[TypedQueryResult[SearchRunsComposableResult]] = []
         for _ in range(max_pages):
-            page_parameters = SearchRunsComposableParams(experiment_id=parameters.experiment_id, lifecycle_stages=parameters.lifecycle_stages, latest_metric_kind=parameters.latest_metric_kind, zero_digest=parameters.zero_digest, m1_key=parameters.m1_key, m1_min_sort=parameters.m1_min_sort, m1_max_sort=parameters.m1_max_sort, m2_key=parameters.m2_key, m2_min_sort=parameters.m2_min_sort, m2_max_sort=parameters.m2_max_sort, d1_kind=parameters.d1_kind, d1_key=parameters.d1_key, d1_digest=parameters.d1_digest, d2_kind=parameters.d2_kind, d2_key=parameters.d2_key, d2_digest=parameters.d2_digest, status=parameters.status, run_name=parameters.run_name, min_start_time=parameters.min_start_time, max_start_time=parameters.max_start_time, order_metric_key=parameters.order_metric_key, order=parameters.order, limit=parameters.limit, after=None)
+            page_parameters = SearchRunsComposableParams(experiment_id=parameters.experiment_id, lifecycle_stages=parameters.lifecycle_stages, m1_kind=parameters.m1_kind, m1_key=parameters.m1_key, m1_digest=parameters.m1_digest, m1_min_sort=parameters.m1_min_sort, m1_max_sort=parameters.m1_max_sort, m2_kind=parameters.m2_kind, m2_key=parameters.m2_key, m2_digest=parameters.m2_digest, m2_min_sort=parameters.m2_min_sort, m2_max_sort=parameters.m2_max_sort, d1_kind=parameters.d1_kind, d1_key=parameters.d1_key, d1_digest=parameters.d1_digest, d2_kind=parameters.d2_kind, d2_key=parameters.d2_key, d2_digest=parameters.d2_digest, status=parameters.status, run_name=parameters.run_name, min_start_time=parameters.min_start_time, max_start_time=parameters.max_start_time, order_metric_kind=parameters.order_metric_kind, order_metric_key=parameters.order_metric_key, order_metric_digest=parameters.order_metric_digest, order=parameters.order, limit=parameters.limit, after=None)
             page = await self.search_runs_composable(page_parameters, QueryOptions(cursor=cursor, read_after_commit=options.read_after_commit, consistency=options.consistency))
             pages.append(page)
             if not page.next_cursor:
