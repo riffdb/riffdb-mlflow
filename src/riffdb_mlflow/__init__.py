@@ -16,4 +16,4 @@ from riffdb_mlflow._mlflow_hooks import install_mlflow_hooks
 
 install_mlflow_hooks()
 
-__version__ = "0.2.4"
+__version__ = "0.2.5"

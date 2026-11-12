@@ -1,7 +1,7 @@
 # riffdb-mlflow
 
-`riffdb-mlflow` (`0.2.4`) is a compiled RiffDB tracking-store, model-registry,
-and server job-store plugin for **MLflow 3.15.x** (`mlflow~=3.15.1`, including `3.15.1` and `3.15.2` patch releases) targeting **RiffDB 0.2.3**.
+`riffdb-mlflow` (`0.2.5`) is a compiled RiffDB tracking-store, model-registry,
+and server job-store plugin for **MLflow 3.15.x** (`mlflow~=3.15.1`, including `3.15.1` and `3.15.2` patch releases) targeting **RiffDB 0.2.4**.
 It is an out-of-tree integration: no MLflow-specific code, vocabulary, routes,
 or schemas belong in the RiffDB repository.
 
@@ -51,7 +51,7 @@ pip install "riffdb-mlflow[gateway,genai,extras,aws]"
 
 ## Deploying the Application & Provisioning Credentials
 
-Deploy the compiled application lock to a RiffDB `0.2.3+` server and provision
+Deploy the compiled application lock to a RiffDB `0.2.4+` server and provision
 the `MLflowTrackingServer` role. When running from a read-only checkout or
 installed package environment, pass `--deployment-dir` and `--credential-output`
 so deployment state and mode-`0600` role credentials are written to an external
