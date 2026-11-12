@@ -1,11 +1,11 @@
 # riffdb-mlflow
 
 `riffdb-mlflow` (`0.2.4`) is a compiled RiffDB tracking-store, model-registry,
-and server job-store plugin for **MLflow 3.15.1** targeting **RiffDB 0.2.3**.
+and server job-store plugin for **MLflow 3.15.x** (`mlflow~=3.15.1`, including `3.15.1` and `3.15.2` patch releases) targeting **RiffDB 0.2.3**.
 It is an out-of-tree integration: no MLflow-specific code, vocabulary, routes,
 or schemas belong in the RiffDB repository.
 
-## Supported MLflow 3.15.1 Surface
+## Supported MLflow 3.15.x Surface
 
 The package registers the `riffdb` scheme in both official MLflow plugin groups:
 
