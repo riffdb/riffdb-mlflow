@@ -35,8 +35,8 @@ that delegates `riffdb://` URIs and `RiffDBTrackingStore` instances to
 `RiffDBGatewayAndScorerMixin` and `RiffDBJobStore` while leaving all non-RiffDB
 stores untouched.
 
-The Python floor for processes loading `riffdb-mlflow` directly is **3.13**,
-matching the published `cp313-abi3` RiffDB Python driver. HTTP clients talking
+The Python floor for processes loading `riffdb-mlflow` directly is **3.11**,
+matching the published `cp311-abi3` RiffDB Python driver. HTTP clients talking
 to `mlflow server` over REST are unaffected and support Python 3.10–3.13.
 
 ## Core behavior
