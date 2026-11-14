@@ -7,9 +7,9 @@ on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: 'Release tag to verify (for example v0.2.5)'
+        description: 'Release tag to verify (for example v0.2.6)'
         required: false
-        default: 'v0.2.5'
+        default: 'v0.2.6'
 
 permissions:
   contents: read
@@ -46,7 +46,7 @@ jobs:
           if [[ "${{ github.event_name }}" == "push" ]]; then
             release_tag="${GITHUB_REF_NAME}"
           else
-            release_tag="${{ inputs.release_tag || 'v0.2.5' }}"
+            release_tag="${{ inputs.release_tag || 'v0.2.6' }}"
           fi
           [[ "$release_tag" =~ ^v([0-9]+\.[0-9]+\.[0-9]+)$ ]]
           version="${BASH_REMATCH[1]}"
